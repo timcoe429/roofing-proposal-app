@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import logger from '../utils/logger.js';
-import { processImageWithVision, processWithClaude } from '../services/aiService.js';
+import { processImageWithVision } from '../services/openaiService.js';
 
 // Initialize OpenAI only if API key is provided
 let openai = null;

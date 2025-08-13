@@ -4,7 +4,7 @@ import {
   analyzePricingDocument, 
   generateRoofingRecommendations,
   chatWithClaude 
-} from '../services/aiService.js';
+} from '../services/openaiService.js';
 
 // Chat with Claude AI
 export const chatWithAI = async (req, res) => {
