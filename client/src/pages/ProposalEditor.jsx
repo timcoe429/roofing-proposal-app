@@ -157,13 +157,6 @@ const ProposalEditor = () => {
 
   return (
     <div className="proposal-workspace">
-      <Header 
-        onSave={handleSave}
-        onGeneratePdf={handleGeneratePdf}
-        isSaving={saveMutation.isLoading}
-        isGeneratingPdf={generatePdfMutation.isLoading}
-      />
-      
       <div className="workspace-content">
         {/* AI Chat Sidebar */}
         <div className="ai-sidebar">
@@ -177,6 +170,12 @@ const ProposalEditor = () => {
         {/* Main Content Area */}
         <div className="main-content">
           <div className="content-header">
+            <Header 
+              onSave={handleSave}
+              onGeneratePdf={handleGeneratePdf}
+              isSaving={saveMutation.isLoading}
+              isGeneratingPdf={generatePdfMutation.isLoading}
+            />
             <Navigation 
               activeTab={activeTab}
               setActiveTab={setActiveTab}

@@ -1,19 +1,21 @@
 .ai-assistant {
   width: 400px;
   height: 100vh;
-  background: #1a1a1a;
-  color: white;
+  background: white;
+  color: #1a202c;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #333;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
 }
 
 .ai-header {
   padding: 20px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #f8fafc;
 }
 
 .ai-title {
@@ -29,7 +31,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #888;
+  color: #718096;
 }
 
 .status-dot {
@@ -47,13 +49,14 @@
 
 .quick-actions {
   padding: 20px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
 }
 
 .quick-actions h4 {
   margin: 0 0 12px 0;
   font-size: 14px;
-  color: #ccc;
+  color: #4a5568;
   font-weight: 600;
 }
 
@@ -69,10 +72,10 @@
   align-items: center;
   gap: 4px;
   padding: 12px 8px;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: white;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  color: white;
+  color: #4a5568;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 11px;
@@ -80,9 +83,10 @@
 }
 
 .quick-action-btn:hover {
-  background: #333;
+  background: #edf2f7;
   border-color: #667eea;
   transform: translateY(-1px);
+  color: #2d3748;
 }
 
 .quick-action-btn span {
@@ -127,11 +131,13 @@
 
 .message.user .message-avatar {
   background: #667eea;
+  color: white;
 }
 
 .message.assistant .message-avatar {
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  color: #4a5568;
 }
 
 .message-content {
@@ -146,26 +152,29 @@
 }
 
 .message-text {
-  background: #2a2a2a;
+  background: #f7fafc;
   padding: 12px 16px;
   border-radius: 16px;
   line-height: 1.4;
   font-size: 14px;
+  border: 1px solid #e2e8f0;
 }
 
 .message.user .message-text {
   background: #667eea;
   color: white;
+  border-color: #667eea;
 }
 
 .message.assistant .message-text {
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  color: #2d3748;
 }
 
 .message-time {
   font-size: 11px;
-  color: #888;
+  color: #a0aec0;
   padding: 0 4px;
 }
 
@@ -173,15 +182,15 @@
   display: flex;
   gap: 4px;
   padding: 12px 16px;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 16px;
 }
 
 .typing-indicator span {
   width: 6px;
   height: 6px;
-  background: #888;
+  background: #a0aec0;
   border-radius: 50%;
   animation: typing 1.4s infinite ease-in-out;
 }
@@ -207,19 +216,20 @@
 
 .chat-input {
   padding: 20px;
-  border-top: 1px solid #333;
+  border-top: 1px solid #e2e8f0;
   display: flex;
   gap: 12px;
   align-items: center;
+  background: #f8fafc;
 }
 
 .chat-input input {
   flex: 1;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: white;
+  border: 1px solid #e2e8f0;
   border-radius: 20px;
   padding: 12px 16px;
-  color: white;
+  color: #2d3748;
   font-size: 14px;
   outline: none;
   transition: all 0.2s;
@@ -231,7 +241,7 @@
 }
 
 .chat-input input::placeholder {
-  color: #888;
+  color: #a0aec0;
 }
 
 .send-btn {
@@ -254,21 +264,21 @@
 }
 
 .send-btn:disabled {
-  background: #444;
+  background: #cbd5e0;
   cursor: not-allowed;
   transform: none;
 }
 
 .project-summary {
   padding: 20px;
-  border-top: 1px solid #333;
-  background: #1f1f1f;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
 }
 
 .project-summary h4 {
   margin: 0 0 12px 0;
   font-size: 14px;
-  color: #ccc;
+  color: #4a5568;
   font-weight: 600;
 }
 
@@ -286,7 +296,7 @@
 }
 
 .status-item span:first-child {
-  color: #888;
+  color: #718096;
 }
 
 .status-item span.complete {
@@ -305,16 +315,16 @@
 }
 
 .messages::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: #f7fafc;
 }
 
 .messages::-webkit-scrollbar-thumb {
-  background: #444;
+  background: #cbd5e0;
   border-radius: 3px;
 }
 
 .messages::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #a0aec0;
 }
 
 /* Responsive */

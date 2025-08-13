@@ -44,6 +44,11 @@ export default function MeasurementsPanel({
         <div className="section-header">
           <Calculator size={24} />
           <h2>Roof Measurements</h2>
+          <div className="measurement-methods">
+            <button className="method-btn active">Manual Entry</button>
+            <button className="method-btn">Satellite Analysis</button>
+            <button className="method-btn">Upload Report</button>
+          </div>
         </div>
         
         <div className="measurements-grid">

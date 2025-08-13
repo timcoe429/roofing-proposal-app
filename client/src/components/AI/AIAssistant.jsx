@@ -4,6 +4,13 @@ import './AIAssistant.css';
 
 const QUICK_ACTIONS = [
   {
+    id: 'analyze_satellite',
+    icon: Zap,
+    title: 'Satellite Analysis',
+    description: 'Analyze roof from satellite/aerial images',
+    prompt: 'Help me analyze this roof using satellite or aerial imagery to estimate size and complexity.'
+  },
+  {
     id: 'analyze_photos',
     icon: Upload,
     title: 'Analyze Photos',
@@ -16,13 +23,6 @@ const QUICK_ACTIONS = [
     title: 'Calculate Materials',
     description: 'Get material estimates based on measurements',
     prompt: 'Calculate the materials needed for this roof replacement project.'
-  },
-  {
-    id: 'generate_proposal',
-    icon: FileText,
-    title: 'Generate Proposal',
-    description: 'Create a complete proposal document',
-    prompt: 'Generate a professional roofing proposal based on the current project data.'
   },
   {
     id: 'price_lookup',
@@ -102,6 +102,15 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
 
   const generateAIResponse = (userMessage, data) => {
     const message = userMessage.toLowerCase();
+    
+    if (message.includes('satellite') || message.includes('aerial') || message.includes('imagery') || message.includes('measure')) {
+      return {
+        content: `I can help with roof measurements using multiple methods!\n\n**📐 Measurement Options:**\n\n**1. 🛰️ Satellite Analysis**\n- Good for: Permits, planning, complexity assessment\n- Upload aerial image + house dimensions\n- ~80% accuracy for initial estimates\n\n**2. 📋 Professional Reports**\n- EagleView, HOVER, Pictometry reports\n- Upload PDF/images for data extraction\n- Contractor-grade accuracy\n\n**3. ✋ Manual Measurement**\n- Traditional tape measure method\n- Ground measurements + pitch calculations\n- Most accurate when done properly\n\n**4. 🏠 House Footprint Method**\n- Use property records for base dimensions\n- Apply pitch multipliers\n- Quick ballpark for simple roofs\n\n**Which method works best for your situation?**\n- Need permit drawings? → Satellite\n- Ordering materials? → Professional report\n- On-site now? → Manual measurement\n- Quick estimate? → House footprint`,
+        actions: [
+          { type: 'navigate', tab: 'measurements' }
+        ]
+      };
+    }
     
     if (message.includes('material') || message.includes('calculate')) {
       return {
