@@ -2,12 +2,22 @@ import OpenAI from 'openai';
 import logger from '../utils/logger.js';
 import { processImageWithVision } from '../services/openaiService.js';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI only if API key is provided
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
+}
 
 export const analyzeRoofImages = async (req, res) => {
   try {
+    if (!openai) {
+      return res.status(503).json({ 
+        error: 'OpenAI service not configured. Please set OPENAI_API_KEY environment variable.' 
+      });
+    }
+
     const { images, documentType } = req.body;
     
     if (!images || images.length === 0) {
@@ -155,6 +165,12 @@ export const extractMeasurements = async (req, res) => {
 
 export const identifyMaterials = async (req, res) => {
   try {
+    if (!openai) {
+      return res.status(503).json({ 
+        error: 'OpenAI service not configured. Please set OPENAI_API_KEY environment variable.' 
+      });
+    }
+
     const { images } = req.body;
     
     const prompt = `Identify the roofing materials in these images:

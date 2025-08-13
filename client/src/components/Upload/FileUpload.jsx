@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, Image, X, AlertCircle, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -9,12 +8,10 @@ const FileUpload = ({ files, onFilesChange, onProcessComplete }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
 
-  const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
-    if (rejectedFiles.length > 0) {
-      toast.error('Some files were rejected. Please check file types and sizes.');
-    }
-
-    const newFiles = acceptedFiles.map(file => ({
+  const handleFileSelect = useCallback((event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    
+    const newFiles = selectedFiles.map(file => ({
       id: Date.now() + Math.random(),
       name: file.name,
       size: (file.size / 1024 / 1024).toFixed(2),
@@ -26,19 +23,6 @@ const FileUpload = ({ files, onFilesChange, onProcessComplete }) => {
 
     onFilesChange([...files, ...newFiles]);
   }, [files, onFilesChange]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
-      'application/pdf': ['.pdf'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
-    maxSize: 10 * 1024 * 1024 // 10MB
-  });
 
   const removeFile = (fileId) => {
     const updatedFiles = files.filter(f => f.id !== fileId);
@@ -138,15 +122,21 @@ const FileUpload = ({ files, onFilesChange, onProcessComplete }) => {
   return (
     <div className="file-upload-container">
       <div className="upload-area">
-        <div 
-          {...getRootProps()} 
-          className={`dropzone ${isDragActive ? 'dropzone-active' : ''}`}
-        >
-          <input {...getInputProps()} />
-          <Upload className="upload-icon" />
-          <h3>Drop files here or click to upload</h3>
-          <p>Support for images, PDFs, Excel files, and measurement reports</p>
-          <p className="upload-hint">Maximum file size: 10MB</p>
+        <div className="dropzone">
+          <input 
+            type="file" 
+            multiple 
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+            id="file-upload"
+          />
+          <label htmlFor="file-upload" style={{ cursor: 'pointer', display: 'block' }}>
+            <Upload className="upload-icon" />
+            <h3>Click to upload files</h3>
+            <p>Support for images, PDFs, Excel files, and measurement reports</p>
+            <p className="upload-hint">Maximum file size: 10MB</p>
+          </label>
         </div>
 
         {files.length > 0 && (

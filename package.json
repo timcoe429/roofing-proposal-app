@@ -6,12 +6,9 @@
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "cd server && npm run dev",
     "client:dev": "cd client && npm start",
-    "install:all": "cd server && npm install && cd ../client && npm install",
-    "build": "npm run install:all && cd client && npm run build",
-    "start": "cd server && npm start",
-    "migrate": "cd server && npm run migrate"
+    "start": "cd server && npm start"
   },
-  "dependencies": {
+  "devDependencies": {
     "concurrently": "^8.2.2"
   },
   "engines": {
