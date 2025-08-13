@@ -2,7 +2,7 @@
 -- Depends on: 001_create_users.sql, 002_create_companies.sql
 
 CREATE TABLE IF NOT EXISTS proposals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
     proposal_number VARCHAR(50) UNIQUE,

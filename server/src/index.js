@@ -17,6 +17,7 @@ import authRoutes from './routes/authRoutes.js';
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { setupDatabase } from './config/database.js';
+import { runMigrations } from './utils/runMigrations.js';
 import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -71,6 +72,10 @@ const startServer = async () => {
   try {
     await setupDatabase();
     logger.info('Database connected successfully');
+    
+    // Run migrations
+    await runMigrations();
+    logger.info('Database migrations completed');
     
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
