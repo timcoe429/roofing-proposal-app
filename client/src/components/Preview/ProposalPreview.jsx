@@ -1,12 +1,24 @@
 import React from 'react';
 import { FileText, Download, Send, Eye } from 'lucide-react';
+import './ProposalPreview.css';
 
-export default function ProposalPreview({ proposalData }) {
+export default function ProposalPreview({ proposalData, companyData }) {
   const calculateTotal = () => {
     const materialsTotal = proposalData.materials?.reduce((sum, material) => sum + (material.total || 0), 0) || 0;
     const laborTotal = (proposalData.laborHours || 0) * (proposalData.laborRate || 0);
     const addOnsTotal = proposalData.addOns?.reduce((sum, addon) => sum + (addon.price || 0), 0) || 0;
     return materialsTotal + laborTotal + addOnsTotal;
+  };
+
+  // Default company data if none provided
+  const company = companyData || {
+    name: 'Your Company Name',
+    address: 'Company Address',
+    phone: 'Company Phone',
+    email: 'Company Email',
+    website: 'Company Website',
+    license: 'License Number',
+    insurance: 'Insurance Policy'
   };
 
   return (
@@ -35,12 +47,22 @@ export default function ProposalPreview({ proposalData }) {
       <div className="proposal-document">
         <div className="document-header">
           <div className="company-info">
-            <h1>Demo Roofing Co.</h1>
+            {company.logo && (
+              <div className="company-logo">
+                <img src={company.logo} alt="Company Logo" />
+              </div>
+            )}
+            <h1>{company.name}</h1>
             <p>Professional Roofing Services</p>
             <div className="contact-info">
-              <span>(555) 123-ROOF</span>
-              <span>info@demoroofing.com</span>
-              <span>License: RC-12345</span>
+              <span>{company.phone}</span>
+              <span>{company.email}</span>
+              <span>License: {company.license}</span>
+              <span>Insured: {company.insurance}</span>
+            </div>
+            <div className="company-address">
+              <span>{company.address}</span>
+              {company.website && <span>{company.website}</span>}
             </div>
           </div>
         </div>
@@ -92,11 +114,11 @@ export default function ProposalPreview({ proposalData }) {
             </div>
             <div className="detail-row">
               <span>Timeline:</span>
-              <span>{proposalData.timeline || '2-3 days, weather permitting'}</span>
+              <span>{proposalData.timeline || 'Not specified'}</span>
             </div>
             <div className="detail-row">
               <span>Warranty:</span>
-              <span>{proposalData.warranty || '50-Year Manufacturer, 10-Year Workmanship'}</span>
+              <span>{proposalData.warranty || 'Not specified'}</span>
             </div>
           </div>
         </div>
@@ -157,19 +179,60 @@ export default function ProposalPreview({ proposalData }) {
         <div className="terms-section">
           <h3>Terms & Conditions</h3>
           <div className="terms-content">
-            <h4>Payment Terms</h4>
-            <ul>
-              <li>50% deposit required to begin work</li>
-              <li>Remaining balance due upon completion</li>
-              <li>Payment accepted via check, cash, or credit card</li>
-            </ul>
+            {company.termsConditions?.paymentTerms && company.termsConditions.paymentTerms.length > 0 && (
+              <>
+                <h4>Payment Terms</h4>
+                <ul>
+                  {company.termsConditions.paymentTerms.map((term, index) => (
+                    <li key={index}>{term}</li>
+                  ))}
+                </ul>
+              </>
+            )}
             
-            <h4>Work Guarantee</h4>
-            <ul>
-              <li>All work guaranteed against defects in workmanship</li>
-              <li>Materials covered by manufacturer warranty</li>
-              <li>Free repairs for workmanship issues within warranty period</li>
-            </ul>
+            {company.termsConditions?.workGuarantee && company.termsConditions.workGuarantee.length > 0 && (
+              <>
+                <h4>Work Guarantee</h4>
+                <ul>
+                  {company.termsConditions.workGuarantee.map((term, index) => (
+                    <li key={index}>{term}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {company.termsConditions?.weatherPolicy && company.termsConditions.weatherPolicy.length > 0 && (
+              <>
+                <h4>Weather Policy</h4>
+                <ul>
+                  {company.termsConditions.weatherPolicy.map((term, index) => (
+                    <li key={index}>{term}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {/* Fallback to default terms if none set */}
+            {(!company.termsConditions || 
+              (!company.termsConditions.paymentTerms?.length && 
+               !company.termsConditions.workGuarantee?.length && 
+               !company.termsConditions.weatherPolicy?.length)) && (
+              <>
+                <h4>Payment Terms</h4>
+                <ul>
+                  <li>50% deposit required to begin work</li>
+                  <li>Remaining balance due upon completion</li>
+                  <li>Payment accepted via check, cash, or credit card</li>
+                </ul>
+                
+                <h4>Work Guarantee</h4>
+                <ul>
+                  <li>All work guaranteed against defects in workmanship</li>
+                  <li>Materials covered by manufacturer warranty</li>
+                  <li>Free repairs for workmanship issues within warranty period</li>
+                </ul>
+              </>
+            )}
           </div>
         </div>
 

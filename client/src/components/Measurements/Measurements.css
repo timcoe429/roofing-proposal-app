@@ -31,6 +31,44 @@
   margin: 0;
 }
 
+/* Modern Method Buttons */
+.measurement-methods {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.method-btn {
+  padding: 8px 16px;
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.method-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e0;
+  color: #475569;
+}
+
+.method-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+}
+
+.method-btn.active:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
 .measurements-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -52,9 +90,9 @@
 .measurement-group input,
 .measurement-group select {
   padding: 12px 16px;
-  border: 2px solid #e2e8f0;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
   transition: all 0.2s;
   background: white;
 }
@@ -62,8 +100,8 @@
 .measurement-group input:focus,
 .measurement-group select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .unit {
@@ -77,7 +115,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #667eea;
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 8px;
@@ -88,7 +126,7 @@
 }
 
 .add-damage-btn:hover {
-  background: #5a67d8;
+  background: #1d4ed8;
   transform: translateY(-1px);
 }
 
