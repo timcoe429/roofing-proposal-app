@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, Plus, Edit, Trash2, DollarSign, FileSpreadsheet } from 'lucide-react';
+import { Upload, Plus, Edit, Trash2, DollarSign, FileSpreadsheet, FileText, FileImage, Brain } from 'lucide-react';
+import './PricingManager.css';
 
 export default function PricingManager() {
   const [pricingSheets, setPricingSheets] = useState([
@@ -9,7 +10,8 @@ export default function PricingManager() {
       supplier: 'ABC Supply Co.',
       lastUpdated: '2024-01-15',
       itemCount: 45,
-      isActive: true
+      isActive: true,
+      type: 'excel'
     },
     {
       id: 2,
@@ -17,25 +19,91 @@ export default function PricingManager() {
       supplier: 'Home Depot Pro',
       lastUpdated: '2024-01-10',
       itemCount: 32,
-      isActive: false
+      isActive: false,
+      type: 'pdf'
     }
   ]);
 
   const [showUpload, setShowUpload] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [supplierName, setSupplierName] = useState('');
+  const [sheetName, setSheetName] = useState('');
+
+  const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files || []);
+    setSelectedFiles(files);
+  };
+
+  const handlePricingUpload = async () => {
+    if (selectedFiles.length === 0 || !supplierName || !sheetName) {
+      alert('Please select files and fill in all fields');
+      return;
+    }
+
+    // Here you would integrate with Claude AI to process the files
+    // For now, we'll simulate the process
+    const newSheet = {
+      id: Date.now(),
+      name: sheetName,
+      supplier: supplierName,
+      lastUpdated: new Date().toISOString().split('T')[0],
+      itemCount: 0, // Will be populated by Claude AI
+      isActive: false,
+      type: getFileType(selectedFiles[0]),
+      files: selectedFiles.map(f => ({ name: f.name, size: f.size }))
+    };
+
+    setPricingSheets([...pricingSheets, newSheet]);
+    setShowUpload(false);
+    setSelectedFiles([]);
+    setSupplierName('');
+    setSheetName('');
+  };
+
+  const getFileType = (file) => {
+    if (file.name.includes('.xlsx') || file.name.includes('.xls')) return 'excel';
+    if (file.name.includes('.pdf')) return 'pdf';
+    if (file.name.includes('.doc') || file.name.includes('.docx')) return 'word';
+    if (file.name.includes('.csv')) return 'csv';
+    if (file.name.includes('docs.google.com')) return 'google_doc';
+    return 'other';
+  };
+
+  const getFileIcon = (type) => {
+    switch (type) {
+      case 'excel': return <FileSpreadsheet size={24} />;
+      case 'pdf': return <FileText size={24} />;
+      case 'word': return <FileText size={24} />;
+      case 'csv': return <FileSpreadsheet size={24} />;
+      case 'google_doc': return <FileText size={24} />;
+      default: return <FileText size={24} />;
+    }
+  };
+
+  const toggleActive = (id) => {
+    setPricingSheets(pricingSheets.map(sheet => ({
+      ...sheet,
+      isActive: sheet.id === id ? !sheet.isActive : false
+    })));
+  };
+
+  const deleteSheet = (id) => {
+    setPricingSheets(pricingSheets.filter(sheet => sheet.id !== id));
+  };
 
   return (
     <div className="pricing-manager">
       <div className="pricing-header">
         <div>
           <h2>Pricing Sheets Manager</h2>
-          <p>Upload and manage your supplier pricing sheets for accurate proposals</p>
+          <p>Upload any pricing document and let Claude AI extract the data automatically</p>
         </div>
         <button 
           onClick={() => setShowUpload(true)}
           className="upload-pricing-btn"
         >
           <Upload size={18} />
-          Upload Pricing Sheet
+          Add Pricing Document
         </button>
       </div>
 
@@ -43,7 +111,7 @@ export default function PricingManager() {
         {pricingSheets.map(sheet => (
           <div key={sheet.id} className={`pricing-sheet-card ${sheet.isActive ? 'active' : ''}`}>
             <div className="sheet-header">
-              <FileSpreadsheet size={24} />
+              {getFileIcon(sheet.type)}
               <div className="sheet-info">
                 <h3>{sheet.name}</h3>
                 <p>{sheet.supplier}</p>
@@ -67,11 +135,17 @@ export default function PricingManager() {
                 <Edit size={16} />
                 Edit
               </button>
-              <button className="action-btn delete">
+              <button 
+                className="action-btn delete"
+                onClick={() => deleteSheet(sheet.id)}
+              >
                 <Trash2 size={16} />
                 Delete
               </button>
-              <button className="action-btn activate">
+              <button 
+                className={`action-btn ${sheet.isActive ? 'deactivate' : 'activate'}`}
+                onClick={() => toggleActive(sheet.id)}
+              >
                 <DollarSign size={16} />
                 {sheet.isActive ? 'Deactivate' : 'Activate'}
               </button>
@@ -81,58 +155,89 @@ export default function PricingManager() {
         
         <div className="add-pricing-card" onClick={() => setShowUpload(true)}>
           <Plus size={32} />
-          <h3>Add New Pricing Sheet</h3>
-          <p>Upload Excel/CSV files from your suppliers</p>
+          <h3>Add Pricing Document</h3>
+          <p>Upload any format - Claude AI will extract the data</p>
         </div>
       </div>
 
       {showUpload && (
         <div className="upload-modal">
           <div className="modal-content">
-            <h3>Upload Pricing Sheet</h3>
-            <div className="upload-area">
-              <Upload size={48} />
-              <h4>Drop your pricing sheet here</h4>
-              <p>Supports Excel (.xlsx, .xls) and CSV files</p>
-              <button className="browse-btn">Browse Files</button>
+            <div className="modal-header">
+              <h3>Upload Pricing Document</h3>
+              <p>Upload any pricing document and Claude AI will extract product names, prices, and categories</p>
             </div>
-            <div className="upload-options">
-              <div className="option">
-                <label>Supplier Name</label>
-                <input type="text" placeholder="e.g., ABC Supply Co." />
+            
+            <div className="upload-form">
+              <div className="form-group">
+                <label>Select Pricing Document(s)</label>
+                <input 
+                  type="file" 
+                  multiple
+                  accept=".xlsx,.xls,.pdf,.doc,.docx,.csv,.txt"
+                  onChange={handleFileSelect}
+                  className="file-input"
+                />
+                <small>Supports Excel, PDF, Word, CSV, and text files. You can also paste Google Docs/Sheets URLs.</small>
               </div>
-              <div className="option">
-                <label>Sheet Name</label>
-                <input type="text" placeholder="e.g., Standard Pricing 2024" />
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Supplier Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g., ABC Supply Co."
+                    value={supplierName}
+                    onChange={(e) => setSupplierName(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Document Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g., Standard Pricing 2024"
+                    value={sheetName}
+                    onChange={(e) => setSheetName(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="option">
-                <label>
-                  <input type="checkbox" />
-                  Set as active pricing sheet
-                </label>
+
+              {selectedFiles.length > 0 && (
+                <div className="selected-files">
+                  <label>Selected Files:</label>
+                  <div className="files-list">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="file-item">
+                        {getFileIcon(getFileType(file))}
+                        <span>{file.name}</span>
+                        <span className="file-size">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="ai-info">
+              <Brain size={20} />
+              <div>
+                <h4>Claude AI Processing</h4>
+                <p>AI will automatically identify product names, prices, and categories from any document format</p>
               </div>
             </div>
+
             <div className="modal-actions">
               <button onClick={() => setShowUpload(false)} className="cancel-btn">
                 Cancel
               </button>
-              <button className="upload-btn">
+              <button onClick={handlePricingUpload} className="upload-btn">
+                <Upload size={16} />
                 Upload & Process
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <div className="pricing-tips">
-        <h3>💡 Tips for Better Pricing</h3>
-        <ul>
-          <li>Upload current supplier pricing sheets for accurate estimates</li>
-          <li>Set different margins for materials vs labor</li>
-          <li>Keep multiple pricing sheets for different suppliers</li>
-          <li>AI can fetch current market prices if no pricing sheet is available</li>
-        </ul>
-      </div>
     </div>
   );
 }

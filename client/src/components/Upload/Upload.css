@@ -1,6 +1,6 @@
 .file-upload-container {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
 }
 
@@ -178,66 +178,17 @@
   min-width: 200px;
 }
 
-.upload-tips {
-  background: var(--info-light);
-  border: 1px solid var(--info);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-}
-
-.upload-tips h4 {
-  color: var(--info-dark);
-  margin-bottom: 0.75rem;
-}
-
-.upload-tips ul {
-  margin: 0;
-  padding-left: 1.5rem;
-  color: var(--text-secondary);
-}
-
-.upload-tips li {
-  margin-bottom: 0.5rem;
-}
-
-.upload-tips li:last-child {
-  margin-bottom: 0;
-}
-
-/* Tips panel */
-.tips-panel {
-  background: #e6fffa;
-  border: 1px solid #b2f5ea;
-  border-radius: 8px;
-  padding: 20px;
-  margin-top: 20px;
-}
-
-.tips-panel h4 {
-  color: #234e52;
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.tips-panel ul {
-  margin: 0;
-  padding-left: 20px;
-  color: #2d3748;
-}
-
-.tips-panel li {
-  margin-bottom: 8px;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.tips-panel li:last-child {
-  margin-bottom: 0;
-}
-
-@media (min-width: 768px) {
+/* Responsive */
+@media (max-width: 768px) {
   .file-upload-container {
-    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+  }
+  
+  .upload-area {
+    padding: 1.5rem;
+  }
+  
+  .dropzone {
+    padding: 2rem;
   }
 }

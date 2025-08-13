@@ -6,38 +6,32 @@ const tabs = [
   { 
     id: 'upload', 
     label: 'Upload', 
-    icon: Upload,
-    description: 'Photos & Documents'
+    icon: Upload
   },
   { 
     id: 'measurements', 
     label: 'Measurements', 
-    icon: Ruler,
-    description: 'Roof Dimensions'
+    icon: Ruler
   },
   { 
     id: 'materials', 
     label: 'Materials', 
-    icon: Package,
-    description: 'Products & Labor'
+    icon: Package
   },
   { 
     id: 'details', 
     label: 'Client Info', 
-    icon: User,
-    description: 'Contact & Project'
+    icon: User
   },
   { 
     id: 'pricing', 
     label: 'Pricing', 
-    icon: Settings,
-    description: 'Pricing Sheets'
+    icon: Settings
   },
   { 
     id: 'preview', 
     label: 'Preview', 
-    icon: CheckCircle,
-    description: 'Final Proposal'
+    icon: CheckCircle
   }
 ];
 
@@ -79,10 +73,7 @@ export default function Navigation({ activeTab, setActiveTab, proposalData }) {
                   <CheckCircle size={12} className="complete-indicator" />
                 )}
               </div>
-              <div className="tab-content">
-                <span className="tab-label">{tab.label}</span>
-                <span className="tab-description">{tab.description}</span>
-              </div>
+              <span className="tab-label">{tab.label}</span>
             </button>
           );
         })}
