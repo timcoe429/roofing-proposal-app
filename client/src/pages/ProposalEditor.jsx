@@ -11,9 +11,15 @@ import MeasurementsPanel from '../components/Measurements/MeasurementsPanel';
 import MaterialsList from '../components/Materials/MaterialsList';
 import ClientInfo from '../components/ProjectDetails/ClientInfo';
 import CompanySettings from '../components/Branding/CompanySettings';
+import AIAssistant from '../components/AI/AIAssistant';
+import PricingManager from '../components/Pricing/PricingManager';
+import ProposalPreview from '../components/Preview/ProposalPreview';
 
 // Services
 import api from '../services/api';
+
+// Styles
+import './ProposalEditor.css';
 
 const ProposalEditor = () => {
   const { id } = useParams();
@@ -150,7 +156,7 @@ const ProposalEditor = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="proposal-workspace">
       <Header 
         onSave={handleSave}
         onGeneratePdf={handleGeneratePdf}
@@ -158,73 +164,96 @@ const ProposalEditor = () => {
         isGeneratingPdf={generatePdfMutation.isLoading}
       />
       
-      <Navigation 
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        proposalData={proposalData}
-      />
-      
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {activeTab === 'upload' && (
-          <FileUpload 
-            files={proposalData.uploadedFiles}
-            onFilesChange={(files) => updateField('uploadedFiles', files)}
-            onProcessComplete={(data) => {
-              // Update measurements and damage areas from AI analysis
-              if (data.measurements) {
-                updateProposalData('measurements', data.measurements);
-              }
-              if (data.damageAreas) {
-                updateField('damageAreas', data.damageAreas);
-              }
-              setActiveTab('measurements');
-            }}
+      <div className="workspace-content">
+        {/* AI Chat Sidebar */}
+        <div className="ai-sidebar">
+          <AIAssistant 
+            proposalData={proposalData}
+            onUpdateProposal={setProposalData}
+            onTabChange={setActiveTab}
           />
-        )}
+        </div>
         
-        {activeTab === 'measurements' && (
-          <MeasurementsPanel
-            measurements={proposalData.measurements}
-            damageAreas={proposalData.damageAreas}
-            onMeasurementsChange={(measurements) => updateProposalData('measurements', measurements)}
-            onDamageAreasChange={(areas) => updateField('damageAreas', areas)}
-          />
-        )}
-        
-        {activeTab === 'materials' && (
-          <MaterialsList
-            materials={proposalData.materials}
-            laborHours={proposalData.laborHours}
-            laborRate={proposalData.laborRate}
-            addOns={proposalData.addOns}
-            onMaterialsChange={(materials) => updateField('materials', materials)}
-            onLaborChange={(labor) => {
-              updateField('laborHours', labor.hours);
-              updateField('laborRate', labor.rate);
-            }}
-            onAddOnsChange={(addOns) => updateField('addOns', addOns)}
-          />
-        )}
-        
-        {activeTab === 'details' && (
-          <ClientInfo
-            clientData={{
-              clientName: proposalData.clientName,
-              clientEmail: proposalData.clientEmail,
-              clientPhone: proposalData.clientPhone,
-              clientAddress: proposalData.clientAddress,
-              propertyAddress: proposalData.propertyAddress,
-              timeline: proposalData.timeline,
-              warranty: proposalData.warranty,
-              notes: proposalData.notes
-            }}
-            onChange={(field, value) => updateField(field, value)}
-          />
-        )}
-        
-        {activeTab === 'branding' && (
-          <CompanySettings />
-        )}
+        {/* Main Content Area */}
+        <div className="main-content">
+          <div className="content-header">
+            <Navigation 
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              proposalData={proposalData}
+            />
+          </div>
+          
+          <div className="content-body">
+            {activeTab === 'upload' && (
+              <FileUpload 
+                files={proposalData.uploadedFiles}
+                onFilesChange={(files) => updateField('uploadedFiles', files)}
+                onProcessComplete={(data) => {
+                  if (data.measurements) {
+                    updateProposalData('measurements', data.measurements);
+                  }
+                  if (data.damageAreas) {
+                    updateField('damageAreas', data.damageAreas);
+                  }
+                  setActiveTab('measurements');
+                }}
+              />
+            )}
+            
+            {activeTab === 'measurements' && (
+              <MeasurementsPanel
+                measurements={proposalData.measurements}
+                damageAreas={proposalData.damageAreas}
+                onMeasurementsChange={(measurements) => updateProposalData('measurements', measurements)}
+                onDamageAreasChange={(areas) => updateField('damageAreas', areas)}
+              />
+            )}
+            
+            {activeTab === 'materials' && (
+              <MaterialsList
+                materials={proposalData.materials}
+                laborHours={proposalData.laborHours}
+                laborRate={proposalData.laborRate}
+                addOns={proposalData.addOns}
+                onMaterialsChange={(materials) => updateField('materials', materials)}
+                onLaborChange={(labor) => {
+                  updateField('laborHours', labor.hours);
+                  updateField('laborRate', labor.rate);
+                }}
+                onAddOnsChange={(addOns) => updateField('addOns', addOns)}
+              />
+            )}
+            
+            {activeTab === 'details' && (
+              <ClientInfo
+                clientData={{
+                  clientName: proposalData.clientName,
+                  clientEmail: proposalData.clientEmail,
+                  clientPhone: proposalData.clientPhone,
+                  clientAddress: proposalData.clientAddress,
+                  propertyAddress: proposalData.propertyAddress,
+                  timeline: proposalData.timeline,
+                  warranty: proposalData.warranty,
+                  notes: proposalData.notes
+                }}
+                onChange={(field, value) => updateField(field, value)}
+              />
+            )}
+            
+            {activeTab === 'branding' && (
+              <CompanySettings />
+            )}
+            
+            {activeTab === 'pricing' && (
+              <PricingManager />
+            )}
+            
+            {activeTab === 'preview' && (
+              <ProposalPreview proposalData={proposalData} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

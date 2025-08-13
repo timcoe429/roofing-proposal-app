@@ -5,7 +5,7 @@ import './Navigation.css';
 const tabs = [
   { 
     id: 'upload', 
-    label: 'Upload Files', 
+    label: 'Upload', 
     icon: Upload,
     description: 'Photos & Documents'
   },
@@ -23,15 +23,21 @@ const tabs = [
   },
   { 
     id: 'details', 
-    label: 'Client Details', 
+    label: 'Client Info', 
     icon: User,
-    description: 'Contact & Project Info'
+    description: 'Contact & Project'
   },
   { 
-    id: 'branding', 
-    label: 'Company', 
+    id: 'pricing', 
+    label: 'Pricing', 
     icon: Settings,
-    description: 'Branding & Settings'
+    description: 'Pricing Sheets'
+  },
+  { 
+    id: 'preview', 
+    label: 'Preview', 
+    icon: CheckCircle,
+    description: 'Final Proposal'
   }
 ];
 
