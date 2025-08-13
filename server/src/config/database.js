@@ -61,11 +61,9 @@ export const setupDatabase = async () => {
     await sequelize.authenticate();
     console.log('INFO: Database connection established successfully.');
     
-    // Sync models in development
-    if (process.env.NODE_ENV !== 'production') {
-      await sequelize.sync({ alter: true });
-      console.log('INFO: Database models synchronized.');
-    }
+    // Force sync models to create tables (this will create tables if they don't exist)
+    await sequelize.sync({ force: false, alter: true });
+    console.log('INFO: Database models synchronized.');
     
     return sequelize;
   } catch (error) {
