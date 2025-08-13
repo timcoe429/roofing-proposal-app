@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -49,7 +49,7 @@ const ProposalEditor = () => {
   });
 
   // Fetch existing proposal if editing
-  const { data: existingProposal, isLoading } = useQuery({
+  const { isLoading } = useQuery({
     queryKey: ['proposal', id],
     queryFn: () => api.getProposal(id),
     enabled: !isNewProposal,
@@ -91,18 +91,7 @@ const ProposalEditor = () => {
     }
   });
 
-  // Auto-save draft
-  useEffect(() => {
-    const autoSaveTimer = setTimeout(() => {
-      if (proposalData.clientName) {
-        handleSave(true);
-      }
-    }, 30000); // Auto-save every 30 seconds
-
-    return () => clearTimeout(autoSaveTimer);
-  }, [proposalData]);
-
-  const handleSave = async (isAutoSave = false) => {
+  const handleSave = useCallback(async (isAutoSave = false) => {
     try {
       await saveMutation.mutateAsync(proposalData);
       if (!isAutoSave) {
@@ -113,7 +102,18 @@ const ProposalEditor = () => {
         toast.error('Failed to save proposal');
       }
     }
-  };
+  }, [saveMutation, proposalData]);
+
+  // Auto-save draft
+  useEffect(() => {
+    const autoSaveTimer = setTimeout(() => {
+      if (proposalData.clientName) {
+        handleSave(true);
+      }
+    }, 30000); // Auto-save every 30 seconds
+
+    return () => clearTimeout(autoSaveTimer);
+  }, [proposalData, handleSave]);
 
   const handleGeneratePdf = async () => {
     if (!proposalData.clientName) {
