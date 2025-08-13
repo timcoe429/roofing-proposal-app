@@ -1,7 +1,14 @@
-// Company routes placeholder
-const express = require('express');
+// Company routes
+import express from 'express';
 const router = express.Router();
 
-// Company routes will go here
+// Company routes
+router.get('/settings', (req, res) => {
+    res.json({ message: 'Company settings not yet implemented' });
+});
 
-module.exports = router;
+router.put('/settings', (req, res) => {
+    res.json({ message: 'Company settings update not yet implemented' });
+});
+
+export default router;

@@ -1,7 +1,14 @@
-// PDF routes placeholder
-const express = require('express');
+// PDF routes
+import express from 'express';
 const router = express.Router();
 
-// PDF routes will go here
+// PDF routes
+router.post('/generate/:id', (req, res) => {
+    res.json({ message: 'PDF generation not yet implemented' });
+});
 
-module.exports = router;
+router.get('/download/:id', (req, res) => {
+    res.json({ message: 'PDF download not yet implemented' });
+});
+
+export default router;

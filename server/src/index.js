@@ -17,8 +17,8 @@ import authRoutes from './routes/authRoutes.js';
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { setupDatabase } from './config/database.js';
-import { runMigrations } from './utils/runMigrations.js';
-import logger from './utils/logger.js';
+// import { runMigrations } from './utils/runMigrations.js';
+// import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -54,7 +54,20 @@ app.use('/api/company', companyRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    message: 'Roofing Proposal API is running!'
+  });
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Roofing Proposal App API',
+    status: 'running',
+    endpoints: ['/api/health', '/api/proposals', '/api/vision', '/api/auth']
+  });
 });
 
 // Serve React app for all other routes in production
@@ -71,18 +84,18 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await setupDatabase();
-    logger.info('Database connected successfully');
+    console.log('INFO: Database connected successfully');
     
-    // Run migrations
-    await runMigrations();
-    logger.info('Database migrations completed');
+    // TODO: Run migrations
+    // await runMigrations();
+    // console.log('INFO: Database migrations completed');
     
     app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`INFO: Server running on port ${PORT}`);
+      console.log(`INFO: Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {
-    logger.error('Failed to start server:', error);
+    console.error('ERROR: Failed to start server:', error);
     process.exit(1);
   }
 };

@@ -1,6 +1,15 @@
-// OpenAI service placeholder
-const openaiService = {
-    // OpenAI service methods will go here
+// OpenAI service
+export const processImageWithVision = async (imageBase64, prompt) => {
+    // This function is referenced in visionController.js
+    // For now, return a placeholder response
+    return {
+        analysis: 'Vision processing not yet implemented',
+        confidence: 0
+    };
 };
 
-module.exports = openaiService;
+const openaiService = {
+    processImageWithVision
+};
+
+export default openaiService;
