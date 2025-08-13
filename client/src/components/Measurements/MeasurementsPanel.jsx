@@ -48,47 +48,14 @@ export default function MeasurementsPanel({
         
         <div className="measurements-grid">
           <div className="measurement-group">
-            <label>Total Squares</label>
+            <label>Total Roof Area</label>
             <input
               type="number"
               value={measurements.totalSquares}
               onChange={(e) => handleMeasurementChange('totalSquares', parseFloat(e.target.value) || 0)}
-              placeholder="0"
+              placeholder="25"
             />
-            <span className="unit">squares</span>
-          </div>
-
-          <div className="measurement-group">
-            <label>Ridge Length</label>
-            <input
-              type="number"
-              value={measurements.ridgeLength}
-              onChange={(e) => handleMeasurementChange('ridgeLength', parseFloat(e.target.value) || 0)}
-              placeholder="0"
-            />
-            <span className="unit">linear feet</span>
-          </div>
-
-          <div className="measurement-group">
-            <label>Valley Length</label>
-            <input
-              type="number"
-              value={measurements.valleyLength}
-              onChange={(e) => handleMeasurementChange('valleyLength', parseFloat(e.target.value) || 0)}
-              placeholder="0"
-            />
-            <span className="unit">linear feet</span>
-          </div>
-
-          <div className="measurement-group">
-            <label>Edge Length</label>
-            <input
-              type="number"
-              value={measurements.edgeLength}
-              onChange={(e) => handleMeasurementChange('edgeLength', parseFloat(e.target.value) || 0)}
-              placeholder="0"
-            />
-            <span className="unit">linear feet</span>
+            <span className="unit">squares (1 square = 100 sq ft)</span>
           </div>
 
           <div className="measurement-group">
@@ -98,50 +65,64 @@ export default function MeasurementsPanel({
               onChange={(e) => handleMeasurementChange('pitch', e.target.value)}
             >
               <option value="">Select pitch</option>
-              <option value="3/12">3/12</option>
-              <option value="4/12">4/12</option>
-              <option value="5/12">5/12</option>
-              <option value="6/12">6/12</option>
-              <option value="7/12">7/12</option>
-              <option value="8/12">8/12</option>
-              <option value="9/12">9/12</option>
-              <option value="10/12">10/12</option>
-              <option value="12/12">12/12</option>
+              <option value="4/12">4/12 (Low slope)</option>
+              <option value="6/12">6/12 (Standard)</option>
+              <option value="8/12">8/12 (Steep)</option>
+              <option value="10/12">10/12 (Very steep)</option>
+              <option value="12/12">12/12 (45 degrees)</option>
             </select>
           </div>
 
           <div className="measurement-group">
-            <label>Existing Layers</label>
+            <label>Current Roofing Material</label>
+            <select
+              value={measurements.currentMaterial || ''}
+              onChange={(e) => handleMeasurementChange('currentMaterial', e.target.value)}
+            >
+              <option value="">Select current material</option>
+              <option value="asphalt_shingles">Asphalt Shingles</option>
+              <option value="wood_shingles">Wood Shingles</option>
+              <option value="metal">Metal Roofing</option>
+              <option value="tile">Tile</option>
+              <option value="slate">Slate</option>
+              <option value="flat_membrane">Flat/Membrane</option>
+            </select>
+          </div>
+
+          <div className="measurement-group">
+            <label>Layers to Remove</label>
             <select
               value={measurements.layers}
               onChange={(e) => handleMeasurementChange('layers', parseInt(e.target.value))}
             >
-              <option value={1}>1 layer</option>
-              <option value={2}>2 layers</option>
-              <option value={3}>3 layers</option>
+              <option value={1}>1 layer (tear-off)</option>
+              <option value={2}>2 layers (tear-off)</option>
+              <option value={0}>Overlay (no tear-off)</option>
             </select>
           </div>
 
           <div className="measurement-group">
-            <label>Penetrations</label>
-            <input
-              type="number"
-              value={measurements.penetrations}
-              onChange={(e) => handleMeasurementChange('penetrations', parseInt(e.target.value) || 0)}
-              placeholder="0"
-            />
-            <span className="unit">vents, pipes, etc.</span>
+            <label>Roof Complexity</label>
+            <select
+              value={measurements.complexity || 'standard'}
+              onChange={(e) => handleMeasurementChange('complexity', e.target.value)}
+            >
+              <option value="simple">Simple (rectangular, few features)</option>
+              <option value="standard">Standard (some angles, chimneys)</option>
+              <option value="complex">Complex (many angles, dormers, skylights)</option>
+            </select>
           </div>
 
           <div className="measurement-group">
-            <label>Skylights</label>
-            <input
-              type="number"
-              value={measurements.skylights}
-              onChange={(e) => handleMeasurementChange('skylights', parseInt(e.target.value) || 0)}
-              placeholder="0"
-            />
-            <span className="unit">skylights</span>
+            <label>Access Difficulty</label>
+            <select
+              value={measurements.access || 'standard'}
+              onChange={(e) => handleMeasurementChange('access', e.target.value)}
+            >
+              <option value="easy">Easy (ground level, good access)</option>
+              <option value="standard">Standard (2-story, normal access)</option>
+              <option value="difficult">Difficult (3+ story, tight spaces)</option>
+            </select>
           </div>
         </div>
       </div>
