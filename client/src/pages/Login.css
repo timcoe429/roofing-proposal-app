@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   padding: 20px;
 }
 
@@ -36,7 +36,7 @@
 .login-icon {
   width: 48px;
   height: 48px;
-  color: #667eea;
+  color: #2563eb;
   margin-bottom: 16px;
 }
 
@@ -75,7 +75,7 @@
 
 .auth-toggle button.active {
   background: white;
-  color: #667eea;
+  color: #2563eb;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -112,14 +112,14 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .login-button {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -135,7 +135,7 @@
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
 
 .login-button:disabled {
@@ -179,8 +179,8 @@
   width: 100%;
   padding: 10px;
   background: transparent;
-  color: #667eea;
-  border: 2px solid #667eea;
+  color: #2563eb;
+  border: 2px solid #2563eb;
   border-radius: 8px;
   font-weight: 500;
   font-size: 14px;
@@ -189,7 +189,7 @@
 }
 
 .demo-button:hover {
-  background: #667eea;
+  background: #2563eb;
   color: white;
   transform: translateY(-1px);
 }

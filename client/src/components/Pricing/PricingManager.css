@@ -31,7 +31,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 20px;
-  background: #667eea;
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 8px;
@@ -42,7 +42,7 @@
 }
 
 .upload-pricing-btn:hover {
-  background: #5a67d8;
+  background: #1d4ed8;
   transform: translateY(-1px);
 }
 
@@ -68,8 +68,8 @@
 }
 
 .pricing-sheet-card.active {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .sheet-header {
@@ -80,7 +80,7 @@
 }
 
 .sheet-header svg {
-  color: #667eea;
+  color: #2563eb;
 }
 
 .sheet-info h3 {
@@ -158,8 +158,8 @@
 }
 
 .action-btn.edit:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: #2563eb;
+  color: #2563eb;
 }
 
 .action-btn.delete:hover {
@@ -192,9 +192,9 @@
 }
 
 .add-pricing-card:hover {
-  border-color: #667eea;
+  border-color: #2563eb;
   background: #edf2f7;
-  color: #667eea;
+  color: #2563eb;
 }
 
 .add-pricing-card h3 {
@@ -278,8 +278,8 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .form-group small {
@@ -303,7 +303,7 @@
 }
 
 .file-input::-webkit-file-upload-button {
-  background: #667eea;
+  background: #2563eb;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -314,7 +314,7 @@
 }
 
 .file-input::-webkit-file-upload-button:hover {
-  background: #5a67d8;
+  background: #1d4ed8;
 }
 
 .form-row {
@@ -427,7 +427,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 20px;
-  background: #667eea;
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 8px;
@@ -437,7 +437,7 @@
 }
 
 .upload-btn:hover {
-  background: #5a67d8;
+  background: #1d4ed8;
 }
 
 /* Responsive */

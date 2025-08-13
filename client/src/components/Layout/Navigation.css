@@ -31,7 +31,7 @@
 }
 
 .nav-tab.active {
-  border-bottom-color: #667eea;
+  border-bottom-color: #2563eb;
   background: #f7fafc;
 }
 
@@ -65,7 +65,7 @@
 }
 
 .nav-tab.active .tab-icon {
-  color: #667eea;
+  color: #2563eb;
 }
 
 .complete-indicator {
@@ -84,7 +84,7 @@
 }
 
 .nav-tab.active .tab-label {
-  color: #667eea;
+  color: #2563eb;
 }
 
 /* Responsive */

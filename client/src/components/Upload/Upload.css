@@ -22,7 +22,7 @@
 }
 
 .dropzone:hover {
-  border-color: #667eea;
+  border-color: #2563eb;
   background: #edf2f7;
 }
 
@@ -95,7 +95,7 @@
 .file-icon {
   width: 24px;
   height: 24px;
-  color: var(--primary);
+  color: #2563eb;
 }
 
 .remove-file-btn {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building, Phone, Mail, MapPin, Upload, Palette } from 'lucide-react';
+import { Building, Phone, Mail, MapPin, Upload, Palette, Shield } from 'lucide-react';
 import './Branding.css';
 
 export default function CompanySettings() {
@@ -12,14 +12,63 @@ export default function CompanySettings() {
     license: 'RC-12345',
     insurance: 'INS-67890',
     logo: null,
-    primaryColor: '#667eea',
-    secondaryColor: '#764ba2'
+    primaryColor: '#2563eb',
+    secondaryColor: '#1e40af',
+    termsConditions: {
+      paymentTerms: [
+        '50% deposit required to begin work',
+        'Remaining balance due upon completion',
+        'Payment accepted via check, cash, or credit card'
+      ],
+      workGuarantee: [
+        'All work guaranteed against defects in workmanship',
+        'Materials covered by manufacturer warranty',
+        'Free repairs for workmanship issues within warranty period'
+      ],
+      weatherPolicy: [
+        'Work may be delayed due to inclement weather',
+        'Safety is our top priority',
+        'Client will be notified of any delays'
+      ]
+    }
   });
 
   const handleChange = (field, value) => {
     setCompanyData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleTermsChange = (section, index, value) => {
+    setCompanyData(prev => ({
+      ...prev,
+      termsConditions: {
+        ...prev.termsConditions,
+        [section]: prev.termsConditions[section].map((term, i) => 
+          i === index ? value : term
+        )
+      }
+    }));
+  };
+
+  const addTerm = (section) => {
+    setCompanyData(prev => ({
+      ...prev,
+      termsConditions: {
+        ...prev.termsConditions,
+        [section]: [...prev.termsConditions[section], '']
+      }
+    }));
+  };
+
+  const removeTerm = (section, index) => {
+    setCompanyData(prev => ({
+      ...prev,
+      termsConditions: {
+        ...prev.termsConditions,
+        [section]: prev.termsConditions[section].filter((_, i) => i !== index)
+      }
     }));
   };
 
@@ -187,6 +236,84 @@ export default function CompanySettings() {
                 <span>{companyData.secondaryColor}</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="terms-section">
+        <div className="section-header">
+          <Shield size={24} />
+          <h2>Terms & Conditions</h2>
+        </div>
+        
+        <div className="terms-content">
+          <div className="terms-group">
+            <h4>Payment Terms</h4>
+            {companyData.termsConditions.paymentTerms.map((term, index) => (
+              <div key={index} className="term-input">
+                <input
+                  type="text"
+                  value={term}
+                  onChange={(e) => handleTermsChange('paymentTerms', index, e.target.value)}
+                  placeholder="Enter payment term"
+                />
+                <button 
+                  onClick={() => removeTerm('paymentTerms', index)}
+                  className="remove-term-btn"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button onClick={() => addTerm('paymentTerms')} className="add-term-btn">
+              + Add Payment Term
+            </button>
+          </div>
+          
+          <div className="terms-group">
+            <h4>Work Guarantee</h4>
+            {companyData.termsConditions.workGuarantee.map((term, index) => (
+              <div key={index} className="term-input">
+                <input
+                  type="text"
+                  value={term}
+                  onChange={(e) => handleTermsChange('workGuarantee', index, e.target.value)}
+                  placeholder="Enter work guarantee term"
+                />
+                <button 
+                  onClick={() => removeTerm('workGuarantee', index)}
+                  className="remove-term-btn"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button onClick={() => addTerm('workGuarantee')} className="add-term-btn">
+              + Add Work Guarantee Term
+            </button>
+          </div>
+          
+          <div className="terms-group">
+            <h4>Weather Policy</h4>
+            {companyData.termsConditions.weatherPolicy.map((term, index) => (
+              <div key={index} className="term-input">
+                <input
+                  type="text"
+                  value={term}
+                  onChange={(e) => handleTermsChange('weatherPolicy', index, e.target.value)}
+                  placeholder="Enter weather policy term"
+                />
+                <button 
+                  onClick={() => removeTerm('weatherPolicy', index)}
+                  className="remove-term-btn"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button onClick={() => addTerm('weatherPolicy')} className="add-term-btn">
+              + Add Weather Policy Term
+            </button>
           </div>
         </div>
       </div>

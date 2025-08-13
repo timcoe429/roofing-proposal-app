@@ -1,5 +1,5 @@
 .company-settings-container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
   display: flex;
@@ -10,8 +10,8 @@
 .company-info-section,
 .contact-section,
 .branding-section,
-.preview-section,
-.save-section {
+.terms-section,
+.preview-section {
   background: white;
   border-radius: 12px;
   padding: 30px;
@@ -36,7 +36,7 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
 }
 
@@ -51,24 +51,27 @@
 }
 
 .form-group label {
-  font-size: 14px;
   font-weight: 600;
-  color: #4a5568;
+  color: #2d3748;
+  font-size: 14px;
 }
 
-.form-group input {
+.form-group input,
+.form-group select,
+.form-group textarea {
   padding: 12px 16px;
-  border: 2px solid #e2e8f0;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
   transition: all 0.2s;
-  background: white;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .branding-grid {
@@ -77,16 +80,11 @@
   gap: 30px;
 }
 
-.logo-section {
+.logo-section,
+.colors-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.logo-section label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #4a5568;
+  gap: 16px;
 }
 
 .logo-upload {
@@ -98,8 +96,8 @@
 }
 
 .logo-upload:hover {
-  border-color: #667eea;
-  background: #f7fafc;
+  border-color: #2563eb;
+  background: #f8fafc;
 }
 
 .logo-placeholder {
@@ -107,19 +105,17 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  color: #718096;
+  color: #64748b;
 }
 
-.logo-placeholder p {
-  margin: 0;
-  font-size: 14px;
+.logo-placeholder svg {
+  color: #94a3b8;
 }
 
 .upload-btn {
-  padding: 8px 16px;
-  background: #667eea;
+  background: #2563eb;
   color: white;
-  border: none;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -128,53 +124,41 @@
 }
 
 .upload-btn:hover {
-  background: #5a67d8;
+  background: #1d4ed8;
 }
 
 .logo-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  position: relative;
+  display: inline-block;
 }
 
 .logo-preview img {
-  max-width: 150px;
+  max-width: 200px;
   max-height: 100px;
-  object-fit: contain;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .remove-logo-btn {
-  padding: 6px 12px;
-  background: #fed7d7;
-  color: #c53030;
-  border: 1px solid #feb2b2;
-  border-radius: 4px;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
   cursor: pointer;
-  font-size: 12px;
-}
-
-.remove-logo-btn:hover {
-  background: #feb2b2;
-}
-
-.colors-section {
+  font-size: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  align-items: center;
+  justify-content: center;
 }
 
 .color-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.color-group label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #4a5568;
 }
 
 .color-input {
@@ -186,128 +170,197 @@
 .color-input input[type="color"] {
   width: 50px;
   height: 40px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 0;
 }
 
 .color-input span {
   font-family: monospace;
   font-size: 14px;
-  color: #4a5568;
-  background: #f7fafc;
-  padding: 8px 12px;
-  border-radius: 4px;
+  color: #64748b;
+}
+
+/* Terms & Conditions Section */
+.terms-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.terms-group {
   border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  background: #f8fafc;
+}
+
+.terms-group h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0 0 16px 0;
+}
+
+.term-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.term-input input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.term-input input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.remove-term-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.remove-term-btn:hover {
+  background: #dc2626;
+}
+
+.add-term-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.add-term-btn:hover {
+  background: #059669;
 }
 
 .header-preview {
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 30px;
   color: white;
-  margin-top: 16px;
+  overflow: hidden;
 }
 
 .preview-content {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
 }
 
 .preview-logo {
-  max-width: 80px;
-  max-height: 60px;
-  object-fit: contain;
+  max-width: 120px;
+  max-height: 80px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   padding: 8px;
-  border-radius: 4px;
 }
 
 .preview-info h3 {
-  margin: 0 0 12px 0;
   font-size: 24px;
   font-weight: 700;
+  margin: 0 0 12px 0;
 }
 
-.preview-contact {
+.preview-contact,
+.preview-credentials {
   display: flex;
-  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 8px;
-}
-
-.preview-contact span {
   font-size: 14px;
   opacity: 0.9;
 }
 
-.preview-credentials {
-  display: flex;
-  gap: 16px;
-}
-
-.preview-credentials span {
-  font-size: 12px;
-  opacity: 0.8;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 4px 8px;
-  border-radius: 4px;
+.save-section {
+  text-align: center;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .save-settings-btn {
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 8px;
+  padding: 16px 32px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  margin-bottom: 16px;
 }
 
 .save-settings-btn:hover {
+  background: #1d4ed8;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .save-note {
-  text-align: center;
-  color: #718096;
+  color: #64748b;
   font-size: 14px;
-  margin: 12px 0 0 0;
+  margin: 0;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .company-settings-container {
     padding: 16px;
+    gap: 20px;
   }
   
   .company-info-section,
   .contact-section,
   .branding-section,
-  .preview-section,
-  .save-section {
+  .terms-section,
+  .preview-section {
     padding: 20px;
   }
   
   .form-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .branding-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
   
   .preview-content {
     flex-direction: column;
     text-align: center;
+    gap: 16px;
   }
   
-  .preview-contact {
-    justify-content: center;
+  .preview-contact,
+  .preview-credentials {
+    flex-direction: column;
+    gap: 8px;
   }
 }
