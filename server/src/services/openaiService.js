@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { aiConfig } from '../config/ai.js';
+import { aiConfig } from '../config/openai.js';
 import logger from '../utils/logger.js';
 
 // Initialize AI clients
