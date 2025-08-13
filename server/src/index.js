@@ -1,18 +1,85 @@
-const express = require('express');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Import routes
+import proposalRoutes from './routes/proposalRoutes.js';
+import visionRoutes from './routes/visionRoutes.js';
+import pdfRoutes from './routes/pdfRoutes.js';
+import companyRoutes from './routes/companyRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+
+// Import middleware
+import { errorHandler } from './middleware/errorHandler.js';
+import { setupDatabase } from './config/database.js';
+import logger from './utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Security middleware
+app.use(helmet());
+app.use(compression());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  credentials: true
+}));
 
-// Routes
-app.get('/', (req, res) => {
-    res.json({ message: 'Roofing Proposal API Server' });
+// Body parsing
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve static files from React build in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../../client/build')));
+}
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/proposals', proposalRoutes);
+app.use('/api/vision', visionRoutes);
+app.use('/api/pdf', pdfRoutes);
+app.use('/api/company', companyRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Serve React app for all other routes in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));
+  });
+}
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
+// Initialize database and start server
+const startServer = async () => {
+  try {
+    await setupDatabase();
+    logger.info('Database connected successfully');
+    
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

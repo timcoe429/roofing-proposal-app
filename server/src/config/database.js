@@ -1,4 +1,78 @@
-// Database configuration placeholder
-module.exports = {
-    // Database config will go here
+import { Sequelize } from 'sequelize';
+import dotenv from 'dotenv';
+import logger from '../utils/logger.js';
+
+dotenv.config();
+
+// Parse DATABASE_URL for Railway PostgreSQL
+const getDatabaseConfig = () => {
+  if (process.env.DATABASE_URL) {
+    // Railway provides DATABASE_URL
+    return {
+      url: process.env.DATABASE_URL,
+      options: {
+        dialect: 'postgres',
+        logging: process.env.NODE_ENV === 'development' ? console.log : false,
+        dialectOptions: {
+          ssl: process.env.NODE_ENV === 'production' ? {
+            require: true,
+            rejectUnauthorized: false
+          } : false
+        },
+        pool: {
+          max: 5,
+          min: 0,
+          acquire: 30000,
+          idle: 10000
+        }
+      }
+    };
+  }
+  
+  // Local development configuration
+  return {
+    database: process.env.DB_NAME || 'roofing_proposals',
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'password',
+    options: {
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || 5432,
+      dialect: 'postgres',
+      logging: console.log,
+      pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    }
+  };
 };
+
+const config = getDatabaseConfig();
+
+// Initialize Sequelize
+const sequelize = config.url 
+  ? new Sequelize(config.url, config.options)
+  : new Sequelize(config.database, config.username, config.password, config.options);
+
+// Test database connection
+export const setupDatabase = async () => {
+  try {
+    await sequelize.authenticate();
+    logger.info('Database connection established successfully.');
+    
+    // Sync models in development
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync({ alter: true });
+      logger.info('Database models synchronized.');
+    }
+    
+    return sequelize;
+  } catch (error) {
+    logger.error('Unable to connect to the database:', error);
+    throw error;
+  }
+};
+
+export default sequelize;

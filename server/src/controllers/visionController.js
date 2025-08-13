@@ -1,6 +1,199 @@
-// Vision controller placeholder
-const visionController = {
-    // Vision controller methods will go here
+import OpenAI from 'openai';
+import logger from '../utils/logger.js';
+import { processImageWithVision } from '../services/openaiService.js';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+export const analyzeRoofImages = async (req, res) => {
+  try {
+    const { images, documentType } = req.body;
+    
+    if (!images || images.length === 0) {
+      return res.status(400).json({ error: 'No images provided' });
+    }
+
+    logger.info(`Processing ${images.length} images with GPT Vision`);
+
+    // Construct the prompt based on document type
+    let prompt = '';
+    
+    if (documentType === 'measurement_report') {
+      prompt = `Analyze this roofing measurement report and extract the following information in JSON format:
+      {
+        "measurements": {
+          "totalSquares": number (in roofing squares, 100 sq ft each),
+          "ridgeLength": number (linear feet),
+          "valleyLength": number (linear feet),
+          "edgeLength": number (linear feet),
+          "pitch": string (e.g., "6/12"),
+          "facets": number,
+          "predominantPitch": string
+        },
+        "existingMaterial": string,
+        "layers": number,
+        "penetrations": number (vents, pipes, etc),
+        "skylights": number,
+        "chimneys": number,
+        "confidence": number (0-100)
+      }`;
+    } else if (documentType === 'damage_photos') {
+      prompt = `Analyze these roof damage photos and identify:
+      {
+        "damageAreas": [
+          {
+            "type": string (e.g., "missing shingles", "wind damage", "hail damage", "water damage"),
+            "severity": string ("low", "medium", "high", "critical"),
+            "location": string (description of where on roof),
+            "description": string (detailed description),
+            "repairNeeded": string
+          }
+        ],
+        "overallCondition": string ("good", "fair", "poor", "critical"),
+        "immediateAttentionNeeded": boolean,
+        "estimatedAge": string,
+        "materialType": string,
+        "recommendations": [string]
+      }`;
+    } else {
+      prompt = `Analyze these roofing-related images and extract any relevant information about:
+      1. Measurements (if visible)
+      2. Damage areas and their severity
+      3. Existing roofing material type
+      4. Roof features (vents, skylights, chimneys)
+      5. Any visible issues or concerns
+      
+      Provide the analysis in JSON format with sections for measurements, damage, and recommendations.`;
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-vision-preview",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...images.map(imageBase64 => ({
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`,
+                detail: "high"
+              }
+            }))
+          ]
+        }
+      ],
+      max_tokens: 4096,
+      temperature: 0.2 // Lower temperature for more consistent extraction
+    });
+
+    const analysisText = response.choices[0].message.content;
+    
+    // Try to parse JSON from the response
+    let analysisData;
+    try {
+      // Extract JSON if it's wrapped in markdown code blocks
+      const jsonMatch = analysisText.match(/```json\n?([\s\S]*?)\n?```/);
+      const jsonString = jsonMatch ? jsonMatch[1] : analysisText;
+      analysisData = JSON.parse(jsonString);
+    } catch (parseError) {
+      logger.warn('Could not parse Vision API response as JSON, returning raw text');
+      analysisData = { rawAnalysis: analysisText };
+    }
+
+    logger.info('Successfully processed images with GPT Vision');
+    
+    res.json({
+      success: true,
+      analysis: analysisData,
+      usage: response.usage
+    });
+
+  } catch (error) {
+    logger.error('Error in vision analysis:', error);
+    res.status(500).json({ 
+      error: 'Failed to analyze images',
+      details: error.message 
+    });
+  }
 };
 
-module.exports = visionController;
+export const extractMeasurements = async (req, res) => {
+  try {
+    const { pdfBase64 } = req.body;
+    
+    if (!pdfBase64) {
+      return res.status(400).json({ error: 'No PDF provided' });
+    }
+
+    // For PDFs, we might need to convert to images first
+    // or use a different approach
+    
+    const prompt = `Extract all roofing measurements from this document. Focus on:
+    - Total roof area in squares
+    - Linear measurements (ridge, valley, edge)
+    - Roof pitch
+    - Number of facets/sections
+    Return as structured JSON.`;
+
+    const response = await processImageWithVision(pdfBase64, prompt);
+    
+    res.json({
+      success: true,
+      measurements: response
+    });
+
+  } catch (error) {
+    logger.error('Error extracting measurements:', error);
+    res.status(500).json({ 
+      error: 'Failed to extract measurements',
+      details: error.message 
+    });
+  }
+};
+
+export const identifyMaterials = async (req, res) => {
+  try {
+    const { images } = req.body;
+    
+    const prompt = `Identify the roofing materials in these images:
+    1. Shingle type (3-tab, architectural, designer, etc.)
+    2. Material (asphalt, wood, slate, tile, metal)
+    3. Approximate age/condition
+    4. Color/style
+    5. Manufacturer if identifiable
+    Return as JSON with confidence scores.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-vision-preview",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...images.map(img => ({
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${img}` }
+            }))
+          ]
+        }
+      ],
+      max_tokens: 1000
+    });
+
+    const materials = JSON.parse(response.choices[0].message.content);
+    
+    res.json({
+      success: true,
+      materials
+    });
+
+  } catch (error) {
+    logger.error('Error identifying materials:', error);
+    res.status(500).json({ 
+      error: 'Failed to identify materials',
+      details: error.message 
+    });
+  }
+};
