@@ -1,2 +1,2 @@
-# roofing-proposal-generator
-Roofing Proposal Generator
+# roofing-proposal-app
+Roofing Proposal App
