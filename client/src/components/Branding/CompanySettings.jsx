@@ -189,7 +189,7 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
           
           <div className="colors-section">
             <div className="color-group">
-              <label>Primary Color</label>
+              <label>Brand Color</label>
               <div className="color-input">
                 <input
                   type="color"
@@ -197,18 +197,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
                   onChange={(e) => handleChange('primaryColor', e.target.value)}
                 />
                 <span>{companyData.primaryColor}</span>
-              </div>
-            </div>
-            
-            <div className="color-group">
-              <label>Secondary Color</label>
-              <div className="color-input">
-                <input
-                  type="color"
-                  value={companyData.secondaryColor}
-                  onChange={(e) => handleChange('secondaryColor', e.target.value)}
-                />
-                <span>{companyData.secondaryColor}</span>
               </div>
             </div>
           </div>
@@ -299,12 +287,7 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
           <h2>Proposal Header Preview</h2>
         </div>
         
-        <div 
-          className="header-preview"
-          style={{
-            background: `linear-gradient(135deg, ${companyData.primaryColor} 0%, ${companyData.secondaryColor} 100%)`
-          }}
-        >
+        <div className="header-preview">
           <div className="preview-content">
             {companyData.logo && (
               <img src={companyData.logo} alt="Logo" className="preview-logo" />

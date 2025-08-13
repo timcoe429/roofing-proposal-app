@@ -92,8 +92,11 @@
 .document-header {
   text-align: center;
   margin-bottom: 40px;
-  padding-bottom: 30px;
+  padding: 40px;
   border-bottom: 2px solid #e2e8f0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .company-info {
@@ -112,6 +115,9 @@
   max-height: 80px;
   border-radius: 8px;
   object-fit: contain;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 8px;
 }
 
 .company-info h1 {
@@ -119,6 +125,7 @@
   font-weight: 700;
   color: #1a202c;
   margin: 0;
+  font-family: 'Georgia', serif;
 }
 
 .company-info p {
@@ -133,7 +140,8 @@
   flex-wrap: wrap;
   justify-content: center;
   font-size: 14px;
-  color: #64748b;
+  color: #374151;
+  font-weight: 500;
 }
 
 .company-address {
@@ -142,7 +150,7 @@
   gap: 8px;
   align-items: center;
   font-size: 14px;
-  color: #64748b;
+  color: #6b7280;
 }
 
 .proposal-title {
