@@ -54,6 +54,37 @@ const ProposalEditor = () => {
     uploadedFiles: []
   });
 
+  // Company settings state
+  const [companyData, setCompanyData] = useState({
+    name: 'Your Company Name',
+    address: 'Company Address',
+    phone: 'Company Phone',
+    email: 'Company Email',
+    website: 'Company Website',
+    license: 'License Number',
+    insurance: 'Insurance Policy',
+    logo: null,
+    primaryColor: '#2563eb',
+    secondaryColor: '#1e40af',
+    termsConditions: {
+      paymentTerms: [
+        '50% deposit required to begin work',
+        'Remaining balance due upon completion',
+        'Payment accepted via check, cash, or credit card'
+      ],
+      workGuarantee: [
+        'All work guaranteed against defects in workmanship',
+        'Materials covered by manufacturer warranty',
+        'Free repairs for workmanship issues within warranty period'
+      ],
+      weatherPolicy: [
+        'Work may be delayed due to inclement weather',
+        'Safety is our top priority',
+        'Client will be notified of any delays'
+      ]
+    }
+  });
+
   // Fetch existing proposal if editing
   const { isLoading } = useQuery({
     queryKey: ['proposal', id],
@@ -236,12 +267,20 @@ const ProposalEditor = () => {
                   warranty: proposalData.warranty,
                   notes: proposalData.notes
                 }}
-                onChange={(field, value) => updateField(field, value)}
+                onClientDataChange={(updatedData) => {
+                  setProposalData(prev => ({
+                    ...prev,
+                    ...updatedData
+                  }));
+                }}
               />
             )}
             
             {activeTab === 'branding' && (
-              <CompanySettings />
+              <CompanySettings 
+                companyData={companyData}
+                onCompanyDataChange={setCompanyData}
+              />
             )}
             
             {activeTab === 'pricing' && (
@@ -249,7 +288,10 @@ const ProposalEditor = () => {
             )}
             
             {activeTab === 'preview' && (
-              <ProposalPreview proposalData={proposalData} />
+              <ProposalPreview 
+                proposalData={proposalData} 
+                companyData={companyData}
+              />
             )}
           </div>
         </div>

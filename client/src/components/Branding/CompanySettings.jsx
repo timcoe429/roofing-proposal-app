@@ -2,74 +2,44 @@ import React, { useState } from 'react';
 import { Building, Phone, Mail, MapPin, Upload, Palette, Shield } from 'lucide-react';
 import './Branding.css';
 
-export default function CompanySettings() {
-  const [companyData, setCompanyData] = useState({
-    name: 'Demo Roofing Co.',
-    address: '123 Business Ave, City, State 12345',
-    phone: '(555) 123-ROOF',
-    email: 'info@demoroofing.com',
-    website: 'www.demoroofing.com',
-    license: 'RC-12345',
-    insurance: 'INS-67890',
-    logo: null,
-    primaryColor: '#2563eb',
-    secondaryColor: '#1e40af',
-    termsConditions: {
-      paymentTerms: [
-        '50% deposit required to begin work',
-        'Remaining balance due upon completion',
-        'Payment accepted via check, cash, or credit card'
-      ],
-      workGuarantee: [
-        'All work guaranteed against defects in workmanship',
-        'Materials covered by manufacturer warranty',
-        'Free repairs for workmanship issues within warranty period'
-      ],
-      weatherPolicy: [
-        'Work may be delayed due to inclement weather',
-        'Safety is our top priority',
-        'Client will be notified of any delays'
-      ]
-    }
-  });
-
+export default function CompanySettings({ companyData, onCompanyDataChange }) {
   const handleChange = (field, value) => {
-    setCompanyData(prev => ({
-      ...prev,
+    onCompanyDataChange({
+      ...companyData,
       [field]: value
-    }));
+    });
   };
 
   const handleTermsChange = (section, index, value) => {
-    setCompanyData(prev => ({
-      ...prev,
+    onCompanyDataChange({
+      ...companyData,
       termsConditions: {
-        ...prev.termsConditions,
-        [section]: prev.termsConditions[section].map((term, i) => 
+        ...companyData.termsConditions,
+        [section]: companyData.termsConditions[section].map((term, i) => 
           i === index ? value : term
         )
       }
-    }));
+    });
   };
 
   const addTerm = (section) => {
-    setCompanyData(prev => ({
-      ...prev,
+    onCompanyDataChange({
+      ...companyData,
       termsConditions: {
-        ...prev.termsConditions,
-        [section]: [...prev.termsConditions[section], '']
+        ...companyData.termsConditions,
+        [section]: [...companyData.termsConditions[section], '']
       }
-    }));
+    });
   };
 
   const removeTerm = (section, index) => {
-    setCompanyData(prev => ({
-      ...prev,
+    onCompanyDataChange({
+      ...companyData,
       termsConditions: {
-        ...prev.termsConditions,
-        [section]: prev.termsConditions[section].filter((_, i) => i !== index)
+        ...companyData.termsConditions,
+        [section]: companyData.termsConditions[section].filter((_, i) => i !== index)
       }
-    }));
+    });
   };
 
   const handleLogoUpload = (event) => {
@@ -81,6 +51,11 @@ export default function CompanySettings() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleSave = () => {
+    // Placeholder for actual save logic
+    alert('Company settings saved successfully!');
   };
 
   return (
@@ -351,7 +326,7 @@ export default function CompanySettings() {
       </div>
 
       <div className="save-section">
-        <button className="save-settings-btn">
+        <button className="save-settings-btn" onClick={handleSave}>
           Save Company Settings
         </button>
         <p className="save-note">

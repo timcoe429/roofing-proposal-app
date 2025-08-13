@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, Ruler, Package, User, Settings, CheckCircle } from 'lucide-react';
+import { Upload, Ruler, Package, User, Settings, CheckCircle, Building } from 'lucide-react';
 import './Navigation.css';
 
 const tabs = [
@@ -27,6 +27,11 @@ const tabs = [
     id: 'pricing', 
     label: 'Pricing', 
     icon: Settings
+  },
+  { 
+    id: 'branding', 
+    label: 'Branding', 
+    icon: Building
   },
   { 
     id: 'preview', 
