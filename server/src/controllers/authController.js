@@ -1,7 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User.js';
-import { Company } from '../models/Company.js';
+import { User, Company } from '../models/index.js';
 import logger from '../utils/logger.js';
 
 // User registration

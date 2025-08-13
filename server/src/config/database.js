@@ -1,5 +1,6 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
+import '../models/index.js'; // Import models to register associations
 
 dotenv.config();
 
