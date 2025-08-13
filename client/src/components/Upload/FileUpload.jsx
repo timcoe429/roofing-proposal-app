@@ -138,6 +138,17 @@ const FileUpload = ({ files, onFilesChange, onProcessComplete }) => {
             <p className="upload-hint">Maximum file size: 10MB</p>
           </label>
         </div>
+        
+        <div className="tips-panel">
+          <h4>Tips for Best Results:</h4>
+          <ul>
+            <li>Upload clear, high-resolution photos of the roof</li>
+            <li>Include measurement reports from EagleView, HOVER, or similar services</li>
+            <li>Take photos from multiple angles showing all damage areas</li>
+            <li>Include close-ups of specific damage (missing shingles, leaks, etc.)</li>
+            <li>Upload any existing quotes or inspection reports</li>
+          </ul>
+        </div>
 
         {files.length > 0 && (
           <div className="files-list">
