@@ -1,9 +1,21 @@
-// OpenAI configuration
-const openaiConfig = {
+// AI Service Configurations
+export const openaiConfig = {
     apiKey: process.env.OPENAI_API_KEY,
     model: 'gpt-4-vision-preview',
     maxTokens: 4096,
     temperature: 0.2
 };
 
-export default openaiConfig;
+export const claudeConfig = {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-3-sonnet-20240229',
+    maxTokens: 4096,
+    temperature: 0.1
+};
+
+export const aiConfig = {
+    openai: openaiConfig,
+    claude: claudeConfig,
+    defaultVisionModel: 'gpt-4-vision-preview',
+    defaultChatModel: 'claude-3-sonnet-20240229'
+};

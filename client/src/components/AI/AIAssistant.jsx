@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Upload, Calculator, FileText, Zap, DollarSign } from 'lucide-react';
+import api from '../../services/api';
 import './AIAssistant.css';
 
 const QUICK_ACTIONS = [
@@ -33,28 +34,18 @@ const QUICK_ACTIONS = [
   }
 ];
 
-const SAMPLE_CONVERSATIONS = [
-  {
-    user: "I need to create a proposal for a 2,500 sq ft house with asphalt shingles",
-    assistant: "I'll help you create that proposal! Let me break this down:\n\n**Roof Area**: 2,500 sq ft = 25 squares\n**Material**: Asphalt shingles\n\nTo give you an accurate estimate, I need a few more details:\n1. What's the roof pitch?\n2. How many layers need to be removed?\n3. Any special features (chimneys, skylights, etc.)?\n\nI can also help you:\n- Calculate exact material quantities\n- Apply your pricing sheet\n- Generate a professional proposal\n\nWould you like me to start with material calculations?"
-  },
-  {
-    user: "The roof has a 6/12 pitch, 2 layers to remove, 1 chimney, and 3 skylights",
-    assistant: "Perfect! Here's what I'm calculating:\n\n**Materials Needed:**\n- Shingles: 27 squares (25 + 8% waste)\n- Underlayment: 27 squares\n- Ridge cap: ~80 linear feet\n- Flashing: Chimney + 3 skylights\n- Tear-off: 2 layers (extra labor/disposal)\n\n**Labor Factors:**\n- 6/12 pitch: Standard difficulty\n- 2-layer tear-off: +40% labor time\n- Features: +2 hours for chimney/skylights\n\nShall I:\n1. Apply your pricing sheet to get exact costs?\n2. Generate the full proposal?\n3. Show you the material breakdown first?"
-  }
-];
-
 export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange }) {
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: 'assistant',
-      content: "👋 Hi! I'm your AI roofing assistant. I can help you:\n\n• Analyze roof photos and measurements\n• Calculate materials and pricing\n• Generate professional proposals\n• Look up current material prices\n• Apply your custom pricing sheets\n\nWhat would you like to work on today?",
+      content: "👋 Hi! I'm your AI roofing assistant powered by Claude AI. I can help you:\n\n• Analyze roof photos and measurements\n• Calculate materials and pricing\n• Generate professional proposals\n• Look up current material prices\n• Apply your custom pricing sheets\n\nWhat would you like to work on today?",
       timestamp: new Date()
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [aiServicesStatus, setAiServicesStatus] = useState({ claude: false, openai: false });
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -63,7 +54,17 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
 
   useEffect(() => {
     scrollToBottom();
+    checkAIServices();
   }, [messages]);
+
+  const checkAIServices = async () => {
+    try {
+      const status = await api.checkAIServices();
+      setAiServicesStatus(status.services);
+    } catch (error) {
+      console.warn('Could not check AI services status:', error);
+    }
+  };
 
   const handleSendMessage = async (message = inputValue) => {
     if (!message.trim()) return;
@@ -79,28 +80,82 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(message, proposalData);
+    try {
+      // Get conversation history for context
+      const conversationHistory = messages
+        .filter(msg => msg.type === 'user')
+        .map(msg => ({ role: 'user', content: msg.content }))
+        .slice(-5); // Last 5 user messages for context
+
+      // Send to Claude AI
+      const response = await api.chatWithAI(message, conversationHistory);
+      
       const assistantMessage = {
         id: Date.now() + 1,
         type: 'assistant',
-        content: aiResponse.content,
+        content: response.response,
         timestamp: new Date(),
-        actions: aiResponse.actions
+        actions: extractActions(response.response, proposalData)
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      setIsTyping(false);
 
       // Execute any actions
-      if (aiResponse.actions) {
-        aiResponse.actions.forEach(action => executeAction(action));
+      if (assistantMessage.actions) {
+        assistantMessage.actions.forEach(action => executeAction(action));
       }
-    }, 1000 + Math.random() * 2000);
+
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      
+      // Fallback to intelligent response
+      const fallbackResponse = generateFallbackResponse(message, proposalData);
+      const assistantMessage = {
+        id: Date.now() + 1,
+        type: 'assistant',
+        content: fallbackResponse.content,
+        timestamp: new Date(),
+        actions: fallbackResponse.actions
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (fallbackResponse.actions) {
+        fallbackResponse.actions.forEach(action => executeAction(action));
+      }
+    } finally {
+      setIsTyping(false);
+    }
   };
 
-  const generateAIResponse = (userMessage, data) => {
+  const extractActions = (response, data) => {
+    const actions = [];
+    
+    // Check for navigation requests
+    if (response.toLowerCase().includes('measurements') || response.toLowerCase().includes('measure')) {
+      actions.push({ type: 'navigate', tab: 'measurements' });
+    }
+    
+    if (response.toLowerCase().includes('materials') || response.toLowerCase().includes('calculate')) {
+      actions.push({ type: 'navigate', tab: 'materials' });
+    }
+    
+    if (response.toLowerCase().includes('client') || response.toLowerCase().includes('details')) {
+      actions.push({ type: 'navigate', tab: 'details' });
+    }
+    
+    if (response.toLowerCase().includes('pricing') || response.toLowerCase().includes('price')) {
+      actions.push({ type: 'navigate', tab: 'pricing' });
+    }
+    
+    if (response.toLowerCase().includes('preview') || response.toLowerCase().includes('proposal')) {
+      actions.push({ type: 'navigate', tab: 'preview' });
+    }
+
+    return actions;
+  };
+
+  const generateFallbackResponse = (userMessage, data) => {
     const message = userMessage.toLowerCase();
     
     if (message.includes('satellite') || message.includes('aerial') || message.includes('imagery') || message.includes('measure')) {

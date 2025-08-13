@@ -13,6 +13,7 @@ import visionRoutes from './routes/visionRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
 import companyRoutes from './routes/companyRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -53,6 +54,7 @@ app.use('/api/proposals', proposalRoutes);
 app.use('/api/vision', visionRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

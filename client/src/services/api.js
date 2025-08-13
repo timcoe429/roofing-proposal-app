@@ -41,6 +41,8 @@ const api = {
   login: (credentials) => apiClient.post('/auth/login', credentials),
   register: (userData) => apiClient.post('/auth/register', userData),
   getCurrentUser: () => apiClient.get('/auth/me'),
+  updateProfile: (data) => apiClient.put('/auth/profile', data),
+  changePassword: (data) => apiClient.put('/auth/change-password', data),
 
   // Proposals
   getProposals: () => apiClient.get('/proposals'),
@@ -49,13 +51,24 @@ const api = {
   updateProposal: (id, data) => apiClient.put(`/proposals/${id}`, data),
   deleteProposal: (id) => apiClient.delete(`/proposals/${id}`),
 
-  // Vision AI
+  // Vision AI (GPT-4 Vision)
   processImages: (images, documentType) => 
     apiClient.post('/vision/analyze', { images, documentType }),
   extractMeasurements: (pdfBase64) => 
     apiClient.post('/vision/extract-measurements', { pdfBase64 }),
   identifyMaterials: (images) => 
     apiClient.post('/vision/identify-materials', { images }),
+
+  // Claude AI Services
+  chatWithAI: (message, conversationHistory = []) => 
+    apiClient.post('/ai/chat', { message, conversationHistory }),
+  analyzePricingDocument: (documentContent, documentType) => 
+    apiClient.post('/ai/analyze-pricing', { documentContent, documentType }),
+  getAIRecommendations: (projectData) => 
+    apiClient.post('/ai/recommendations', { projectData }),
+  processDocumentWithAI: (documentText, documentType, extractionType) => 
+    apiClient.post('/ai/process-document', { documentText, documentType, extractionType }),
+  checkAIServices: () => apiClient.get('/ai/status'),
 
   // PDF Generation
   generatePdf: (proposalId) => apiClient.post(`/pdf/generate/${proposalId}`),

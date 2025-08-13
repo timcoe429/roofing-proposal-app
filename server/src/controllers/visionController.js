@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import logger from '../utils/logger.js';
-import { processImageWithVision } from '../services/openaiService.js';
+import { processImageWithVision, processWithClaude } from '../services/aiService.js';
 
 // Initialize OpenAI only if API key is provided
 let openai = null;
@@ -77,39 +77,47 @@ export const analyzeRoofImages = async (req, res) => {
       Provide the analysis in JSON format with sections for measurements, damage, and recommendations.`;
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...images.map(imageBase64 => ({
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`,
-                detail: "high"
-              }
-            }))
-          ]
-        }
-      ],
-      max_tokens: 4096,
-      temperature: 0.2 // Lower temperature for more consistent extraction
-    });
+    // Process each image individually and then combine results
+    const imageAnalyses = [];
+    for (const imageBase64 of images) {
+      try {
+        const analysis = await processImageWithVision(imageBase64, prompt, documentType);
+        imageAnalyses.push(analysis);
+      } catch (error) {
+        logger.warn(`Failed to process image: ${error.message}`);
+        imageAnalyses.push({ error: error.message });
+      }
+    }
 
-    const analysisText = response.choices[0].message.content;
-    
+    // If we have multiple images, use Claude to synthesize the results
+    let finalAnalysis;
+    if (imageAnalyses.length > 1) {
+      const synthesisPrompt = `I have analyzed ${imageAnalyses.length} images of a roof. Here are the individual analyses:
+
+${imageAnalyses.map((analysis, i) => `Image ${i + 1}: ${JSON.stringify(analysis)}`).join('\n\n')}
+
+Please synthesize these analyses into a comprehensive, coherent assessment. Combine measurements, identify patterns in damage, and provide unified recommendations. Return as structured JSON.`;
+
+      try {
+        finalAnalysis = await processWithClaude(synthesisPrompt);
+      } catch (error) {
+        logger.warn('Failed to synthesize with Claude, using first analysis');
+        finalAnalysis = imageAnalyses[0];
+      }
+    } else {
+      finalAnalysis = imageAnalyses[0];
+    }
+
     // Try to parse JSON from the response
     let analysisData;
     try {
       // Extract JSON if it's wrapped in markdown code blocks
-      const jsonMatch = analysisText.match(/```json\n?([\s\S]*?)\n?```/);
-      const jsonString = jsonMatch ? jsonMatch[1] : analysisText;
+      const jsonMatch = finalAnalysis.match(/```json\n?([\s\S]*?)\n?```/);
+      const jsonString = jsonMatch ? jsonMatch[1] : finalAnalysis;
       analysisData = JSON.parse(jsonString);
     } catch (parseError) {
       logger.warn('Could not parse Vision API response as JSON, returning raw text');
-      analysisData = { rawAnalysis: analysisText };
+      analysisData = { rawAnalysis: finalAnalysis };
     }
 
     logger.info('Successfully processed images with GPT Vision');
@@ -117,7 +125,8 @@ export const analyzeRoofImages = async (req, res) => {
     res.json({
       success: true,
       analysis: analysisData,
-      usage: response.usage
+      imageCount: images.length,
+      processingMethod: 'gpt-vision'
     });
 
   } catch (error) {

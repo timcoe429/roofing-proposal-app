@@ -21,17 +21,32 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const response = await api.post(endpoint, formData);
+      let response;
+      if (isLogin) {
+        response = await api.login(formData);
+      } else {
+        // Split name into firstName and lastName for registration
+        const nameParts = formData.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        response = await api.register({
+          email: formData.email,
+          password: formData.password,
+          firstName,
+          lastName,
+          companyName: formData.company
+        });
+      }
       
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
         toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
         navigate('/');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Authentication failed');
+      toast.error(error.error || 'Authentication failed');
     } finally {
       setLoading(false);
     }
