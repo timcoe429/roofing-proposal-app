@@ -22,7 +22,7 @@ const ProposalEditor = () => {
   const navigate = useNavigate();
   const isNewProposal = !id;
   
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('preview');
   const [proposalData, setProposalData] = useState({
     clientName: '',
     clientEmail: '',
@@ -196,13 +196,6 @@ const ProposalEditor = () => {
           </div>
           
           <div className="content-body">
-            {activeTab === 'chat' && (
-              <ProposalPreview 
-                proposalData={proposalData} 
-                companyData={companyData}
-              />
-            )}
-            
             {activeTab === 'pricing' && (
               <PricingManager />
             )}

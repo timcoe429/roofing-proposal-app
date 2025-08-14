@@ -37,10 +37,6 @@ export default function ProposalPreview({ proposalData, companyData }) {
             <Download size={18} />
             Download PDF
           </button>
-          <button className="send-btn">
-            <Send size={18} />
-            Send to Client
-          </button>
         </div>
       </div>
 

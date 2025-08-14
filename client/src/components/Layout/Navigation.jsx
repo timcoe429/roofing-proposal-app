@@ -4,11 +4,6 @@ import './Navigation.css';
 
 const tabs = [
   { 
-    id: 'chat', 
-    label: 'Chat', 
-    icon: MessageCircle
-  },
-  { 
     id: 'pricing', 
     label: 'Pricing', 
     icon: Settings
@@ -23,12 +18,10 @@ const tabs = [
 export default function Navigation({ activeTab, setActiveTab, proposalData }) {
   const isTabComplete = (tabId) => {
     switch (tabId) {
-      case 'chat':
-        return true; // Always available
       case 'pricing':
         return true; // Always available
       case 'preview':
-        return proposalData?.clientName && proposalData?.measurements?.totalSquares > 0;
+        return true; // Always available
       default:
         return false;
     }
