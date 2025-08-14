@@ -66,23 +66,8 @@ const ProposalEditor = () => {
     logo: null,
     primaryColor: '#2563eb',
     secondaryColor: '#1e40af',
-    termsConditions: {
-      paymentTerms: [
-        '50% deposit required to begin work',
-        'Remaining balance due upon completion',
-        'Payment accepted via check, cash, or credit card'
-      ],
-      workGuarantee: [
-        'All work guaranteed against defects in workmanship',
-        'Materials covered by manufacturer warranty',
-        'Free repairs for workmanship issues within warranty period'
-      ],
-      weatherPolicy: [
-        'Work may be delayed due to inclement weather',
-        'Safety is our top priority',
-        'Client will be notified of any delays'
-      ]
-    }
+    termsConditionsUrl: '',
+    privacyPolicyUrl: ''
   });
 
   // Fetch existing proposal if editing

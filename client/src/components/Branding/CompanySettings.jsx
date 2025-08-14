@@ -10,37 +10,7 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
     });
   };
 
-  const handleTermsChange = (section, index, value) => {
-    onCompanyDataChange({
-      ...companyData,
-      termsConditions: {
-        ...companyData.termsConditions,
-        [section]: companyData.termsConditions[section].map((term, i) => 
-          i === index ? value : term
-        )
-      }
-    });
-  };
 
-  const addTerm = (section) => {
-    onCompanyDataChange({
-      ...companyData,
-      termsConditions: {
-        ...companyData.termsConditions,
-        [section]: [...companyData.termsConditions[section], '']
-      }
-    });
-  };
-
-  const removeTerm = (section, index) => {
-    onCompanyDataChange({
-      ...companyData,
-      termsConditions: {
-        ...companyData.termsConditions,
-        [section]: companyData.termsConditions[section].filter((_, i) => i !== index)
-      }
-    });
-  };
 
   const handleLogoUpload = (event) => {
     const file = event.target.files[0];
@@ -206,77 +176,30 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
       <div className="terms-section">
         <div className="section-header">
           <Shield size={24} />
-          <h2>Terms & Conditions</h2>
+          <h2>Legal Links</h2>
         </div>
         
         <div className="terms-content">
-          <div className="terms-group">
-            <h4>Payment Terms</h4>
-            {companyData.termsConditions.paymentTerms.map((term, index) => (
-              <div key={index} className="term-input">
-                <input
-                  type="text"
-                  value={term}
-                  onChange={(e) => handleTermsChange('paymentTerms', index, e.target.value)}
-                  placeholder="Enter payment term"
-                />
-                <button 
-                  onClick={() => removeTerm('paymentTerms', index)}
-                  className="remove-term-btn"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button onClick={() => addTerm('paymentTerms')} className="add-term-btn">
-              + Add Payment Term
-            </button>
+          <div className="form-group">
+            <label>Terms & Conditions URL</label>
+            <input
+              type="url"
+              value={companyData.termsConditionsUrl || ''}
+              onChange={(e) => handleChange('termsConditionsUrl', e.target.value)}
+              placeholder="https://yourcompany.com/terms"
+            />
+            <small>Link to your Terms & Conditions page on your website</small>
           </div>
           
-          <div className="terms-group">
-            <h4>Work Guarantee</h4>
-            {companyData.termsConditions.workGuarantee.map((term, index) => (
-              <div key={index} className="term-input">
-                <input
-                  type="text"
-                  value={term}
-                  onChange={(e) => handleTermsChange('workGuarantee', index, e.target.value)}
-                  placeholder="Enter work guarantee term"
-                />
-                <button 
-                  onClick={() => removeTerm('workGuarantee', index)}
-                  className="remove-term-btn"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button onClick={() => addTerm('workGuarantee')} className="add-term-btn">
-              + Add Work Guarantee Term
-            </button>
-          </div>
-          
-          <div className="terms-group">
-            <h4>Weather Policy</h4>
-            {companyData.termsConditions.weatherPolicy.map((term, index) => (
-              <div key={index} className="term-input">
-                <input
-                  type="text"
-                  value={term}
-                  onChange={(e) => handleTermsChange('weatherPolicy', index, e.target.value)}
-                  placeholder="Enter weather policy term"
-                />
-                <button 
-                  onClick={() => removeTerm('weatherPolicy', index)}
-                  className="remove-term-btn"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button onClick={() => addTerm('weatherPolicy')} className="add-term-btn">
-              + Add Weather Policy Term
-            </button>
+          <div className="form-group">
+            <label>Privacy Policy URL</label>
+            <input
+              type="url"
+              value={companyData.privacyPolicyUrl || ''}
+              onChange={(e) => handleChange('privacyPolicyUrl', e.target.value)}
+              placeholder="https://yourcompany.com/privacy"
+            />
+            <small>Link to your Privacy Policy page on your website</small>
           </div>
         </div>
       </div>

@@ -176,63 +176,44 @@ export default function ProposalPreview({ proposalData, companyData }) {
           </div>
         )}
 
-        <div className="terms-section">
-          <h3>Terms & Conditions</h3>
+                <div className="terms-section">
+          <h3>Legal Information</h3>
           <div className="terms-content">
-            {company.termsConditions?.paymentTerms && company.termsConditions.paymentTerms.length > 0 && (
-              <>
-                <h4>Payment Terms</h4>
-                <ul>
-                  {company.termsConditions.paymentTerms.map((term, index) => (
-                    <li key={index}>{term}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+            <p>
+              This proposal is subject to our{' '}
+              {company.termsConditionsUrl ? (
+                <a href={company.termsConditionsUrl} target="_blank" rel="noopener noreferrer">
+                  Terms & Conditions
+                </a>
+              ) : (
+                'Terms & Conditions'
+              )}
+              {company.privacyPolicyUrl && (
+                <>
+                  {' '}and{' '}
+                  <a href={company.privacyPolicyUrl} target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </a>
+                </>
+              )}
+              .
+            </p>
             
-            {company.termsConditions?.workGuarantee && company.termsConditions.workGuarantee.length > 0 && (
-              <>
-                <h4>Work Guarantee</h4>
-                <ul>
-                  {company.termsConditions.workGuarantee.map((term, index) => (
-                    <li key={index}>{term}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {company.termsConditions?.weatherPolicy && company.termsConditions.weatherPolicy.length > 0 && (
-              <>
-                <h4>Weather Policy</h4>
-                <ul>
-                  {company.termsConditions.weatherPolicy.map((term, index) => (
-                    <li key={index}>{term}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {/* Fallback to default terms if none set */}
-            {(!company.termsConditions || 
-              (!company.termsConditions.paymentTerms?.length && 
-               !company.termsConditions.workGuarantee?.length && 
-               !company.termsConditions.weatherPolicy?.length)) && (
-              <>
-                <h4>Payment Terms</h4>
-                <ul>
-                  <li>50% deposit required to begin work</li>
-                  <li>Remaining balance due upon completion</li>
-                  <li>Payment accepted via check, cash, or credit card</li>
-                </ul>
-                
-                <h4>Work Guarantee</h4>
-                <ul>
-                  <li>All work guaranteed against defects in workmanship</li>
-                  <li>Materials covered by manufacturer warranty</li>
-                  <li>Free repairs for workmanship issues within warranty period</li>
-                </ul>
-              </>
-            )}
+            <div className="legal-details">
+              <h4>Payment Terms</h4>
+              <ul>
+                <li>50% deposit required to begin work</li>
+                <li>Remaining balance due upon completion</li>
+                <li>Payment accepted via check, cash, or credit card</li>
+              </ul>
+              
+              <h4>Work Guarantee</h4>
+              <ul>
+                <li>All work guaranteed against defects in workmanship</li>
+                <li>Materials covered by manufacturer warranty</li>
+                <li>Free repairs for workmanship issues within warranty period</li>
+              </ul>
+            </div>
           </div>
         </div>
 
