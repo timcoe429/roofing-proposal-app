@@ -1,37 +1,17 @@
 import React from 'react';
-import { Upload, Ruler, Package, User, Settings, CheckCircle, Building } from 'lucide-react';
+import { MessageCircle, Settings, CheckCircle } from 'lucide-react';
 import './Navigation.css';
 
 const tabs = [
   { 
-    id: 'upload', 
-    label: 'Upload', 
-    icon: Upload
-  },
-  { 
-    id: 'measurements', 
-    label: 'Measurements', 
-    icon: Ruler
-  },
-  { 
-    id: 'materials', 
-    label: 'Materials', 
-    icon: Package
-  },
-  { 
-    id: 'details', 
-    label: 'Client Info', 
-    icon: User
+    id: 'chat', 
+    label: 'Chat', 
+    icon: MessageCircle
   },
   { 
     id: 'pricing', 
     label: 'Pricing', 
     icon: Settings
-  },
-  { 
-    id: 'branding', 
-    label: 'Branding', 
-    icon: Building
   },
   { 
     id: 'preview', 
@@ -43,16 +23,12 @@ const tabs = [
 export default function Navigation({ activeTab, setActiveTab, proposalData }) {
   const isTabComplete = (tabId) => {
     switch (tabId) {
-      case 'upload':
-        return proposalData?.uploadedFiles?.length > 0;
-      case 'measurements':
-        return proposalData?.measurements?.totalSquares > 0;
-      case 'materials':
-        return proposalData?.materials?.length > 0;
-      case 'details':
-        return proposalData?.clientName && proposalData?.clientEmail;
-      case 'branding':
+      case 'chat':
         return true; // Always available
+      case 'pricing':
+        return true; // Always available
+      case 'preview':
+        return proposalData?.clientName && proposalData?.measurements?.totalSquares > 0;
       default:
         return false;
     }

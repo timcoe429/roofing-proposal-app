@@ -1,12 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Users, TrendingUp, LogOut } from 'lucide-react';
+import { Plus, FileText, Users, TrendingUp, LogOut, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
+import CompanySettings from '../components/Branding/CompanySettings';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // Company settings state
+  const [companyData, setCompanyData] = useState({
+    name: user.company || 'Your Company Name',
+    address: 'Company Address',
+    phone: 'Company Phone',
+    email: user.email || 'Company Email',
+    website: 'Company Website',
+    license: 'License Number',
+    insurance: 'Insurance Policy',
+    logo: null,
+    primaryColor: '#2563eb',
+    termsConditionsUrl: '',
+    privacyPolicyUrl: ''
+  });
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -27,10 +44,16 @@ export default function Dashboard() {
             <h1>Welcome back, {user.name || 'User'}!</h1>
             <p>{user.company || 'Your Company'}</p>
           </div>
-          <button onClick={handleLogout} className="logout-btn">
-            <LogOut size={18} />
-            Logout
-          </button>
+          <div className="header-actions">
+            <button onClick={() => setShowSettings(true)} className="settings-btn">
+              <Settings size={18} />
+              Company Settings
+            </button>
+            <button onClick={handleLogout} className="logout-btn">
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -110,6 +133,24 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+      
+      {/* Company Settings Modal */}
+      {showSettings && (
+        <div className="settings-modal-overlay" onClick={() => setShowSettings(false)}>
+          <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-modal-header">
+              <h2>Company Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="close-btn">×</button>
+            </div>
+            <div className="settings-modal-content">
+              <CompanySettings 
+                companyData={companyData}
+                onCompanyDataChange={setCompanyData}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

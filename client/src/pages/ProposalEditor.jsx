@@ -6,11 +6,7 @@ import toast from 'react-hot-toast';
 // Components
 import Header from '../components/Layout/Header';
 import Navigation from '../components/Layout/Navigation';
-import FileUpload from '../components/Upload/FileUpload';
-import MeasurementsPanel from '../components/Measurements/MeasurementsPanel';
-import MaterialsList from '../components/Materials/MaterialsList';
-import ClientInfo from '../components/ProjectDetails/ClientInfo';
-import CompanySettings from '../components/Branding/CompanySettings';
+
 import AIAssistant from '../components/AI/AIAssistant';
 import PricingManager from '../components/Pricing/PricingManager';
 import ProposalPreview from '../components/Preview/ProposalPreview';
@@ -26,7 +22,7 @@ const ProposalEditor = () => {
   const navigate = useNavigate();
   const isNewProposal = !id;
   
-  const [activeTab, setActiveTab] = useState('upload');
+  const [activeTab, setActiveTab] = useState('chat');
   const [proposalData, setProposalData] = useState({
     clientName: '',
     clientEmail: '',
@@ -200,71 +196,11 @@ const ProposalEditor = () => {
           </div>
           
           <div className="content-body">
-            {activeTab === 'upload' && (
-              <FileUpload 
-                files={proposalData.uploadedFiles}
-                onFilesChange={(files) => updateField('uploadedFiles', files)}
-                onProcessComplete={(data) => {
-                  if (data.measurements) {
-                    updateProposalData('measurements', data.measurements);
-                  }
-                  if (data.damageAreas) {
-                    updateField('damageAreas', data.damageAreas);
-                  }
-                  setActiveTab('measurements');
-                }}
-              />
-            )}
-            
-            {activeTab === 'measurements' && (
-              <MeasurementsPanel
-                measurements={proposalData.measurements}
-                damageAreas={proposalData.damageAreas}
-                onMeasurementsChange={(measurements) => updateProposalData('measurements', measurements)}
-                onDamageAreasChange={(areas) => updateField('damageAreas', areas)}
-              />
-            )}
-            
-            {activeTab === 'materials' && (
-              <MaterialsList
-                materials={proposalData.materials}
-                laborHours={proposalData.laborHours}
-                laborRate={proposalData.laborRate}
-                addOns={proposalData.addOns}
-                onMaterialsChange={(materials) => updateField('materials', materials)}
-                onLaborChange={(labor) => {
-                  updateField('laborHours', labor.hours);
-                  updateField('laborRate', labor.rate);
-                }}
-                onAddOnsChange={(addOns) => updateField('addOns', addOns)}
-              />
-            )}
-            
-            {activeTab === 'details' && (
-              <ClientInfo
-                clientData={{
-                  clientName: proposalData.clientName,
-                  clientEmail: proposalData.clientEmail,
-                  clientPhone: proposalData.clientPhone,
-                  clientAddress: proposalData.clientAddress,
-                  propertyAddress: proposalData.propertyAddress,
-                  timeline: proposalData.timeline,
-                  warranty: proposalData.warranty,
-                  notes: proposalData.notes
-                }}
-                onClientDataChange={(updatedData) => {
-                  setProposalData(prev => ({
-                    ...prev,
-                    ...updatedData
-                  }));
-                }}
-              />
-            )}
-            
-            {activeTab === 'branding' && (
-              <CompanySettings 
-                companyData={companyData}
-                onCompanyDataChange={setCompanyData}
+            {activeTab === 'chat' && (
+              <AIAssistant 
+                proposalData={proposalData}
+                onUpdateProposal={setProposalData}
+                onTabChange={setActiveTab}
               />
             )}
             
