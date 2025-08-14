@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Upload, Calculator, FileText, Zap, DollarSign } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign } from 'lucide-react';
 import api from '../../services/api';
 import './AIAssistant.css';
 
@@ -45,8 +45,9 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [aiServicesStatus, setAiServicesStatus] = useState({ claude: false, openai: false });
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,8 +55,15 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
 
   useEffect(() => {
     scrollToBottom();
-    checkAIServices();
   }, [messages]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [inputValue]);
 
   const checkAIServices = async () => {
     try {
@@ -240,42 +248,20 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   };
 
   const handleQuickAction = (action) => {
-    handleSendMessage(action.prompt);
+    setInputValue(action.prompt);
+    setShowQuickActions(false);
+    textareaRef.current?.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
     <div className="ai-assistant">
-      <div className="ai-header">
-        <div className="ai-title">
-          <Bot size={20} />
-          <span>AI Roofing Assistant</span>
-        </div>
-        <div className="ai-status">
-          <div className="status-dot"></div>
-          <span>Online</span>
-        </div>
-      </div>
-
-      <div className="quick-actions">
-        <h4>Quick Actions</h4>
-        <div className="actions-grid">
-          {QUICK_ACTIONS.map(action => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.id}
-                onClick={() => handleQuickAction(action)}
-                className="quick-action-btn"
-                title={action.description}
-              >
-                <Icon size={16} />
-                <span>{action.title}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="chat-container">
         <div className="messages">
           {messages.map(message => (
@@ -317,45 +303,57 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="chat-input">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="Ask me anything about your roofing project..."
-            disabled={isTyping}
-          />
-          <button 
-            onClick={() => handleSendMessage()}
-            disabled={!inputValue.trim() || isTyping}
-            className="send-btn"
-          >
-            <Send size={16} />
-          </button>
-        </div>
-      </div>
-
-      <div className="project-summary">
-        <h4>Project Status</h4>
-        <div className="status-items">
-          <div className="status-item">
-            <span>Measurements</span>
-            <span className={proposalData.measurements?.totalSquares ? 'complete' : 'incomplete'}>
-              {proposalData.measurements?.totalSquares ? 'Complete' : 'Pending'}
-            </span>
-          </div>
-          <div className="status-item">
-            <span>Materials</span>
-            <span className={proposalData.materials?.length ? 'complete' : 'incomplete'}>
-              {proposalData.materials?.length || 0} items
-            </span>
-          </div>
-          <div className="status-item">
-            <span>Client Info</span>
-            <span className={proposalData.clientName ? 'complete' : 'incomplete'}>
-              {proposalData.clientName ? 'Complete' : 'Pending'}
-            </span>
+        <div className="chat-input-container">
+          <div className="input-wrapper">
+            <div className="quick-actions-dropdown">
+              <button 
+                className="quick-actions-trigger"
+                onClick={() => setShowQuickActions(!showQuickActions)}
+              >
+                <span>Quick Actions</span>
+                <ChevronDown size={16} className={showQuickActions ? 'rotated' : ''} />
+              </button>
+              
+              {showQuickActions && (
+                <div className="quick-actions-menu">
+                  {QUICK_ACTIONS.map(action => {
+                    const Icon = action.icon;
+                    return (
+                      <button
+                        key={action.id}
+                        onClick={() => handleQuickAction(action)}
+                        className="quick-action-item"
+                      >
+                        <Icon size={16} />
+                        <div className="action-content">
+                          <span className="action-title">{action.title}</span>
+                          <span className="action-description">{action.description}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask me anything about your roofing project..."
+              disabled={isTyping}
+              rows={1}
+              className="chat-textarea"
+            />
+            
+            <button 
+              onClick={() => handleSendMessage()}
+              disabled={!inputValue.trim() || isTyping}
+              className="send-btn"
+            >
+              <Send size={16} />
+            </button>
           </div>
         </div>
       </div>
