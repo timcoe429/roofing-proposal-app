@@ -348,7 +348,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
               
               {showQuickActions && (
                 <div className="quick-actions-menu">
-                  {QUICK_ACTIONS.map(action => {
+                  {getQuickActions().map(action => {
                     const Icon = action.icon;
                     return (
                       <button
