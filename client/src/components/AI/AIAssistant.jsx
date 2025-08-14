@@ -65,14 +65,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     }
   }, [inputValue]);
 
-  const checkAIServices = async () => {
-    try {
-      const status = await api.checkAIServices();
-      setAiServicesStatus(status.services);
-    } catch (error) {
-      console.warn('Could not check AI services status:', error);
-    }
-  };
+
 
   const handleSendMessage = async (message = inputValue) => {
     if (!message.trim()) return;
