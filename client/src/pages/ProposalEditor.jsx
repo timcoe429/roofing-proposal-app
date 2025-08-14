@@ -203,17 +203,11 @@ const ProposalEditor = () => {
                   onUpdateProposal={setProposalData}
                   onTabChange={setActiveTab}
                 />
-                <div className="proposal-builder">
-                  <div className="builder-header">
-                    <h3>Building Your Proposal</h3>
-                    <p>Watch as AI creates your proposal in real-time</p>
-                  </div>
-                  <div className="builder-content">
-                    <ProposalPreview 
-                      proposalData={proposalData} 
-                      companyData={companyData}
-                    />
-                  </div>
+                <div className="main-workspace">
+                  <ProposalPreview 
+                    proposalData={proposalData} 
+                    companyData={companyData}
+                  />
                 </div>
               </div>
             )}
