@@ -39,7 +39,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     {
       id: 1,
       type: 'assistant',
-      content: "👋 Hi! I'm your AI roofing assistant powered by Claude AI. I can help you:\n\n• Analyze roof photos and measurements\n• Calculate materials and pricing\n• Generate professional proposals\n• Look up current material prices\n• Apply your custom pricing sheets\n\nWhat would you like to work on today?",
+      content: "👋 Hi! I'm your AI roofing assistant. How can I help with your project?",
       timestamp: new Date()
     }
   ]);
@@ -268,12 +268,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
                     <div key={i}>{line}</div>
                   ))}
                 </div>
-                <div className="message-time">
-                  {message.timestamp.toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </div>
               </div>
             </div>
           ))}
@@ -346,7 +340,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
                 disabled={!inputValue.trim() || isTyping}
                 className="send-btn"
               >
-                <Send size={16} />
+                <Send size={14} />
               </button>
             </div>
           </div>
