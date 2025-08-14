@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FileText, Users, TrendingUp, LogOut, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -10,20 +10,34 @@ export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [showSettings, setShowSettings] = useState(false);
   
-  // Company settings state
-  const [companyData, setCompanyData] = useState({
-    name: user.company || 'Your Company Name',
-    address: 'Company Address',
-    phone: 'Company Phone',
-    email: user.email || 'Company Email',
-    website: 'Company Website',
-    license: 'License Number',
-    insurance: 'Insurance Policy',
-    logo: null,
-    primaryColor: '#2563eb',
-    termsConditionsUrl: '',
-    privacyPolicyUrl: ''
-  });
+  // Load company data from localStorage or use defaults
+  const getInitialCompanyData = () => {
+    const saved = localStorage.getItem('companyData');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      name: user.company || '',
+      address: '',
+      phone: '',
+      email: user.email || '',
+      website: '',
+      license: '',
+      insurance: '',
+      logo: null,
+      primaryColor: '#2563eb',
+      termsConditionsUrl: '',
+      privacyPolicyUrl: ''
+    };
+  };
+
+  const [companyData, setCompanyData] = useState(getInitialCompanyData);
+
+  // Save company data to localStorage whenever it changes
+  const handleCompanyDataChange = (newData) => {
+    setCompanyData(newData);
+    localStorage.setItem('companyData', JSON.stringify(newData));
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -145,7 +159,7 @@ export default function Dashboard() {
             <div className="settings-modal-content">
               <CompanySettings 
                 companyData={companyData}
-                onCompanyDataChange={setCompanyData}
+                onCompanyDataChange={handleCompanyDataChange}
               />
             </div>
           </div>

@@ -29,6 +29,9 @@ const ProposalEditor = () => {
     clientPhone: '',
     clientAddress: '',
     propertyAddress: '',
+    propertyCity: '',
+    propertyState: '',
+    propertyZip: '',
     measurements: {
       totalSquares: 0,
       ridgeLength: 0,
@@ -50,21 +53,28 @@ const ProposalEditor = () => {
     uploadedFiles: []
   });
 
-  // Company settings state
-  const [companyData, setCompanyData] = useState({
-    name: 'Your Company Name',
-    address: 'Company Address',
-    phone: 'Company Phone',
-    email: 'Company Email',
-    website: 'Company Website',
-    license: 'License Number',
-    insurance: 'Insurance Policy',
-    logo: null,
-    primaryColor: '#2563eb',
-    secondaryColor: '#1e40af',
-    termsConditionsUrl: '',
-    privacyPolicyUrl: ''
-  });
+  // Load company data from localStorage
+  const getCompanyData = () => {
+    const saved = localStorage.getItem('companyData');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      name: 'Your Company Name',
+      address: 'Company Address',
+      phone: 'Company Phone',
+      email: 'Company Email',
+      website: 'Company Website',
+      license: 'License Number',
+      insurance: 'Insurance Policy',
+      logo: null,
+      primaryColor: '#2563eb',
+      termsConditionsUrl: '',
+      privacyPolicyUrl: ''
+    };
+  };
+
+  const [companyData, setCompanyData] = useState(getCompanyData);
 
   // Fetch existing proposal if editing
   const { isLoading } = useQuery({

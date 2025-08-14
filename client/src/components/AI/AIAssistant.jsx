@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign, MapPin, Shield } from 'lucide-react';
 import api from '../../services/api';
+import { getLocationContext, getQuickActionsForLocation } from '../../services/locationService';
 import './AIAssistant.css';
 
-const QUICK_ACTIONS = [
+const BASE_QUICK_ACTIONS = [
   {
     id: 'analyze_satellite',
     icon: Zap,
@@ -31,6 +32,20 @@ const QUICK_ACTIONS = [
     title: 'Price Lookup',
     description: 'Find current material prices',
     prompt: 'Look up current pricing for roofing materials in my area.'
+  },
+  {
+    id: 'location_requirements',
+    icon: MapPin,
+    title: 'Local Requirements',
+    description: 'Check building codes and permits',
+    prompt: 'What are the local building codes and permit requirements for this roofing project?'
+  },
+  {
+    id: 'compliance_check',
+    icon: Shield,
+    title: 'Compliance Check',
+    description: 'Verify code compliance',
+    prompt: 'Help me ensure this proposal meets all local building codes and requirements.'
   }
 ];
 
@@ -48,6 +63,23 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const [showQuickActions, setShowQuickActions] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Generate dynamic quick actions based on location
+  const getQuickActions = () => {
+    let actions = [...BASE_QUICK_ACTIONS];
+    
+    // Add location-specific actions if we have location data
+    if (proposalData.propertyState) {
+      const locationActions = getQuickActionsForLocation(proposalData.propertyState);
+      actions = [...actions, ...locationActions.map(action => ({
+        ...action,
+        icon: MapPin,
+        description: `Location-specific for ${proposalData.propertyState}`
+      }))];
+    }
+    
+    return actions;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

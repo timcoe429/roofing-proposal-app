@@ -43,7 +43,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               type="text"
               value={companyData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="Your Roofing Company"
             />
           </div>
           
@@ -53,7 +52,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               type="text"
               value={companyData.license}
               onChange={(e) => handleChange('license', e.target.value)}
-              placeholder="RC-12345"
             />
           </div>
           
@@ -63,7 +61,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               type="text"
               value={companyData.address}
               onChange={(e) => handleChange('address', e.target.value)}
-              placeholder="123 Business Ave, City, State 12345"
             />
           </div>
         </div>
@@ -82,7 +79,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               type="tel"
               value={companyData.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
-              placeholder="(555) 123-ROOF"
             />
           </div>
           
@@ -92,7 +88,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               type="email"
               value={companyData.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              placeholder="info@yourcompany.com"
             />
           </div>
           
@@ -102,7 +97,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               type="url"
               value={companyData.website}
               onChange={(e) => handleChange('website', e.target.value)}
-              placeholder="www.yourcompany.com"
             />
           </div>
           
@@ -112,7 +106,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               type="text"
               value={companyData.insurance}
               onChange={(e) => handleChange('insurance', e.target.value)}
-              placeholder="INS-67890"
             />
           </div>
         </div>
@@ -182,23 +175,21 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
         <div className="terms-content">
           <div className="form-group">
             <label>Terms & Conditions URL</label>
-            <input
-              type="url"
-              value={companyData.termsConditionsUrl || ''}
-              onChange={(e) => handleChange('termsConditionsUrl', e.target.value)}
-              placeholder="https://yourcompany.com/terms"
-            />
+                             <input
+                   type="url"
+                   value={companyData.termsConditionsUrl || ''}
+                   onChange={(e) => handleChange('termsConditionsUrl', e.target.value)}
+                 />
             <small>Link to your Terms & Conditions page on your website</small>
           </div>
           
           <div className="form-group">
             <label>Privacy Policy URL</label>
-            <input
-              type="url"
-              value={companyData.privacyPolicyUrl || ''}
-              onChange={(e) => handleChange('privacyPolicyUrl', e.target.value)}
-              placeholder="https://yourcompany.com/privacy"
-            />
+                             <input
+                   type="url"
+                   value={companyData.privacyPolicyUrl || ''}
+                   onChange={(e) => handleChange('privacyPolicyUrl', e.target.value)}
+                 />
             <small>Link to your Privacy Policy page on your website</small>
           </div>
         </div>
