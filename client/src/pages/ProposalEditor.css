@@ -24,6 +24,10 @@
   min-width: 0;
 }
 
+.main-content.full-width {
+  width: 100%;
+}
+
 .content-header {
   background: white;
   border-bottom: 1px solid #e2e8f0;

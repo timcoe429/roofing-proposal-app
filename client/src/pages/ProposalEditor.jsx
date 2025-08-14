@@ -170,7 +170,7 @@ const ProposalEditor = () => {
   return (
     <div className="proposal-workspace">
       <div className="workspace-content">
-        {/* AI Chat Sidebar */}
+        {/* AI Chat Sidebar - Always Visible */}
         <div className="ai-sidebar">
           <AIAssistant 
             proposalData={proposalData}
@@ -197,19 +197,10 @@ const ProposalEditor = () => {
           
           <div className="content-body">
             {activeTab === 'chat' && (
-              <div className="chat-layout">
-                <AIAssistant 
-                  proposalData={proposalData}
-                  onUpdateProposal={setProposalData}
-                  onTabChange={setActiveTab}
-                />
-                <div className="main-workspace">
-                  <ProposalPreview 
-                    proposalData={proposalData} 
-                    companyData={companyData}
-                  />
-                </div>
-              </div>
+              <ProposalPreview 
+                proposalData={proposalData} 
+                companyData={companyData}
+              />
             )}
             
             {activeTab === 'pricing' && (
