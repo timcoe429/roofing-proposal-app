@@ -291,7 +291,20 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         </div>
 
         <div className="chat-input-container">
-          <div className="input-wrapper">
+          <div className="textarea-wrapper">
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask me anything about your roofing project..."
+              disabled={isTyping}
+              rows={1}
+              className="chat-textarea"
+            />
+          </div>
+          
+          <div className="input-controls">
             <div className="quick-actions-dropdown">
               <button 
                 className="quick-actions-trigger"
@@ -323,26 +336,13 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
               )}
             </div>
             
-            <div className="textarea-container">
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask me anything about your roofing project..."
-                disabled={isTyping}
-                rows={1}
-                className="chat-textarea"
-              />
-              
-              <button 
-                onClick={() => handleSendMessage()}
-                disabled={!inputValue.trim() || isTyping}
-                className="send-btn"
-              >
-                <Send size={14} />
-              </button>
-            </div>
+            <button 
+              onClick={() => handleSendMessage()}
+              disabled={!inputValue.trim() || isTyping}
+              className="send-btn"
+            >
+              <Send size={16} />
+            </button>
           </div>
         </div>
       </div>
