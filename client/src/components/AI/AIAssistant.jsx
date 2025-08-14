@@ -329,24 +329,26 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
               )}
             </div>
             
-            <textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about your roofing project..."
-              disabled={isTyping}
-              rows={1}
-              className="chat-textarea"
-            />
-            
-            <button 
-              onClick={() => handleSendMessage()}
-              disabled={!inputValue.trim() || isTyping}
-              className="send-btn"
-            >
-              <Send size={16} />
-            </button>
+            <div className="textarea-container">
+              <textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask me anything about your roofing project..."
+                disabled={isTyping}
+                rows={1}
+                className="chat-textarea"
+              />
+              
+              <button 
+                onClick={() => handleSendMessage()}
+                disabled={!inputValue.trim() || isTyping}
+                className="send-btn"
+              >
+                <Send size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
