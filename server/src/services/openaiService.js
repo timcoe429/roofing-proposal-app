@@ -91,47 +91,39 @@ Always provide accurate, professional advice suitable for roofing contractors.`;
 
     return response.content[0].text;
   } catch (error) {
-    logger.error('Error in Claude processing:', error);
+    logger.error('💥 Error in Claude processing:');
+    logger.error('Error type:', error.constructor.name);
+    logger.error('Error message:', error.message);
+    logger.error('Error code:', error.code);
+    logger.error('Error status:', error.status);
+    logger.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     throw error;
   }
 };
 
 // Analyze pricing documents with Claude
 export const analyzePricingDocument = async (documentContent, documentType) => {
-  const systemPrompt = `You are an expert at analyzing roofing pricing documents. Extract and structure the following information:
+  logger.info('🔍 analyzePricingDocument called with:');
+  logger.info('Document type:', documentType);
+  logger.info('Content length:', documentContent.length);
+  logger.info('Content preview:', documentContent.substring(0, 300));
 
-1. Material prices per unit
-2. Labor rates
-3. Additional services and costs
-4. Terms and conditions
-5. Contact information
+  const systemPrompt = `You are an expert at analyzing roofing pricing documents and spreadsheets. 
+Your job is to extract pricing data and return it in a specific JSON format.
+Always count the actual number of items/rows and include that in your response.`;
 
-Return the data in structured JSON format.`;
-
-  const prompt = `Analyze this ${documentType} document and extract all pricing information:
-
-${documentContent}
-
-Please return the data in this JSON structure:
-{
-  "materials": [
-    {
-      "name": "string",
-      "unit": "string",
-      "price": "number",
-      "description": "string"
-    }
-  ],
-  "labor": {
-    "hourlyRate": "number",
-    "perSquareRate": "number",
-    "additionalServices": []
-  },
-  "terms": "string",
-  "contact": "string"
-}`;
-
-  return await processWithClaude(prompt, '', systemPrompt);
+  // The documentContent already contains the full prompt from the controller
+  // Just pass it directly to Claude
+  try {
+    const result = await processWithClaude(documentContent, '', systemPrompt);
+    logger.info('✅ Claude analysis completed successfully');
+    logger.info('Result length:', result.length);
+    return result;
+  } catch (error) {
+    logger.error('❌ Claude analysis failed:', error.message);
+    logger.error('Full error:', error);
+    throw error;
+  }
 };
 
 // Generate roofing recommendations with Claude

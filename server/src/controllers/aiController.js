@@ -113,7 +113,13 @@ This error will be sent to Claude AI for analysis, but no actual pricing data wa
     logger.info('Content length:', contentToAnalyze.length);
     logger.info('Content preview (first 500 chars):', contentToAnalyze.substring(0, 500));
     
-    const analysis = await analyzePricingDocumentService(contentToAnalyze, documentType);
+    // Add timeout to prevent hanging
+    const analysisPromise = analyzePricingDocument(contentToAnalyze, documentType);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Analysis timeout after 60 seconds')), 60000)
+    );
+    
+    const analysis = await Promise.race([analysisPromise, timeoutPromise]);
 
     logger.info('📥 Claude AI response received:');
     logger.info('Response length:', analysis.length);
@@ -140,11 +146,16 @@ This error will be sent to Claude AI for analysis, but no actual pricing data wa
       processingMethod: 'claude-ai'
     });
 
-  } catch (error) {
-    logger.error('Error analyzing pricing document:', error);
-    res.status(500).json({ 
+    } catch (error) {
+    logger.error('💥 FULL ERROR analyzing pricing document:');
+    logger.error('Error message:', error.message);
+    logger.error('Error stack:', error.stack);
+    logger.error('Error details:', JSON.stringify(error, null, 2));
+    
+    res.status(500).json({
       error: 'Failed to analyze pricing document',
-      details: error.message 
+      details: error.message,
+      fullError: error.toString()
     });
   }
 };
