@@ -47,48 +47,27 @@ export const analyzePricingWithAI = async (req, res) => {
 
     let contentToAnalyze = documentContent;
 
-    // Handle Google Sheets URL - Server-side fetch then Claude analyze
+    // Handle Google Sheets URL - Use Google Sheets API
     if (documentUrl) {
       try {
-        // Step 1: Convert Google Sheets URL to CSV export format
-        let csvUrl = documentUrl;
-        if (documentUrl.includes('docs.google.com/spreadsheets')) {
-          const sheetIdMatch = documentUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-          if (sheetIdMatch) {
-            csvUrl = `https://docs.google.com/spreadsheets/d/${sheetIdMatch[1]}/export?format=csv`;
-          }
-        }
-
-        logger.info('Fetching CSV data from:', csvUrl);
+        const { fetchGoogleSheetData } = await import('../services/googleSheetsService.js');
         
-        // Step 2: Fetch the CSV data server-side (no CORS issues)
-        const response = await fetch(csvUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: Cannot access the Google Sheet. Make sure it's publicly viewable.`);
-        }
+        logger.info('Using Google Sheets API to fetch data from:', documentUrl);
         
-        const csvData = await response.text();
+        const sheetData = await fetchGoogleSheetData(documentUrl);
+        const { csvData, rowCount, dataRowCount } = sheetData;
         
-        if (!csvData || csvData.trim().length === 0) {
-          throw new Error('The Google Sheet appears to be empty or inaccessible.');
-        }
-
-        logger.info(`Successfully fetched ${csvData.length} characters of CSV data`);
-        logger.info('First 500 characters of CSV:', csvData.substring(0, 500));
+        logger.info(`Successfully fetched ${rowCount} total rows, ${dataRowCount} data rows`);
+        logger.info('First 500 characters of data:', csvData.substring(0, 500));
         
-        // Count actual data rows (excluding headers)
-        const csvRows = csvData.split('\n').filter(row => row.trim().length > 0);
-        const dataRows = csvRows.slice(1); // Skip header row
-        logger.info(`CSV has ${csvRows.length} total rows, ${dataRows.length} data rows`);
-        
-        // Step 3: Use Claude to analyze the fetched CSV data
-        contentToAnalyze = `Please analyze this pricing data from a Google Sheet (CSV format):
+        // Use Claude to analyze the fetched data
+        contentToAnalyze = `Please analyze this pricing data from a Google Sheet:
 
 ${csvData}
 
 Extract all pricing information and return in this JSON format:
 {
-  "itemCount": ${dataRows.length},
+  "itemCount": ${dataRowCount},
   "materials": [
     {
       "name": "string",
@@ -100,7 +79,7 @@ Extract all pricing information and return in this JSON format:
   "summary": "Brief summary of the pricing data"
 }
 
-IMPORTANT: Set itemCount to exactly ${dataRows.length} (the number of data rows excluding headers).
+IMPORTANT: Set itemCount to exactly ${dataRowCount} (the number of data rows excluding headers).
 Process each row that contains pricing information. Skip empty rows and category headers.`;
 
       } catch (fetchError) {
@@ -110,10 +89,9 @@ Process each row that contains pricing information. Skip empty rows and category
 Error: ${fetchError.message}
 
 To fix this:
-1. Open your Google Sheet
-2. Click Share → Change to "Anyone with the link can view"  
-3. Make sure the sheet contains data
-4. Try again, or copy/paste the data directly instead`;
+1. Ensure the Google Sheet is publicly viewable (Share → Anyone with the link can view)
+2. Check that the URL is correct and the sheet contains data
+3. Verify the GOOGLE_SHEETS_API_KEY is properly configured`;
       }
     }
 
