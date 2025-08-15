@@ -93,64 +93,61 @@ Extract all pricing information and return in this JSON format:
 IMPORTANT: Set itemCount to exactly ${dataRowCount} (the number of data rows excluding headers).
 Process each row that contains pricing information. Skip empty rows and category headers.`;
 
-        logger.info(`✅ Content built for Claude. Length: ${contentToAnalyze.length}`);
+                // Skip Claude processing - just return the raw CSV data for AI conversations
+        logger.info('✅ Skipping Claude processing - storing raw CSV for conversational AI');
+        
+        // Count actual data rows (excluding headers and empty rows)
+        const csvRows = csvData.split('\n').filter(row => row.trim().length > 0);
+        const dataRows = csvRows.slice(1); // Skip header row
+        const actualItemCount = dataRows.filter(row => {
+          const cells = row.split(',');
+          // Count rows that have actual content (not just category headers)
+          return cells.length > 3 && cells[1] && cells[1].trim() && !cells[1].includes('MATERIALS');
+        }).length;
+        
+        logger.info(`📊 Counted ${actualItemCount} actual pricing items from ${dataRows.length} data rows`);
+
+        return res.json({
+          success: true,
+          data: {
+            csvData: csvData,
+            rawData: csvRows,
+            itemCount: actualItemCount,
+            summary: `Pricing sheet with ${actualItemCount} items ready for AI conversations`
+          },
+          itemCount: actualItemCount,
+          documentType,
+          processingMethod: 'raw-csv-storage'
+        });
 
       } catch (fetchError) {
         logger.error('💥 Google Sheets fetch failed:', fetchError.message);
-        logger.error('Full error details:', fetchError);
-        
-        contentToAnalyze = `Failed to fetch data from Google Sheets URL: ${documentUrl}
-
-Error: ${fetchError.message}
-
-To fix this:
-1. Ensure the Google Sheet is publicly viewable (Share → Anyone with the link can view)
-2. Check that the URL is correct and the sheet contains data
-3. Verify the GOOGLE_SHEETS_API_KEY is properly configured
-
-This error will be sent to Claude AI for analysis, but no actual pricing data was retrieved.`;
+        return res.status(500).json({
+          error: 'Failed to fetch Google Sheets data',
+          details: fetchError.message
+        });
       }
     }
 
     // Handle uploaded files
     if (files && files.length > 0) {
-      contentToAnalyze = `Please analyze these uploaded pricing files:
-      
-      ${files.map((file, index) => `File ${index + 1}: ${file.name}`).join('\n')}
-      
-      Extract all pricing information and return structured data with itemCount.`;
+      logger.info('📁 Processing uploaded files...');
+      return res.json({
+        success: true,
+        data: {
+          files: files,
+          itemCount: 0,
+          summary: 'File upload processing not implemented yet'
+        },
+        itemCount: 0,
+        documentType,
+        processingMethod: 'file-upload'
+      });
     }
 
-    // Log what we're sending to Claude
-    logger.info('📤 Content being sent to Claude AI:');
-    logger.info(`Content length: ${contentToAnalyze?.length || 'undefined'}`);
-    logger.info(`Content preview (first 500 chars): ${contentToAnalyze?.substring(0, 500) || 'undefined'}`);
-    
-    // Skip Claude processing - just return the raw CSV data for AI conversations
-    logger.info('✅ Skipping Claude processing - storing raw CSV for conversational AI');
-    
-    // Count actual data rows (excluding headers and empty rows)
-    const csvRows = csvData.split('\n').filter(row => row.trim().length > 0);
-    const dataRows = csvRows.slice(1); // Skip header row
-    const actualItemCount = dataRows.filter(row => {
-      const cells = row.split(',');
-      // Count rows that have actual content (not just category headers)
-      return cells.length > 3 && cells[1] && cells[1].trim() && !cells[1].includes('MATERIALS');
-    }).length;
-    
-    logger.info(`📊 Counted ${actualItemCount} actual pricing items from ${dataRows.length} data rows`);
-
-    res.json({
-      success: true,
-      data: {
-        csvData: csvData,
-        rawData: csvRows,
-        itemCount: actualItemCount,
-        summary: `Pricing sheet with ${actualItemCount} items ready for AI conversations`
-      },
-      itemCount: actualItemCount,
-      documentType,
-      processingMethod: 'raw-csv-storage'
+    // No valid input
+    return res.status(400).json({
+      error: 'No valid document content, URL, or files provided'
     });
 
     } catch (error) {

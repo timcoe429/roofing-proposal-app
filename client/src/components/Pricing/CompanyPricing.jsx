@@ -274,8 +274,8 @@ export default function CompanyPricing() {
           <h2>Company Pricing Sheets</h2>
           <p>Manage your pricing data that will be available to all proposals</p>
         </div>
-        <button onClick={() => setShowUpload(true)} className="add-pricing-btn">
-          <Plus size={20} />
+        <button onClick={() => setShowUpload(true)} className="modern-add-btn">
+          <Plus size={18} />
           Add Pricing Sheet
         </button>
       </div>
