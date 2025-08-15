@@ -39,26 +39,37 @@ export const analyzePricingWithAI = async (req, res) => {
   try {
     const { documentContent, documentUrl, documentType, files } = req.body;
     
+    logger.info('📥 Received request with:');
+    logger.info('- documentContent:', documentContent ? 'present' : 'missing');
+    logger.info('- documentUrl:', documentUrl || 'missing');
+    logger.info('- documentType:', documentType || 'missing');
+    logger.info('- files:', files ? `${files.length} files` : 'missing');
+    
     if (!documentContent && !documentUrl && !files) {
+      logger.error('❌ No document content, URL, or files provided');
       return res.status(400).json({ error: 'Document content, URL, or files are required' });
     }
 
-    logger.info(`Analyzing pricing document with Claude AI: ${documentType}`);
+    logger.info(`🤖 Analyzing pricing document with Claude AI: ${documentType}`);
 
     let contentToAnalyze = documentContent;
 
     // Handle Google Sheets URL - Use Google Sheets API
     if (documentUrl) {
       try {
+        logger.info('🔗 Processing Google Sheets URL:', documentUrl);
+        
         const { fetchGoogleSheetData } = await import('../services/googleSheetsService.js');
+        logger.info('✅ Google Sheets service imported successfully');
         
-        logger.info('Using Google Sheets API to fetch data from:', documentUrl);
-        
+        logger.info('📊 Calling fetchGoogleSheetData...');
         const sheetData = await fetchGoogleSheetData(documentUrl);
+        logger.info('✅ fetchGoogleSheetData completed');
+        
         const { csvData, rowCount, dataRowCount } = sheetData;
         
-        logger.info(`Successfully fetched ${rowCount} total rows, ${dataRowCount} data rows`);
-        logger.info('First 500 characters of data:', csvData.substring(0, 500));
+        logger.info(`📈 Successfully fetched ${rowCount} total rows, ${dataRowCount} data rows`);
+        logger.info('📄 First 500 characters of data:', csvData.substring(0, 500));
         
         // Use Claude to analyze the fetched data
         contentToAnalyze = `Please analyze this pricing data from a Google Sheet:
