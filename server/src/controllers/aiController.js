@@ -83,7 +83,9 @@ IMPORTANT: Set itemCount to exactly ${dataRowCount} (the number of data rows exc
 Process each row that contains pricing information. Skip empty rows and category headers.`;
 
       } catch (fetchError) {
-        logger.error('Error fetching Google Sheets data:', fetchError);
+        logger.error('💥 Google Sheets fetch failed:', fetchError.message);
+        logger.error('Full error details:', fetchError);
+        
         contentToAnalyze = `Failed to fetch data from Google Sheets URL: ${documentUrl}
 
 Error: ${fetchError.message}
@@ -91,7 +93,9 @@ Error: ${fetchError.message}
 To fix this:
 1. Ensure the Google Sheet is publicly viewable (Share → Anyone with the link can view)
 2. Check that the URL is correct and the sheet contains data
-3. Verify the GOOGLE_SHEETS_API_KEY is properly configured`;
+3. Verify the GOOGLE_SHEETS_API_KEY is properly configured
+
+This error will be sent to Claude AI for analysis, but no actual pricing data was retrieved.`;
       }
     }
 
@@ -104,10 +108,16 @@ To fix this:
       Extract all pricing information and return structured data with itemCount.`;
     }
 
-    const analysis = await analyzePricingDocument(contentToAnalyze, documentType);
+    // Log what we're sending to Claude
+    logger.info('📤 Content being sent to Claude AI:');
+    logger.info('Content length:', contentToAnalyze.length);
+    logger.info('Content preview (first 500 chars):', contentToAnalyze.substring(0, 500));
     
-    logger.info('Claude AI response length:', analysis.length);
-    logger.info('Claude AI response preview:', analysis.substring(0, 500));
+    const analysis = await analyzePricingDocumentService(contentToAnalyze, documentType);
+
+    logger.info('📥 Claude AI response received:');
+    logger.info('Response length:', analysis.length);
+    logger.info('Response preview (first 500 chars):', analysis.substring(0, 500));
     
     // Try to parse the response as JSON
     let structuredData;

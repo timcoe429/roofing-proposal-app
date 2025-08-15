@@ -17,16 +17,23 @@ function extractSpreadsheetId(url) {
  */
 export async function fetchGoogleSheetData(sheetUrl) {
   try {
+    logger.info('🔑 Checking Google Sheets API configuration...');
+    
     if (!process.env.GOOGLE_SHEETS_API_KEY) {
+      logger.error('❌ GOOGLE_SHEETS_API_KEY not found in environment');
       throw new Error('GOOGLE_SHEETS_API_KEY not configured');
     }
+    
+    logger.info('✅ GOOGLE_SHEETS_API_KEY found');
 
     const spreadsheetId = extractSpreadsheetId(sheetUrl);
     if (!spreadsheetId) {
+      logger.error('❌ Could not extract spreadsheet ID from URL:', sheetUrl);
       throw new Error('Invalid Google Sheets URL format');
     }
 
-    logger.info(`Fetching data from Google Sheet: ${spreadsheetId}`);
+    logger.info(`📊 Fetching data from Google Sheet ID: ${spreadsheetId}`);
+    logger.info(`🔗 Original URL: ${sheetUrl}`);
 
     // Fetch all data from the first sheet
     const response = await sheets.spreadsheets.values.get({
@@ -35,12 +42,18 @@ export async function fetchGoogleSheetData(sheetUrl) {
       range: 'A:Z', // Get all columns
     });
 
+    logger.info('📡 Google Sheets API response received');
+    logger.info('Response status:', response.status);
+    logger.info('Response data keys:', Object.keys(response.data || {}));
+
     const rows = response.data.values;
     if (!rows || rows.length === 0) {
+      logger.error('❌ No data found in Google Sheet response');
       throw new Error('No data found in the Google Sheet');
     }
 
-    logger.info(`Successfully fetched ${rows.length} rows from Google Sheet`);
+    logger.info(`✅ Successfully fetched ${rows.length} rows from Google Sheet`);
+    logger.info('First row preview:', rows[0]?.slice(0, 5)); // Show first 5 columns of header
 
     // Convert to CSV format for Claude AI processing
     const csvData = rows.map(row => 
@@ -52,6 +65,9 @@ export async function fetchGoogleSheetData(sheetUrl) {
       ).join(',')
     ).join('\n');
 
+    logger.info('📄 CSV conversion completed');
+    logger.info('CSV preview (first 200 chars):', csvData.substring(0, 200));
+
     return {
       rows: rows,
       csvData: csvData,
@@ -60,13 +76,21 @@ export async function fetchGoogleSheetData(sheetUrl) {
     };
 
   } catch (error) {
-    logger.error('Error fetching Google Sheets data:', error);
+    logger.error('💥 Error fetching Google Sheets data:', error);
+    logger.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      stack: error.stack?.split('\n')[0] // Just first line of stack
+    });
     
     // Provide helpful error messages
     if (error.code === 403) {
-      throw new Error('Google Sheets API access denied. Please ensure the sheet is publicly viewable.');
+      throw new Error('Google Sheets API access denied. Please ensure the sheet is publicly viewable and the API key has proper permissions.');
     } else if (error.code === 404) {
       throw new Error('Google Sheet not found. Please check the URL and ensure the sheet exists.');
+    } else if (error.code === 400) {
+      throw new Error('Bad request to Google Sheets API. Please check the spreadsheet URL format.');
     } else {
       throw new Error(`Failed to fetch Google Sheet data: ${error.message}`);
     }

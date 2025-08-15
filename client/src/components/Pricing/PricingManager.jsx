@@ -16,6 +16,8 @@ export default function PricingManager() {
   const [sheetName, setSheetName] = useState('');
   const [inputMethod, setInputMethod] = useState('file'); // 'file' or 'url'
   const [documentUrl, setDocumentUrl] = useState('');
+  const [editingSheet, setEditingSheet] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
 
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files || []);
@@ -140,12 +142,112 @@ export default function PricingManager() {
     localStorage.setItem('pricingSheets', JSON.stringify(updatedSheets));
   };
 
-  const toggleActive = (id) => {
-    const updatedSheets = pricingSheets.map(sheet => 
+    const toggleActive = (id) => {
+    const updatedSheets = pricingSheets.map(sheet =>
       sheet.id === id ? { ...sheet, isActive: !sheet.isActive } : sheet
     );
     setPricingSheets(updatedSheets);
     localStorage.setItem('pricingSheets', JSON.stringify(updatedSheets));
+  };
+
+  const startEdit = (sheet) => {
+    setEditingSheet(sheet);
+    setSheetName(sheet.name);
+    setInputMethod(sheet.type === 'url' ? 'url' : 'file');
+    setDocumentUrl(sheet.files?.[0]?.name || '');
+    setShowEdit(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingSheet) return;
+
+    // Check if required fields are filled
+    if (!sheetName.trim()) {
+      alert('Please fill in Document Name');
+      return;
+    }
+
+    if (inputMethod === 'url' && !documentUrl.trim()) {
+      alert('Please enter a Google Sheets URL');
+      return;
+    }
+
+    try {
+      // Show processing state
+      const processingSheet = {
+        ...editingSheet,
+        name: sheetName,
+        supplier: 'Processing...',
+        lastUpdated: new Date().toISOString().split('T')[0],
+        itemCount: '...',
+        type: inputMethod === 'url' ? 'url' : 'file',
+        files: inputMethod === 'url' ? [{ name: documentUrl, size: 0 }] : editingSheet.files,
+        isProcessing: true
+      };
+
+      // Update the sheet with processing state
+      const updatedSheets = pricingSheets.map(sheet =>
+        sheet.id === editingSheet.id ? processingSheet : sheet
+      );
+      setPricingSheets(updatedSheets);
+      localStorage.setItem('pricingSheets', JSON.stringify(updatedSheets));
+
+      // Close modal
+      setShowEdit(false);
+      setEditingSheet(null);
+      setSheetName('');
+      setDocumentUrl('');
+
+      // Actually process with Claude AI
+      let processedData;
+      if (inputMethod === 'url') {
+        // Process Google Sheets URL
+        processedData = await api.analyzePricingDocument({
+          documentUrl: documentUrl,
+          documentType: 'google_sheets'
+        });
+      } else {
+        // Keep existing file data for file-based sheets
+        processedData = await api.analyzePricingDocument({
+          files: editingSheet.extractedData || [],
+          documentType: 'pricing_sheet'
+        });
+      }
+
+      // Debug the API response
+      console.log('Edit API Response:', processedData);
+
+      // Update with real processed data
+      const finalSheet = {
+        ...processingSheet,
+        supplier: 'Multiple Suppliers',
+        itemCount: processedData.itemCount || processedData.data?.itemCount || 0,
+        extractedData: processedData.data || processedData,
+        isProcessing: false
+      };
+
+      // Update the processing sheet with real data
+      const finalSheets = updatedSheets.map(sheet =>
+        sheet.id === editingSheet.id ? finalSheet : sheet
+      );
+
+      setPricingSheets(finalSheets);
+      localStorage.setItem('pricingSheets', JSON.stringify(finalSheets));
+
+    } catch (error) {
+      console.error('Error updating document:', error);
+
+      // Show detailed error message
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+      alert(`Failed to update document: ${errorMessage}\n\nPlease check:\n1. GOOGLE_SHEETS_API_KEY is set\n2. Google Sheets URL is publicly accessible\n3. Network connection is stable`);
+
+      // Remove the processing state on error
+      const sheetsWithoutProcessing = pricingSheets.map(sheet =>
+        sheet.id === editingSheet.id ? editingSheet : sheet
+      );
+      setPricingSheets(sheetsWithoutProcessing);
+      localStorage.setItem('pricingSheets', JSON.stringify(sheetsWithoutProcessing));
+    }
   };
 
   const getFileType = (file) => {
@@ -210,7 +312,10 @@ export default function PricingManager() {
             </div>
             
             <div className="sheet-actions">
-              <button className="action-btn edit">
+              <button 
+                className="action-btn edit"
+                onClick={() => startEdit(sheet)}
+              >
                 <Edit size={16} />
                 Edit
               </button>
@@ -349,6 +454,101 @@ export default function PricingManager() {
                 <Upload size={16} />
                 Upload & Process
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEdit && editingSheet && (
+        <div className="upload-modal">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Edit Pricing Document</h3>
+              <p>Update document details and resync data from source</p>
+            </div>
+
+            <div className="upload-form">
+              {/* Input Method Selector */}
+              <div className="form-group">
+                <label>Document Type</label>
+                <div className="input-method-tabs">
+                  <button
+                    type="button"
+                    className={`method-tab ${inputMethod === 'file' ? 'active' : ''}`}
+                    onClick={() => setInputMethod('file')}
+                  >
+                    📁 File Upload
+                  </button>
+                  <button
+                    type="button"
+                    className={`method-tab ${inputMethod === 'url' ? 'active' : ''}`}
+                    onClick={() => setInputMethod('url')}
+                  >
+                    🔗 Google Sheets URL
+                  </button>
+                </div>
+              </div>
+
+              {/* Google Sheets URL Section */}
+              {inputMethod === 'url' && (
+                <div className="form-group">
+                  <label>Google Sheets URL</label>
+                  <input
+                    type="url"
+                    value={documentUrl}
+                    onChange={(e) => setDocumentUrl(e.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    className="url-input"
+                  />
+                  <div className="url-instructions">
+                    <strong>Resync:</strong> Update the URL and click save to fetch fresh data from your Google Sheet.
+                  </div>
+                </div>
+              )}
+
+              {/* File info for file-based sheets */}
+              {inputMethod === 'file' && (
+                <div className="form-group">
+                  <label>Current Files</label>
+                  <div className="current-files">
+                    {editingSheet.files?.map((file, index) => (
+                      <div key={index} className="file-item">
+                        <span>{file.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <small>File-based sheets cannot be resynced. Delete and re-upload to update.</small>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>Document Name</label>
+                <input
+                  type="text"
+                  value={sheetName}
+                  onChange={(e) => setSheetName(e.target.value)}
+                />
+                <small>Give your pricing document a descriptive name</small>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  onClick={() => {
+                    setShowEdit(false);
+                    setEditingSheet(null);
+                    setSheetName('');
+                    setDocumentUrl('');
+                  }} 
+                  className="cancel-btn"
+                >
+                  Cancel
+                </button>
+                <button onClick={handleEditSave} className="upload-btn">
+                  <Brain size={18} />
+                  {inputMethod === 'url' ? 'Save & Resync' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
