@@ -62,8 +62,8 @@ const api = {
   // Claude AI Services
   chatWithAI: (message, conversationHistory = []) => 
     apiClient.post('/ai/chat', { message, conversationHistory }),
-  analyzePricingDocument: (documentContent, documentType) => 
-    apiClient.post('/ai/analyze-pricing', { documentContent, documentType }),
+  analyzePricingDocument: (data) => 
+    apiClient.post('/ai/analyze-pricing', data),
   getAIRecommendations: (projectData) => 
     apiClient.post('/ai/recommendations', { projectData }),
   processDocumentWithAI: (documentText, documentType, extractionType) => 
