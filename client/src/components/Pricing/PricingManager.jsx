@@ -7,7 +7,7 @@ export default function PricingManager() {
 
   const [showUpload, setShowUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [supplierName, setSupplierName] = useState('');
+
   const [sheetName, setSheetName] = useState('');
   const [inputMethod, setInputMethod] = useState('file'); // 'file' or 'url'
   const [documentUrl, setDocumentUrl] = useState('');
@@ -19,8 +19,8 @@ export default function PricingManager() {
 
   const handlePricingUpload = async () => {
     // Check if required fields are filled
-    if (!supplierName.trim() || !sheetName.trim()) {
-      alert('Please fill in Supplier Name and Document Name');
+    if (!sheetName.trim()) {
+      alert('Please fill in Document Name');
       return;
     }
 
@@ -40,18 +40,17 @@ export default function PricingManager() {
     const newSheet = {
       id: Date.now(),
       name: sheetName,
-      supplier: supplierName,
+      supplier: 'Multiple Suppliers', // Since sheet contains multiple suppliers
       lastUpdated: new Date().toISOString().split('T')[0],
       itemCount: 0, // Will be populated by Claude AI
       isActive: false,
-      type: getFileType(selectedFiles[0]),
-      files: selectedFiles.map(f => ({ name: f.name, size: f.size }))
+      type: inputMethod === 'file' ? getFileType(selectedFiles[0]) : 'url',
+      files: inputMethod === 'file' ? selectedFiles.map(f => ({ name: f.name, size: f.size })) : [{ name: documentUrl, size: 0 }]
     };
 
     setPricingSheets([...pricingSheets, newSheet]);
     setShowUpload(false);
     setSelectedFiles([]);
-    setSupplierName('');
     setSheetName('');
     setDocumentUrl('');
     setInputMethod('file');
@@ -217,25 +216,14 @@ export default function PricingManager() {
                 </div>
               )}
               
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Supplier Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g., ABC Supply Co."
-                    value={supplierName}
-                    onChange={(e) => setSupplierName(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Document Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g., Standard Pricing 2024"
-                    value={sheetName}
-                    onChange={(e) => setSheetName(e.target.value)}
-                  />
-                </div>
+              <div className="form-group">
+                <label>Document Name</label>
+                <input 
+                  type="text" 
+                  value={sheetName}
+                  onChange={(e) => setSheetName(e.target.value)}
+                />
+                <small>Give your pricing document a descriptive name</small>
               </div>
 
               {selectedFiles.length > 0 && (
