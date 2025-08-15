@@ -1,4 +1,4 @@
-// AI Service Configurations
+// AI Service Configurations - Updated for production
 export const openaiConfig = {
     apiKey: process.env.OPENAI_API_KEY,
     model: 'gpt-4-vision-preview',
@@ -8,7 +8,7 @@ export const openaiConfig = {
 
 export const claudeConfig = {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-3-sonnet-20240229',
+    model: 'claude-3-5-sonnet-20241022',
     maxTokens: 4096,
     temperature: 0.1
 };
@@ -17,5 +17,5 @@ export const aiConfig = {
     openai: openaiConfig,
     claude: claudeConfig,
     defaultVisionModel: 'gpt-4-vision-preview',
-    defaultChatModel: 'claude-3-sonnet-20240229'
+    defaultChatModel: 'claude-3-5-sonnet-20241022'
 };

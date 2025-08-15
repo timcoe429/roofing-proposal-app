@@ -37,15 +37,40 @@ export const chatWithAI = async (req, res) => {
 // Analyze pricing documents with Claude
 export const analyzePricingWithAI = async (req, res) => {
   try {
-    const { documentContent, documentType } = req.body;
+    const { documentContent, documentUrl, documentType, files } = req.body;
     
-    if (!documentContent) {
-      return res.status(400).json({ error: 'Document content is required' });
+    if (!documentContent && !documentUrl && !files) {
+      return res.status(400).json({ error: 'Document content, URL, or files are required' });
     }
 
     logger.info(`Analyzing pricing document with Claude AI: ${documentType}`);
 
-    const analysis = await analyzePricingDocument(documentContent, documentType);
+    let contentToAnalyze = documentContent;
+
+    // Handle Google Sheets/Docs URL
+    if (documentUrl) {
+      contentToAnalyze = `Please analyze the pricing document at this URL: ${documentUrl}
+      
+      Note: This is a Google Sheets/Docs URL. Please extract all pricing information including:
+      - Material names and prices
+      - Labor rates
+      - Service costs
+      - Any supplier information
+      - Terms and conditions
+      
+      Return the data in structured JSON format with an itemCount field showing the total number of pricing items found.`;
+    }
+
+    // Handle uploaded files
+    if (files && files.length > 0) {
+      contentToAnalyze = `Please analyze these uploaded pricing files:
+      
+      ${files.map((file, index) => `File ${index + 1}: ${file.name}`).join('\n')}
+      
+      Extract all pricing information and return structured data with itemCount.`;
+    }
+
+    const analysis = await analyzePricingDocument(contentToAnalyze, documentType);
     
     // Try to parse the response as JSON
     let structuredData;
@@ -58,7 +83,8 @@ export const analyzePricingWithAI = async (req, res) => {
 
     res.json({
       success: true,
-      analysis: structuredData,
+      data: structuredData,
+      itemCount: structuredData.itemCount || structuredData.materials?.length || 0,
       documentType,
       processingMethod: 'claude-ai'
     });

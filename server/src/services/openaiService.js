@@ -17,6 +17,9 @@ if (process.env.ANTHROPIC_API_KEY) {
   claude = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
   });
+  console.log('✅ Claude AI initialized with API key');
+} else {
+  console.log('❌ ANTHROPIC_API_KEY not found in environment variables');
 }
 
 // GPT Vision for image analysis
@@ -57,8 +60,11 @@ export const processImageWithVision = async (imageBase64, prompt, documentType =
 // Claude AI for data analysis and chat
 export const processWithClaude = async (prompt, context = '', systemPrompt = '') => {
   if (!claude) {
-    throw new Error('Claude service not configured');
+    console.log('❌ Claude service not configured - missing API key');
+    throw new Error('Claude service not configured - ANTHROPIC_API_KEY missing');
   }
+
+  console.log(`🤖 Processing with Claude model: ${aiConfig.defaultChatModel}`);
 
   try {
     const defaultSystemPrompt = `You are an expert roofing contractor assistant. You help with:

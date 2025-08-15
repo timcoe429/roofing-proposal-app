@@ -59,17 +59,7 @@ export default function Login() {
     });
   };
 
-  // Demo login function
-  const handleDemoLogin = () => {
-    localStorage.setItem('token', 'demo-token');
-    localStorage.setItem('user', JSON.stringify({ 
-      name: 'Demo User', 
-      email: 'demo@example.com',
-      company: 'Demo Roofing Co.' 
-    }));
-    toast.success('Logged in as demo user!');
-    navigate('/');
-  };
+  
 
   return (
     <div className="login-container">
@@ -153,14 +143,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="demo-section">
-          <div className="divider">
-            <span>or</span>
-          </div>
-          <button onClick={handleDemoLogin} className="demo-button">
-            Try Demo (No Registration)
-          </button>
-        </div>
+
 
         <div className="login-footer">
           <p>Built for roofing professionals</p>
