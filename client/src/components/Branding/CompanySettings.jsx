@@ -24,8 +24,8 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
   };
 
   const handleSave = () => {
-    // Placeholder for actual save logic
-    alert('Company settings saved successfully!');
+    // Settings are auto-saved via onCompanyDataChange
+    // No popup needed - just silent save
   };
 
   return (

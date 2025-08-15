@@ -56,7 +56,7 @@ export default function Dashboard() {
         <div className="header-content">
           <div className="header-left">
             <h1>Welcome back, {user.name || 'User'}!</h1>
-            <p>{user.company || 'Your Company'}</p>
+            <p>{companyData.name || 'Your Company'}</p>
           </div>
           <div className="header-actions">
             <button onClick={() => setShowSettings(true)} className="settings-btn">
@@ -117,31 +117,8 @@ export default function Dashboard() {
           <div className="recent-section">
             <h2>Recent Proposals</h2>
             <div className="proposal-list">
-              <div className="proposal-item">
-                <div className="proposal-info">
-                  <h4>Johnson Residence</h4>
-                  <p>Asphalt shingle replacement • 24 squares</p>
-                  <span className="proposal-date">2 days ago</span>
-                </div>
-                <span className="proposal-status pending">Pending</span>
-              </div>
-              
-              <div className="proposal-item">
-                <div className="proposal-info">
-                  <h4>Smith Commercial</h4>
-                  <p>Metal roof repair • 45 squares</p>
-                  <span className="proposal-date">1 week ago</span>
-                </div>
-                <span className="proposal-status approved">Approved</span>
-              </div>
-              
-              <div className="proposal-item">
-                <div className="proposal-info">
-                  <h4>Brown Family Home</h4>
-                  <p>Tile roof installation • 32 squares</p>
-                  <span className="proposal-date">2 weeks ago</span>
-                </div>
-                <span className="proposal-status completed">Completed</span>
+              <div className="empty-state">
+                <p>No proposals yet. Create your first one!</p>
               </div>
             </div>
           </div>
