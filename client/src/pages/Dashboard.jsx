@@ -79,7 +79,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Total Proposals</h3>
-              <p className="stat-number">12</p>
+              <p className="stat-number">0</p>
             </div>
           </div>
 
@@ -89,7 +89,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Active Clients</h3>
-              <p className="stat-number">8</p>
+              <p className="stat-number">0</p>
             </div>
           </div>
 
@@ -99,7 +99,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>This Month</h3>
-              <p className="stat-number">$24,500</p>
+              <p className="stat-number">$0</p>
             </div>
           </div>
         </div>
