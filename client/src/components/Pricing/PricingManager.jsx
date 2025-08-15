@@ -162,16 +162,7 @@ export default function PricingManager() {
     }
   };
 
-  const toggleActive = (id) => {
-    setPricingSheets(pricingSheets.map(sheet => ({
-      ...sheet,
-      isActive: sheet.id === id ? !sheet.isActive : false
-    })));
-  };
 
-  const deleteSheet = (id) => {
-    setPricingSheets(pricingSheets.filter(sheet => sheet.id !== id));
-  };
 
   return (
     <div className="pricing-manager">
