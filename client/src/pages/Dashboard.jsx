@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Users, TrendingUp, LogOut, Settings, TestTube } from 'lucide-react';
+import { Plus, FileText, Users, TrendingUp, LogOut, Settings, TestTube, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CompanySettings from '../components/Branding/CompanySettings';
 import ApiTester from '../components/Test/ApiTester';
+import CompanyPricing from '../components/Pricing/CompanyPricing';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -11,6 +12,7 @@ export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [showSettings, setShowSettings] = useState(false);
   const [showApiTester, setShowApiTester] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
   
   // Load company data from localStorage or use defaults
   const getInitialCompanyData = () => {
@@ -64,6 +66,10 @@ export default function Dashboard() {
             <button onClick={() => setShowApiTester(true)} className="test-btn">
               <TestTube size={18} />
               Test API
+            </button>
+            <button onClick={() => setShowPricing(true)} className="pricing-btn">
+              <DollarSign size={18} />
+              Pricing Sheets
             </button>
             <button onClick={() => setShowSettings(true)} className="settings-btn">
               <Settings size={18} />
@@ -141,6 +147,21 @@ export default function Dashboard() {
               </div>
               <div className="settings-modal-content">
                 <ApiTester />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Company Pricing Modal */}
+        {showPricing && (
+          <div className="settings-modal-overlay" onClick={() => setShowPricing(false)}>
+            <div className="settings-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1200px' }}>
+              <div className="settings-modal-header">
+                <h2>Company Pricing Sheets</h2>
+                <button onClick={() => setShowPricing(false)} className="close-btn">×</button>
+              </div>
+              <div className="settings-modal-content">
+                <CompanyPricing />
               </div>
             </div>
           </div>

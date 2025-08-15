@@ -126,63 +126,31 @@ This error will be sent to Claude AI for analysis, but no actual pricing data wa
     logger.info(`Content length: ${contentToAnalyze?.length || 'undefined'}`);
     logger.info(`Content preview (first 500 chars): ${contentToAnalyze?.substring(0, 500) || 'undefined'}`);
     
-    // Add timeout to prevent hanging
-    const analysisPromise = analyzePricingDocument(contentToAnalyze, documentType);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Analysis timeout after 60 seconds')), 60000)
-    );
+    // Skip Claude processing - just return the raw CSV data for AI conversations
+    logger.info('✅ Skipping Claude processing - storing raw CSV for conversational AI');
     
-    const analysis = await Promise.race([analysisPromise, timeoutPromise]);
-
-    logger.info('📥 Claude AI response received:');
-    logger.info(`Response length: ${analysis?.length || 'undefined'}`);
-    logger.info(`Response preview (first 500 chars): ${analysis?.substring(0, 500) || 'undefined'}`);
+    // Count actual data rows (excluding headers and empty rows)
+    const csvRows = csvData.split('\n').filter(row => row.trim().length > 0);
+    const dataRows = csvRows.slice(1); // Skip header row
+    const actualItemCount = dataRows.filter(row => {
+      const cells = row.split(',');
+      // Count rows that have actual content (not just category headers)
+      return cells.length > 3 && cells[1] && cells[1].trim() && !cells[1].includes('MATERIALS');
+    }).length;
     
-    // Try to parse the response as JSON
-    let structuredData;
-    try {
-      // First try direct JSON parsing
-      structuredData = JSON.parse(analysis);
-      logger.info('✅ Successfully parsed JSON response');
-      logger.info('Parsed itemCount:', structuredData.itemCount);
-    } catch (parseError) {
-      logger.info('❌ Direct JSON parsing failed, trying to extract JSON from text...');
-      
-      // Try to extract JSON from Claude's response (sometimes wrapped in text)
-      const jsonMatch = analysis.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          structuredData = JSON.parse(jsonMatch[0]);
-          logger.info('✅ Successfully extracted and parsed JSON from response');
-          logger.info('Extracted itemCount:', structuredData.itemCount);
-        } catch (extractError) {
-          logger.error('❌ Failed to parse extracted JSON:', extractError.message);
-          structuredData = { rawAnalysis: analysis, itemCount: 0 };
-        }
-      } else {
-        logger.error('❌ No JSON found in Claude response');
-        logger.info('Raw Claude response:', analysis.substring(0, 1000));
-        
-        // Try to extract itemCount from text response
-        const itemCountMatch = analysis.match(/itemCount["\s]*:[\s]*(\d+)/i);
-        const itemCount = itemCountMatch ? parseInt(itemCountMatch[1]) : 0;
-        
-        structuredData = { 
-          rawAnalysis: analysis, 
-          itemCount: itemCount,
-          materials: [],
-          summary: "Claude returned text response instead of JSON"
-        };
-        logger.info('📊 Extracted itemCount from text:', itemCount);
-      }
-    }
+    logger.info(`📊 Counted ${actualItemCount} actual pricing items from ${dataRows.length} data rows`);
 
     res.json({
       success: true,
-      data: structuredData,
-      itemCount: structuredData.itemCount || structuredData.materials?.length || 0,
+      data: {
+        csvData: csvData,
+        rawData: csvRows,
+        itemCount: actualItemCount,
+        summary: `Pricing sheet with ${actualItemCount} items ready for AI conversations`
+      },
+      itemCount: actualItemCount,
       documentType,
-      processingMethod: 'claude-ai'
+      processingMethod: 'raw-csv-storage'
     });
 
     } catch (error) {

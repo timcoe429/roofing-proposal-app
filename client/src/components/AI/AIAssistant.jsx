@@ -50,10 +50,29 @@ const BASE_QUICK_ACTIONS = [
 ];
 
 export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange }) {
-  // Get pricing sheets from localStorage
+  // Get pricing sheets from localStorage (now with raw CSV data)
   const getPricingSheets = () => {
-    const saved = localStorage.getItem('pricingSheets');
-    return saved ? JSON.parse(saved) : [];
+    const saved = localStorage.getItem('companyPricingSheets');
+    if (!saved) return [];
+    
+    const sheets = JSON.parse(saved);
+    return sheets.filter(sheet => sheet.isActive && sheet.extractedData?.csvData);
+  };
+
+  // Get full pricing context for AI
+  const getPricingContext = () => {
+    const sheets = getPricingSheets();
+    if (sheets.length === 0) return '';
+    
+    let context = '\n\n=== AVAILABLE PRICING DATA ===\n';
+    sheets.forEach(sheet => {
+      context += `\n--- ${sheet.name} (${sheet.itemCount} items) ---\n`;
+      context += sheet.extractedData.csvData;
+      context += '\n';
+    });
+    context += '\n=== END PRICING DATA ===\n';
+    
+    return context;
   };
   const [messages, setMessages] = useState([
     {
@@ -125,16 +144,62 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         .map(msg => ({ role: 'user', content: msg.content }))
         .slice(-5); // Last 5 user messages for context
 
-      // Get pricing sheets for context
-      const pricingSheets = getPricingSheets();
-      const pricingContext = pricingSheets.length > 0 
-        ? `\n\nAvailable Pricing Sheets:\n${pricingSheets.map(sheet => 
-            `- ${sheet.name} (${sheet.itemCount} items, ${sheet.supplier})`
-          ).join('\n')}`
-        : '';
+      // Get full location context with building codes
+      const fullAddress = `${proposalData.propertyAddress}, ${proposalData.propertyCity}, ${proposalData.propertyState} ${proposalData.propertyZip}`;
+      const locationContext = getLocationContext(fullAddress);
+      
+      // Build comprehensive context for roofing expert AI
+      let expertContext = `
 
-      // Send to Claude AI with pricing context
-      const response = await api.chatWithAI(message + pricingContext, conversationHistory);
+=== ROOFING PROJECT CONTEXT ===
+Property Address: ${fullAddress}
+Client: ${proposalData.clientName}
+Project Type: Roof replacement/repair
+
+=== CURRENT PROJECT DATA ===
+${JSON.stringify(proposalData, null, 2)}`;
+
+      if (locationContext) {
+        expertContext += `
+
+=== LOCATION & BUILDING CODES ===
+State: ${locationContext.state}
+City: ${locationContext.city || 'Not specified'}
+Building Codes: ${locationContext.buildingCodes}
+Climate Zone: ${locationContext.climateZone}
+
+Common Requirements:
+${locationContext.commonRequirements.map(req => `- ${req}`).join('\n')}`;
+
+        if (locationContext.citySpecific) {
+          expertContext += `
+
+City-Specific Requirements:
+${locationContext.citySpecific.specialRequirements?.map(req => `- ${req}`).join('\n') || 'None specified'}
+
+Recommended Materials:
+${locationContext.citySpecific.recommendedMaterials?.map(mat => `- ${mat}`).join('\n') || 'Standard materials'}`;
+        }
+      }
+
+      // Add pricing data
+      const pricingContext = getPricingContext();
+      expertContext += pricingContext;
+
+      expertContext += `
+
+=== YOUR ROLE ===
+You are an expert roofing contractor and estimator. Use the pricing data above to:
+1. Recommend appropriate materials based on location and codes
+2. Calculate quantities and costs accurately
+3. Explain building code requirements
+4. Provide professional roofing advice
+5. Build detailed proposals conversationally
+
+Be conversational, ask clarifying questions, and explain your recommendations.`;
+
+      // Send to Claude AI with full expert context
+      const response = await api.chatWithAI(message + expertContext, conversationHistory);
       
       const assistantMessage = {
         id: Date.now() + 1,

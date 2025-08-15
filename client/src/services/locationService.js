@@ -1,244 +1,200 @@
-// Location Intelligence Service
-// Handles building codes, climate factors, and local requirements
+// Location Intelligence for Roofing Projects
+// Building codes, climate data, and local requirements
 
-const LOCATION_DATA = {
-  // States with specific roofing requirements
+const locationContexts = {
+  'CO': {
+    state: 'Colorado',
+    buildingCodes: 'Colorado Building Code (based on IBC 2018)',
+    climateZone: 'High altitude, heavy snow loads',
+    commonRequirements: [
+      'Class 4 impact-resistant shingles in hail zones',
+      'Snow load calculations required (varies 20-70 PSF)',
+      'Ice dam protection in mountain areas',
+      'Wind uplift resistance for plains areas'
+    ],
+    cities: {
+      'Aspen': {
+        snowLoad: '70 PSF',
+        elevation: '7,908 ft',
+        specialRequirements: [
+          'No roofing work below 20°F',
+          'Mandatory snow guards on steep slopes',
+          'Enhanced ice dam protection required',
+          'Permit required for all re-roofs ($500-800)'
+        ],
+        recommendedMaterials: [
+          'Impact-resistant architectural shingles',
+          'Ice and water shield (first 6 feet minimum)',
+          'Snow guards for slopes over 6/12 pitch'
+        ]
+      },
+      'Denver': {
+        snowLoad: '30 PSF',
+        elevation: '5,280 ft',
+        specialRequirements: [
+          'Hail-resistant materials required',
+          'Wind uplift resistance (90+ mph)',
+          'Permit required ($200-400)'
+        ]
+      },
+      'Colorado Springs': {
+        snowLoad: '25 PSF',
+        elevation: '6,035 ft',
+        specialRequirements: [
+          'Wind and hail resistance required',
+          'Wildfire considerations in interface zones'
+        ]
+      }
+    }
+  },
   'FL': {
-    name: 'Florida',
-    buildingCodes: [
-      'High Velocity Hurricane Zone (HVHZ) compliance required in Miami-Dade and Broward',
-      'Wind resistance: 150+ mph in coastal areas',
-      'Impact resistance required in hurricane zones',
-      'Tile and metal roofing preferred for longevity'
+    state: 'Florida',
+    buildingCodes: 'Florida Building Code 7th Edition (2020)',
+    climateZone: 'Hurricane zone, high humidity',
+    commonRequirements: [
+      'Hurricane straps and enhanced fastening',
+      'Impact-resistant materials in HVHZ',
+      'Sealed roof deck construction',
+      'Enhanced drainage systems'
     ],
-    climateFactors: [
-      'Hurricane season: June-November',
-      'High humidity and UV exposure',
-      'Frequent thunderstorms',
-      'Salt air corrosion in coastal areas'
-    ],
-    permitRequired: true,
-    inspectionRequired: true,
-    energyRequirements: ['ENERGY STAR rated materials recommended'],
-    materialRecommendations: [
-      'Impact-resistant shingles (Class 4)',
-      'Metal roofing with high wind ratings',
-      'Tile roofing with proper fastening',
-      'Cool roof technology for energy efficiency'
-    ]
+    cities: {
+      'Miami': {
+        windSpeed: '175+ mph (HVHZ)',
+        specialRequirements: [
+          'Impact-resistant shingles mandatory',
+          'Secondary water barrier required',
+          'Hurricane straps every 6 feet',
+          'Permit and inspection required'
+        ]
+      }
+    }
   },
   'CA': {
-    name: 'California',
-    buildingCodes: [
-      'Title 24 energy efficiency standards',
-      'Fire-resistant materials required in WUI zones',
-      'Seismic considerations for mounting systems',
-      'Cool roof requirements in climate zones 10-15'
-    ],
-    climateFactors: [
-      'Wildfire risk in many areas',
-      'Seismic activity considerations',
-      'Extreme heat in inland areas',
-      'Coastal fog and moisture'
-    ],
-    permitRequired: true,
-    inspectionRequired: true,
-    energyRequirements: [
-      'Cool roof compliance (SRI ≥ 75 for steep slope)',
-      'Solar-ready requirements for new construction'
-    ],
-    materialRecommendations: [
-      'Class A fire-rated materials',
-      'Cool roof certified products',
-      'Impact-resistant in hail-prone areas',
-      'Seismic-rated mounting systems'
+    state: 'California',
+    buildingCodes: 'California Building Standards Code (Title 24)',
+    climateZone: 'Seismic, wildfire risk',
+    commonRequirements: [
+      'Class A fire-rated materials in WUI zones',
+      'Seismic-resistant fasteners',
+      'Cool roof requirements in some areas',
+      'Solar-ready construction'
     ]
   },
   'TX': {
-    name: 'Texas',
-    buildingCodes: [
-      'Wind resistance: 90-130 mph depending on region',
-      'Hail resistance recommended (Class 3-4)',
-      'Energy efficiency requirements',
-      'Local amendments vary by city'
-    ],
-    climateFactors: [
-      'Severe hail storms',
-      'High winds and tornadoes',
-      'Extreme heat in summer',
-      'UV degradation concerns'
-    ],
-    permitRequired: true,
-    inspectionRequired: true,
-    energyRequirements: ['ENERGY STAR certification recommended'],
-    materialRecommendations: [
-      'Impact-resistant shingles (Class 3-4)',
-      'High wind-rated materials',
-      'Cool roof technology',
-      'Proper ventilation systems'
-    ]
-  },
-  'NY': {
-    name: 'New York',
-    buildingCodes: [
-      'Snow load requirements: 30-50 psf',
-      'Ice dam prevention measures',
-      'Energy conservation code compliance',
-      'NYC has additional requirements'
-    ],
-    climateFactors: [
-      'Heavy snow loads',
-      'Ice dam formation',
-      'Freeze-thaw cycles',
-      'High heating costs'
-    ],
-    permitRequired: true,
-    inspectionRequired: true,
-    energyRequirements: ['R-49 minimum attic insulation'],
-    materialRecommendations: [
-      'Ice and water shield required',
-      'Proper ventilation for ice dam prevention',
-      'Snow guards for metal roofing',
-      'High-quality underlayment'
+    state: 'Texas',
+    buildingCodes: 'Texas Building Code (based on IBC)',
+    climateZone: 'High heat, severe weather',
+    commonRequirements: [
+      'High wind resistance (varies by region)',
+      'Hail-resistant materials recommended',
+      'Heat-reflective materials beneficial',
+      'Tornado-resistant construction in some areas'
     ]
   }
 };
 
-// Default requirements for states not specifically listed
-const DEFAULT_REQUIREMENTS = {
-  buildingCodes: [
-    'Local building code compliance required',
-    'Manufacturer installation guidelines',
-    'Proper ventilation requirements'
-  ],
-  climateFactors: [
-    'Regional weather patterns',
-    'Local environmental conditions'
-  ],
-  permitRequired: true,
-  inspectionRequired: false,
-  energyRequirements: ['Follow local energy codes'],
-  materialRecommendations: [
-    'Quality materials appropriate for climate',
-    'Proper installation techniques',
-    'Adequate ventilation'
-  ]
+const materialRecommendations = {
+  'heavy_snow': {
+    shingles: ['Architectural with high wind rating', 'Impact-resistant preferred'],
+    underlayment: ['Ice and water shield', 'Synthetic underlayment'],
+    accessories: ['Snow guards', 'Enhanced ventilation', 'Heated gutters']
+  },
+  'high_wind': {
+    shingles: ['High wind rating (130+ mph)', 'Enhanced fastening pattern'],
+    underlayment: ['Sealed deck system', 'Self-adhering underlayment'],
+    accessories: ['Hurricane straps', 'Enhanced flashing']
+  },
+  'hail_zone': {
+    shingles: ['Class 4 impact-resistant', 'Algae-resistant granules'],
+    underlayment: ['Impact-resistant underlayment'],
+    accessories: ['Impact-resistant gutters', 'Protective coatings']
+  },
+  'fire_zone': {
+    shingles: ['Class A fire-rated', 'Non-combustible materials'],
+    underlayment: ['Fire-resistant barriers'],
+    accessories: ['Ember-resistant vents', 'Fire-safe flashing']
+  }
 };
 
-export const getLocationRequirements = (state, city = '', zipCode = '') => {
-  const stateCode = state?.toUpperCase();
-  const requirements = LOCATION_DATA[stateCode] || DEFAULT_REQUIREMENTS;
+export const getLocationContext = (address) => {
+  // Extract state from address
+  const stateMatch = address.match(/\b([A-Z]{2})\b/);
+  const state = stateMatch ? stateMatch[1] : null;
+  
+  // Extract city from address
+  const cityMatch = address.match(/([^,]+),\s*[A-Z]{2}/);
+  const city = cityMatch ? cityMatch[1].trim() : null;
+  
+  if (!state || !locationContexts[state]) {
+    return null;
+  }
+  
+  const stateContext = locationContexts[state];
+  const cityContext = city && stateContext.cities && stateContext.cities[city] 
+    ? stateContext.cities[city] 
+    : null;
   
   return {
-    ...requirements,
-    location: {
-      state: stateCode,
-      city,
-      zipCode
-    }
+    state: stateContext.state,
+    city: city,
+    buildingCodes: stateContext.buildingCodes,
+    climateZone: stateContext.climateZone,
+    commonRequirements: stateContext.commonRequirements,
+    citySpecific: cityContext,
+    materialRecommendations: getMaterialRecommendations(stateContext, cityContext)
   };
 };
 
-export const getComplianceChecklist = (state, city = '') => {
-  const requirements = getLocationRequirements(state, city);
+const getMaterialRecommendations = (stateContext, cityContext) => {
+  const recommendations = [];
   
-  const checklist = [
-    {
-      id: 'permit',
-      label: 'Building permit obtained',
-      required: requirements.permitRequired,
-      category: 'Legal'
-    },
-    {
-      id: 'inspection',
-      label: 'Inspection scheduled',
-      required: requirements.inspectionRequired,
-      category: 'Legal'
-    }
-  ];
-
-  // Add material-specific requirements
-  requirements.materialRecommendations.forEach((rec, index) => {
-    checklist.push({
-      id: `material_${index}`,
-      label: rec,
-      required: false,
-      category: 'Materials'
-    });
-  });
-
-  // Add energy requirements
-  requirements.energyRequirements.forEach((req, index) => {
-    checklist.push({
-      id: `energy_${index}`,
-      label: req,
-      required: true,
-      category: 'Energy'
-    });
-  });
-
-  return checklist;
-};
-
-export const getLocationContext = (state, city = '', zipCode = '') => {
-  const requirements = getLocationRequirements(state, city, zipCode);
+  // Determine applicable conditions
+  if (cityContext?.snowLoad && parseInt(cityContext.snowLoad) > 40) {
+    recommendations.push(...materialRecommendations.heavy_snow.shingles);
+  }
   
-  return `
-LOCATION CONTEXT:
-- Location: ${city}, ${state} ${zipCode}
-- Climate Factors: ${requirements.climateFactors.join(', ')}
-- Building Code Requirements: ${requirements.buildingCodes.join(', ')}
-- Material Recommendations: ${requirements.materialRecommendations.join(', ')}
-- Energy Requirements: ${requirements.energyRequirements.join(', ')}
-- Permit Required: ${requirements.permitRequired ? 'Yes' : 'No'}
-- Inspection Required: ${requirements.inspectionRequired ? 'Yes' : 'No'}
-`;
+  if (cityContext?.windSpeed && parseInt(cityContext.windSpeed) > 130) {
+    recommendations.push(...materialRecommendations.high_wind.shingles);
+  }
+  
+  if (stateContext.commonRequirements.some(req => req.includes('impact-resistant'))) {
+    recommendations.push(...materialRecommendations.hail_zone.shingles);
+  }
+  
+  if (stateContext.commonRequirements.some(req => req.includes('fire-rated'))) {
+    recommendations.push(...materialRecommendations.fire_zone.shingles);
+  }
+  
+  return [...new Set(recommendations)]; // Remove duplicates
 };
 
 export const getQuickActionsForLocation = (state) => {
-  const stateCode = state?.toUpperCase();
-  const baseActions = [
-    {
-      id: 'local_codes',
-      title: 'Check Local Codes',
-      prompt: `What are the specific building code requirements for roofing in ${state}?`
-    },
-    {
-      id: 'permit_info',
-      title: 'Permit Requirements',
-      prompt: `What permits do I need for a roof replacement in ${state}?`
-    },
-    {
-      id: 'material_recommendations',
-      title: 'Local Material Specs',
-      prompt: `What roofing materials are best for the climate in ${state}?`
-    }
-  ];
-
-  // Add state-specific actions
-  const stateSpecific = {
+  const locationActions = {
+    'CO': [
+      { id: 'co_snow_load', title: 'CO Snow Load Requirements', prompt: 'What are the snow load requirements for roofing in Colorado?' },
+      { id: 'co_hail_protection', title: 'CO Hail Protection', prompt: 'What hail protection is required for roofs in Colorado?' },
+      { id: 'co_mountain_roofing', title: 'Mountain Roofing Codes', prompt: 'What are the special requirements for roofing in Colorado mountain areas?' }
+    ],
     'FL': [
-      {
-        id: 'hurricane_prep',
-        title: 'Hurricane Compliance',
-        prompt: 'What hurricane-resistant features should I include for this Florida roof?'
-      }
+      { id: 'fl_hurricane_codes', title: 'FL Hurricane Codes', prompt: 'What are the hurricane building codes for roofing in Florida?' },
+      { id: 'fl_wind_mitigation', title: 'FL Wind Mitigation', prompt: 'Explain Florida wind mitigation requirements for roofing.' },
+      { id: 'fl_hvhz_requirements', title: 'HVHZ Requirements', prompt: 'What are the High Velocity Hurricane Zone requirements for roofing?' }
     ],
     'CA': [
-      {
-        id: 'fire_rating',
-        title: 'Fire Safety',
-        prompt: 'What fire-resistant roofing requirements apply in California?'
-      }
+      { id: 'ca_fire_codes', title: 'CA Fire Codes', prompt: 'What are the fire safety requirements for roofs in California?' },
+      { id: 'ca_seismic_requirements', title: 'CA Seismic Requirements', prompt: 'What seismic considerations apply to roofing in California?' },
+      { id: 'ca_cool_roof', title: 'Cool Roof Requirements', prompt: 'What are California cool roof requirements?' }
     ],
     'TX': [
-      {
-        id: 'hail_resistance',
-        title: 'Hail Protection',
-        prompt: 'What hail-resistant roofing options should I recommend for Texas?'
-      }
+      { id: 'tx_wind_requirements', title: 'TX Wind Requirements', prompt: 'What wind resistance is required for roofs in Texas?' },
+      { id: 'tx_hail_protection', title: 'TX Hail Protection', prompt: 'What hail protection is recommended for Texas roofs?' }
     ]
   };
+  
+  return locationActions[state] || [];
+};
 
-  return [...baseActions, ...(stateSpecific[stateCode] || [])];
+export default {
+  getLocationContext,
+  getQuickActionsForLocation
 };

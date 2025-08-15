@@ -3,14 +3,9 @@ import { MessageCircle, Settings, CheckCircle } from 'lucide-react';
 import './Navigation.css';
 
 const tabs = [
-  { 
-    id: 'pricing', 
-    label: 'Pricing', 
-    icon: Settings
-  },
-  { 
-    id: 'preview', 
-    label: 'Preview', 
+  {
+    id: 'preview',
+    label: 'Preview',
     icon: CheckCircle
   }
 ];
@@ -18,8 +13,6 @@ const tabs = [
 export default function Navigation({ activeTab, setActiveTab, proposalData }) {
   const isTabComplete = (tabId) => {
     switch (tabId) {
-      case 'pricing':
-        return true; // Always available
       case 'preview':
         return true; // Always available
       default:

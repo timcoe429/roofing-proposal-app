@@ -8,7 +8,7 @@ import Header from '../components/Layout/Header';
 import Navigation from '../components/Layout/Navigation';
 
 import AIAssistant from '../components/AI/AIAssistant';
-import PricingManager from '../components/Pricing/PricingManager';
+// PricingManager moved to Dashboard
 import ProposalPreview from '../components/Preview/ProposalPreview';
 
 // Services
@@ -205,18 +205,12 @@ const ProposalEditor = () => {
             />
           </div>
           
-          <div className="content-body">
-            {activeTab === 'pricing' && (
-              <PricingManager />
-            )}
-            
-            {activeTab === 'preview' && (
-              <ProposalPreview 
-                proposalData={proposalData} 
-                companyData={companyData}
-              />
-            )}
-          </div>
+                          <div className="content-body">
+                  <ProposalPreview
+                    proposalData={proposalData}
+                    companyData={companyData}
+                  />
+                </div>
         </div>
       </div>
     </div>

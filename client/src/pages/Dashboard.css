@@ -336,6 +336,24 @@
   background: #047857;
 }
 
+.pricing-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.pricing-btn:hover {
+  background: #6d28d9;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .header-content {
