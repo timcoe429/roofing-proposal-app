@@ -74,6 +74,12 @@ export const analyzePricingWithAI = async (req, res) => {
         }
 
         logger.info(`Successfully fetched ${csvData.length} characters of CSV data`);
+        logger.info('First 500 characters of CSV:', csvData.substring(0, 500));
+        
+        // Count actual data rows (excluding headers)
+        const csvRows = csvData.split('\n').filter(row => row.trim().length > 0);
+        const dataRows = csvRows.slice(1); // Skip header row
+        logger.info(`CSV has ${csvRows.length} total rows, ${dataRows.length} data rows`);
         
         // Step 3: Use Claude to analyze the fetched CSV data
         contentToAnalyze = `Please analyze this pricing data from a Google Sheet (CSV format):
@@ -82,7 +88,7 @@ ${csvData}
 
 Extract all pricing information and return in this JSON format:
 {
-  "itemCount": number,
+  "itemCount": ${dataRows.length},
   "materials": [
     {
       "name": "string",
@@ -94,7 +100,8 @@ Extract all pricing information and return in this JSON format:
   "summary": "Brief summary of the pricing data"
 }
 
-Count each row of pricing data as one item for the itemCount. Skip header rows.`;
+IMPORTANT: Set itemCount to exactly ${dataRows.length} (the number of data rows excluding headers).
+Process each row that contains pricing information. Skip empty rows and category headers.`;
 
       } catch (fetchError) {
         logger.error('Error fetching Google Sheets data:', fetchError);
@@ -121,13 +128,20 @@ To fix this:
 
     const analysis = await analyzePricingDocument(contentToAnalyze, documentType);
     
+    logger.info('Claude AI response length:', analysis.length);
+    logger.info('Claude AI response preview:', analysis.substring(0, 500));
+    
     // Try to parse the response as JSON
     let structuredData;
     try {
       structuredData = JSON.parse(analysis);
+      logger.info('Successfully parsed JSON response');
+      logger.info('Parsed itemCount:', structuredData.itemCount);
     } catch (parseError) {
+      logger.error('Failed to parse Claude response as JSON:', parseError.message);
+      logger.info('Raw Claude response:', analysis);
       // If parsing fails, return the raw analysis
-      structuredData = { rawAnalysis: analysis };
+      structuredData = { rawAnalysis: analysis, itemCount: 0 };
     }
 
     res.json({
