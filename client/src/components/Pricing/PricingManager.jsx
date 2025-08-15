@@ -3,26 +3,7 @@ import { Upload, Plus, Edit, Trash2, DollarSign, FileSpreadsheet, FileText, File
 import './PricingManager.css';
 
 export default function PricingManager() {
-  const [pricingSheets, setPricingSheets] = useState([
-    {
-      id: 1,
-      name: 'ABC Supply - Standard',
-      supplier: 'ABC Supply Co.',
-      lastUpdated: '2024-01-15',
-      itemCount: 45,
-      isActive: true,
-      type: 'excel'
-    },
-    {
-      id: 2,
-      name: 'Home Depot - Contractor',
-      supplier: 'Home Depot Pro',
-      lastUpdated: '2024-01-10',
-      itemCount: 32,
-      isActive: false,
-      type: 'pdf'
-    }
-  ]);
+  const [pricingSheets, setPricingSheets] = useState([]);
 
   const [showUpload, setShowUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -37,11 +18,20 @@ export default function PricingManager() {
   };
 
   const handlePricingUpload = async () => {
-    const hasFile = selectedFiles.length > 0;
-    const hasUrl = documentUrl.trim() !== '';
-    
-    if ((!hasFile && !hasUrl) || !supplierName || !sheetName) {
-      alert('Please provide a file or URL and fill in all fields');
+    // Check if required fields are filled
+    if (!supplierName.trim() || !sheetName.trim()) {
+      alert('Please fill in Supplier Name and Document Name');
+      return;
+    }
+
+    // Check if we have either file or URL based on selected method
+    if (inputMethod === 'file' && selectedFiles.length === 0) {
+      alert('Please select a file to upload');
+      return;
+    }
+
+    if (inputMethod === 'url' && !documentUrl.trim()) {
+      alert('Please enter a Google Docs/Sheets URL');
       return;
     }
 
