@@ -139,14 +139,40 @@ This error will be sent to Claude AI for analysis, but no actual pricing data wa
     // Try to parse the response as JSON
     let structuredData;
     try {
+      // First try direct JSON parsing
       structuredData = JSON.parse(analysis);
-      logger.info('Successfully parsed JSON response');
+      logger.info('✅ Successfully parsed JSON response');
       logger.info('Parsed itemCount:', structuredData.itemCount);
     } catch (parseError) {
-      logger.error('Failed to parse Claude response as JSON:', parseError.message);
-      logger.info('Raw Claude response:', analysis);
-      // If parsing fails, return the raw analysis
-      structuredData = { rawAnalysis: analysis, itemCount: 0 };
+      logger.info('❌ Direct JSON parsing failed, trying to extract JSON from text...');
+      
+      // Try to extract JSON from Claude's response (sometimes wrapped in text)
+      const jsonMatch = analysis.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          structuredData = JSON.parse(jsonMatch[0]);
+          logger.info('✅ Successfully extracted and parsed JSON from response');
+          logger.info('Extracted itemCount:', structuredData.itemCount);
+        } catch (extractError) {
+          logger.error('❌ Failed to parse extracted JSON:', extractError.message);
+          structuredData = { rawAnalysis: analysis, itemCount: 0 };
+        }
+      } else {
+        logger.error('❌ No JSON found in Claude response');
+        logger.info('Raw Claude response:', analysis.substring(0, 1000));
+        
+        // Try to extract itemCount from text response
+        const itemCountMatch = analysis.match(/itemCount["\s]*:[\s]*(\d+)/i);
+        const itemCount = itemCountMatch ? parseInt(itemCountMatch[1]) : 0;
+        
+        structuredData = { 
+          rawAnalysis: analysis, 
+          itemCount: itemCount,
+          materials: [],
+          summary: "Claude returned text response instead of JSON"
+        };
+        logger.info('📊 Extracted itemCount from text:', itemCount);
+      }
     }
 
     res.json({
