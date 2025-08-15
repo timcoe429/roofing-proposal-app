@@ -69,7 +69,7 @@ export const analyzePricingWithAI = async (req, res) => {
         const { csvData, rowCount, dataRowCount } = sheetData;
         
         logger.info(`📈 Successfully fetched ${rowCount} total rows, ${dataRowCount} data rows`);
-        logger.info('📄 First 500 characters of data:', csvData.substring(0, 500));
+        logger.info(`📄 First 500 characters of data: ${csvData?.substring(0, 500) || 'undefined'}`);
         
         // Use Claude to analyze the fetched data
         contentToAnalyze = `Please analyze this pricing data from a Google Sheet:
@@ -92,6 +92,8 @@ Extract all pricing information and return in this JSON format:
 
 IMPORTANT: Set itemCount to exactly ${dataRowCount} (the number of data rows excluding headers).
 Process each row that contains pricing information. Skip empty rows and category headers.`;
+
+        logger.info(`✅ Content built for Claude. Length: ${contentToAnalyze.length}`);
 
       } catch (fetchError) {
         logger.error('💥 Google Sheets fetch failed:', fetchError.message);
@@ -121,8 +123,8 @@ This error will be sent to Claude AI for analysis, but no actual pricing data wa
 
     // Log what we're sending to Claude
     logger.info('📤 Content being sent to Claude AI:');
-    logger.info('Content length:', contentToAnalyze.length);
-    logger.info('Content preview (first 500 chars):', contentToAnalyze.substring(0, 500));
+    logger.info(`Content length: ${contentToAnalyze?.length || 'undefined'}`);
+    logger.info(`Content preview (first 500 chars): ${contentToAnalyze?.substring(0, 500) || 'undefined'}`);
     
     // Add timeout to prevent hanging
     const analysisPromise = analyzePricingDocument(contentToAnalyze, documentType);
@@ -133,8 +135,8 @@ This error will be sent to Claude AI for analysis, but no actual pricing data wa
     const analysis = await Promise.race([analysisPromise, timeoutPromise]);
 
     logger.info('📥 Claude AI response received:');
-    logger.info('Response length:', analysis.length);
-    logger.info('Response preview (first 500 chars):', analysis.substring(0, 500));
+    logger.info(`Response length: ${analysis?.length || 'undefined'}`);
+    logger.info(`Response preview (first 500 chars): ${analysis?.substring(0, 500) || 'undefined'}`);
     
     // Try to parse the response as JSON
     let structuredData;
