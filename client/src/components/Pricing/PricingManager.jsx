@@ -28,6 +28,8 @@ export default function PricingManager() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [supplierName, setSupplierName] = useState('');
   const [sheetName, setSheetName] = useState('');
+  const [inputMethod, setInputMethod] = useState('file'); // 'file' or 'url'
+  const [documentUrl, setDocumentUrl] = useState('');
 
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files || []);
@@ -35,8 +37,11 @@ export default function PricingManager() {
   };
 
   const handlePricingUpload = async () => {
-    if (selectedFiles.length === 0 || !supplierName || !sheetName) {
-      alert('Please select files and fill in all fields');
+    const hasFile = selectedFiles.length > 0;
+    const hasUrl = documentUrl.trim() !== '';
+    
+    if ((!hasFile && !hasUrl) || !supplierName || !sheetName) {
+      alert('Please provide a file or URL and fill in all fields');
       return;
     }
 
@@ -58,6 +63,8 @@ export default function PricingManager() {
     setSelectedFiles([]);
     setSupplierName('');
     setSheetName('');
+    setDocumentUrl('');
+    setInputMethod('file');
   };
 
   const getFileType = (file) => {
@@ -169,17 +176,56 @@ export default function PricingManager() {
             </div>
             
             <div className="upload-form">
+              {/* Input Method Selector */}
               <div className="form-group">
-                <label>Select Pricing Document(s)</label>
-                <input 
-                  type="file" 
-                  multiple
-                  accept=".xlsx,.xls,.pdf,.doc,.docx,.csv,.txt"
-                  onChange={handleFileSelect}
-                  className="file-input"
-                />
-                <small>Supports Excel, PDF, Word, CSV, and text files. You can also paste Google Docs/Sheets URLs.</small>
+                <label>How would you like to add your pricing document?</label>
+                <div className="input-method-tabs">
+                  <button 
+                    type="button"
+                    className={`method-tab ${inputMethod === 'file' ? 'active' : ''}`}
+                    onClick={() => setInputMethod('file')}
+                  >
+                    📁 Upload File
+                  </button>
+                  <button 
+                    type="button"
+                    className={`method-tab ${inputMethod === 'url' ? 'active' : ''}`}
+                    onClick={() => setInputMethod('url')}
+                  >
+                    🔗 Google Docs/Sheets URL
+                  </button>
+                </div>
               </div>
+
+              {/* File Upload Section */}
+              {inputMethod === 'file' && (
+                <div className="form-group">
+                  <label>Select Pricing Document(s)</label>
+                  <input 
+                    type="file" 
+                    multiple
+                    accept=".xlsx,.xls,.pdf,.doc,.docx,.csv,.txt"
+                    onChange={handleFileSelect}
+                    className="file-input"
+                  />
+                  <small>Supports Excel, PDF, Word, CSV, and text files</small>
+                </div>
+              )}
+
+              {/* URL Input Section */}
+              {inputMethod === 'url' && (
+                <div className="form-group">
+                  <label>Google Docs/Sheets URL</label>
+                  <input 
+                    type="url"
+                    value={documentUrl}
+                    onChange={(e) => setDocumentUrl(e.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    className="url-input"
+                  />
+                  <small>Paste the shareable link to your Google Docs or Google Sheets document</small>
+                </div>
+              )}
               
               <div className="form-row">
                 <div className="form-group">
