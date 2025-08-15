@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Plus, Edit, Trash2, DollarSign, FileSpreadsheet, FileText, FileImage, Brain } from 'lucide-react';
+import api from '../../services/api';
 import './PricingManager.css';
 
 export default function PricingManager() {
-  const [pricingSheets, setPricingSheets] = useState([]);
+  // Load saved pricing sheets from localStorage
+  const [pricingSheets, setPricingSheets] = useState(() => {
+    const saved = localStorage.getItem('pricingSheets');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [showUpload, setShowUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -35,25 +40,106 @@ export default function PricingManager() {
       return;
     }
 
-    // Here you would integrate with Claude AI to process the files
-    // For now, we'll simulate the process
-    const newSheet = {
-      id: Date.now(),
-      name: sheetName,
-      supplier: 'Multiple Suppliers', // Since sheet contains multiple suppliers
-      lastUpdated: new Date().toISOString().split('T')[0],
-      itemCount: 0, // Will be populated by Claude AI
-      isActive: false,
-      type: inputMethod === 'file' ? getFileType(selectedFiles[0]) : 'url',
-      files: inputMethod === 'file' ? selectedFiles.map(f => ({ name: f.name, size: f.size })) : [{ name: documentUrl, size: 0 }]
-    };
+    try {
+      // Show processing state
+      const processingSheet = {
+        id: Date.now(),
+        name: sheetName,
+        supplier: 'Processing...', 
+        lastUpdated: new Date().toISOString().split('T')[0],
+        itemCount: '...',
+        isActive: false,
+        type: inputMethod === 'file' ? getFileType(selectedFiles[0]) : 'url',
+        files: inputMethod === 'file' ? selectedFiles.map(f => ({ name: f.name, size: f.size })) : [{ name: documentUrl, size: 0 }],
+        isProcessing: true
+      };
 
-    setPricingSheets([...pricingSheets, newSheet]);
-    setShowUpload(false);
-    setSelectedFiles([]);
-    setSheetName('');
-    setDocumentUrl('');
-    setInputMethod('file');
+      // Add processing sheet immediately
+      const updatedSheets = [...pricingSheets, processingSheet];
+      setPricingSheets(updatedSheets);
+      
+      // Save to localStorage immediately
+      localStorage.setItem('pricingSheets', JSON.stringify(updatedSheets));
+
+      // Close modal
+      setShowUpload(false);
+      setSelectedFiles([]);
+      setSheetName('');
+      setDocumentUrl('');
+      setInputMethod('file');
+
+      // Actually process with Claude AI
+      let processedData;
+      if (inputMethod === 'url') {
+        // Process Google Sheets URL
+        processedData = await api.analyzePricingDocument({
+          documentUrl: documentUrl,
+          documentType: 'google_sheets'
+        });
+      } else {
+        // Process uploaded files
+        const fileData = await Promise.all(
+          selectedFiles.map(file => {
+            return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve({
+                name: file.name,
+                data: e.target.result,
+                type: file.type
+              });
+              reader.readAsDataURL(file);
+            });
+          })
+        );
+
+        processedData = await api.analyzePricingDocument({
+          files: fileData,
+          documentType: 'pricing_sheet'
+        });
+      }
+
+      // Update with real processed data
+      const finalSheet = {
+        ...processingSheet,
+        supplier: 'Multiple Suppliers',
+        itemCount: processedData.itemCount || 0,
+        extractedData: processedData.data || [],
+        isProcessing: false
+      };
+
+      // Update the processing sheet with real data
+      const finalSheets = updatedSheets.map(sheet => 
+        sheet.id === processingSheet.id ? finalSheet : sheet
+      );
+      
+      setPricingSheets(finalSheets);
+      localStorage.setItem('pricingSheets', JSON.stringify(finalSheets));
+
+    } catch (error) {
+      console.error('Error processing document:', error);
+      alert('Failed to process document. Please try again.');
+      
+      // Remove the processing sheet on error
+      const sheetsWithoutProcessing = pricingSheets.filter(sheet => !sheet.isProcessing);
+      setPricingSheets(sheetsWithoutProcessing);
+      localStorage.setItem('pricingSheets', JSON.stringify(sheetsWithoutProcessing));
+    }
+
+
+  };
+
+  const deleteSheet = (id) => {
+    const updatedSheets = pricingSheets.filter(sheet => sheet.id !== id);
+    setPricingSheets(updatedSheets);
+    localStorage.setItem('pricingSheets', JSON.stringify(updatedSheets));
+  };
+
+  const toggleActive = (id) => {
+    const updatedSheets = pricingSheets.map(sheet => 
+      sheet.id === id ? { ...sheet, isActive: !sheet.isActive } : sheet
+    );
+    setPricingSheets(updatedSheets);
+    localStorage.setItem('pricingSheets', JSON.stringify(updatedSheets));
   };
 
   const getFileType = (file) => {
