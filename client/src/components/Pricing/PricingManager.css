@@ -528,3 +528,44 @@
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
+
+.url-instructions {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #0c4a6e;
+}
+
+.url-instructions strong {
+  color: #1e40af;
+}
+
+.url-instructions ol {
+  margin: 8px 0 0 0;
+  padding-left: 16px;
+}
+
+.url-instructions li {
+  margin: 4px 0;
+}
+
+.paste-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  resize: vertical;
+  min-height: 200px;
+  transition: all 0.2s;
+}
+
+.paste-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}

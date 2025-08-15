@@ -29,14 +29,14 @@ export default function PricingManager() {
       return;
     }
 
-    // Check if we have either file or URL based on selected method
+    // Check if we have either file or pasted data based on selected method
     if (inputMethod === 'file' && selectedFiles.length === 0) {
       alert('Please select a file to upload');
       return;
     }
 
     if (inputMethod === 'url' && !documentUrl.trim()) {
-      alert('Please enter a Google Docs/Sheets URL');
+      alert('Please enter a Google Sheets URL');
       return;
     }
 
@@ -98,12 +98,15 @@ export default function PricingManager() {
         });
       }
 
+      // Debug the API response
+      console.log('API Response:', processedData);
+      
       // Update with real processed data
       const finalSheet = {
         ...processingSheet,
         supplier: 'Multiple Suppliers',
-        itemCount: processedData.itemCount || 0,
-        extractedData: processedData.data || [],
+        itemCount: processedData.itemCount || processedData.data?.itemCount || 0,
+        extractedData: processedData.data || processedData,
         isProcessing: false
       };
 
@@ -117,7 +120,10 @@ export default function PricingManager() {
 
     } catch (error) {
       console.error('Error processing document:', error);
-      alert('Failed to process document. Please try again.');
+      
+      // Show detailed error message
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+      alert(`Failed to process document: ${errorMessage}\n\nPlease check:\n1. ANTHROPIC_API_KEY is set\n2. Google Sheets URL is publicly accessible\n3. Network connection is stable`);
       
       // Remove the processing sheet on error
       const sheetsWithoutProcessing = pricingSheets.filter(sheet => !sheet.isProcessing);
@@ -244,21 +250,21 @@ export default function PricingManager() {
             <div className="upload-form">
               {/* Input Method Selector */}
               <div className="form-group">
-                <label>How would you like to add your pricing document?</label>
+                <label>How would you like to add your pricing data?</label>
                 <div className="input-method-tabs">
                   <button 
                     type="button"
                     className={`method-tab ${inputMethod === 'file' ? 'active' : ''}`}
                     onClick={() => setInputMethod('file')}
                   >
-                    📁 Upload File
+                    📁 Upload CSV/Excel
                   </button>
                   <button 
                     type="button"
                     className={`method-tab ${inputMethod === 'url' ? 'active' : ''}`}
                     onClick={() => setInputMethod('url')}
                   >
-                    🔗 Google Docs/Sheets URL
+                    🔗 Google Sheets URL
                   </button>
                 </div>
               </div>
@@ -278,10 +284,10 @@ export default function PricingManager() {
                 </div>
               )}
 
-              {/* URL Input Section */}
+              {/* Google Sheets URL Section */}
               {inputMethod === 'url' && (
                 <div className="form-group">
-                  <label>Google Docs/Sheets URL</label>
+                  <label>Google Sheets URL</label>
                   <input 
                     type="url"
                     value={documentUrl}
@@ -289,7 +295,15 @@ export default function PricingManager() {
                     placeholder="https://docs.google.com/spreadsheets/d/..."
                     className="url-input"
                   />
-                  <small>Paste the shareable link to your Google Docs or Google Sheets document</small>
+                  <div className="url-instructions">
+                    <strong>How it works:</strong>
+                    <ol>
+                      <li>Server fetches your Google Sheet as CSV</li>
+                      <li>Claude AI analyzes the data and counts items</li>
+                      <li>You get real pricing data with accurate counts</li>
+                    </ol>
+                    <strong>Requirements:</strong> Sheet must be publicly viewable (Share → Anyone with link can view)
+                  </div>
                 </div>
               )}
               

@@ -47,18 +47,67 @@ export const analyzePricingWithAI = async (req, res) => {
 
     let contentToAnalyze = documentContent;
 
-    // Handle Google Sheets/Docs URL
+    // Handle Google Sheets URL - Server-side fetch then Claude analyze
     if (documentUrl) {
-      contentToAnalyze = `Please analyze the pricing document at this URL: ${documentUrl}
-      
-      Note: This is a Google Sheets/Docs URL. Please extract all pricing information including:
-      - Material names and prices
-      - Labor rates
-      - Service costs
-      - Any supplier information
-      - Terms and conditions
-      
-      Return the data in structured JSON format with an itemCount field showing the total number of pricing items found.`;
+      try {
+        // Step 1: Convert Google Sheets URL to CSV export format
+        let csvUrl = documentUrl;
+        if (documentUrl.includes('docs.google.com/spreadsheets')) {
+          const sheetIdMatch = documentUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+          if (sheetIdMatch) {
+            csvUrl = `https://docs.google.com/spreadsheets/d/${sheetIdMatch[1]}/export?format=csv`;
+          }
+        }
+
+        logger.info('Fetching CSV data from:', csvUrl);
+        
+        // Step 2: Fetch the CSV data server-side (no CORS issues)
+        const response = await fetch(csvUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Cannot access the Google Sheet. Make sure it's publicly viewable.`);
+        }
+        
+        const csvData = await response.text();
+        
+        if (!csvData || csvData.trim().length === 0) {
+          throw new Error('The Google Sheet appears to be empty or inaccessible.');
+        }
+
+        logger.info(`Successfully fetched ${csvData.length} characters of CSV data`);
+        
+        // Step 3: Use Claude to analyze the fetched CSV data
+        contentToAnalyze = `Please analyze this pricing data from a Google Sheet (CSV format):
+
+${csvData}
+
+Extract all pricing information and return in this JSON format:
+{
+  "itemCount": number,
+  "materials": [
+    {
+      "name": "string",
+      "price": number,
+      "unit": "string", 
+      "supplier": "string"
+    }
+  ],
+  "summary": "Brief summary of the pricing data"
+}
+
+Count each row of pricing data as one item for the itemCount. Skip header rows.`;
+
+      } catch (fetchError) {
+        logger.error('Error fetching Google Sheets data:', fetchError);
+        contentToAnalyze = `Failed to fetch data from Google Sheets URL: ${documentUrl}
+
+Error: ${fetchError.message}
+
+To fix this:
+1. Open your Google Sheet
+2. Click Share → Change to "Anyone with the link can view"  
+3. Make sure the sheet contains data
+4. Try again, or copy/paste the data directly instead`;
+      }
     }
 
     // Handle uploaded files

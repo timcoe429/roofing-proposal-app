@@ -50,6 +50,11 @@ const BASE_QUICK_ACTIONS = [
 ];
 
 export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange }) {
+  // Get pricing sheets from localStorage
+  const getPricingSheets = () => {
+    const saved = localStorage.getItem('pricingSheets');
+    return saved ? JSON.parse(saved) : [];
+  };
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -120,8 +125,16 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         .map(msg => ({ role: 'user', content: msg.content }))
         .slice(-5); // Last 5 user messages for context
 
-      // Send to Claude AI
-      const response = await api.chatWithAI(message, conversationHistory);
+      // Get pricing sheets for context
+      const pricingSheets = getPricingSheets();
+      const pricingContext = pricingSheets.length > 0 
+        ? `\n\nAvailable Pricing Sheets:\n${pricingSheets.map(sheet => 
+            `- ${sheet.name} (${sheet.itemCount} items, ${sheet.supplier})`
+          ).join('\n')}`
+        : '';
+
+      // Send to Claude AI with pricing context
+      const response = await api.chatWithAI(message + pricingContext, conversationHistory);
       
       const assistantMessage = {
         id: Date.now() + 1,
