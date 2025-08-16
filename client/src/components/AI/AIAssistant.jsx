@@ -485,130 +485,116 @@ ${expertContext}`;
     
     // Extract materials and costs
     const materials = [];
+
+    const toNumber = (val) => {
+      if (val === undefined || val === null) return 0;
+      if (typeof val === 'number') return val;
+      return parseFloat(String(val).replace(/[^0-9.]/g, '')) || 0;
+    };
+
+    const pushItem = (item) => {
+      const quantity = toNumber(item.quantity);
+      const unitPrice = toNumber(item.unitPrice);
+      let total = toNumber(item.total);
+      const computed = quantity * unitPrice;
+      // If total is missing or unrealistically low, compute it
+      if (!total || total < unitPrice || total < computed * 0.5) {
+        total = computed;
+      }
+      materials.push({
+        id: Date.now() + Math.random(),
+        name: item.name,
+        quantity,
+        unit: item.unit,
+        unitPrice,
+        totalPrice: total,
+        total
+      });
+    };
     
     // Look for shingles/roofing materials
     const shinglesMatch = response.match(/Shingles?.*?(\d+(?:\.\d+)?)\s*squares?.*?@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (shinglesMatch) {
-      const quantity = parseFloat(shinglesMatch[1]);
-      const unitPrice = parseFloat(shinglesMatch[2].replace(/,/g, ''));
-      const totalPrice = parseFloat(shinglesMatch[3].replace(/,/g, ''));
-      
-      materials.push({
-        id: Date.now() + Math.random(),
+      pushItem({
         name: 'Premium Impact-Resistant Shingles',
-        quantity: quantity,
+        quantity: shinglesMatch[1],
         unit: 'squares',
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
-        total: totalPrice
+        unitPrice: shinglesMatch[2],
+        total: shinglesMatch[3]
       });
     }
     
     // Look for standing seam metal specifically
-    const standingSeamMatch = response.match(/Standing Seam Metal.*?(\d+(?:\.\d+)?)\s*squares?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    const standingSeamMatch = response.match(/Standing Seam Metal.*?(\d+(?:\.\d+)?)\s*squares?\s*[×x]?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i)
+      || response.match(/Standing Seam Metal[^\n]*?\(?(\d+(?:\.\d+)?)\s*squares?\s*@\s*\$?([\d,]+(?:\.\d{2})?)(?:\/square)?\)?[^\n$]*?\$?([\d,]+(?:\.\d{2})?)/i)
+      || response.match(/24\s*Gauge\s*Steel\s*Standing\s*Seam[^\n]*?\(?(\d+(?:\.\d+)?)\s*squares?\s*@\s*\$?([\d,]+(?:\.\d{2})?)(?:\/square)?\)?[^\n$]*?\$?([\d,]+(?:\.\d{2})?)/i);
     if (standingSeamMatch) {
-      const quantity = parseFloat(standingSeamMatch[1]);
-      const unitPrice = parseFloat(standingSeamMatch[2].replace(/,/g, ''));
-      const totalPrice = parseFloat(standingSeamMatch[3].replace(/,/g, ''));
-      
-      materials.push({
-        id: Date.now() + Math.random(),
+      pushItem({
         name: '24 Gauge Steel Standing Seam',
-        quantity: quantity,
+        quantity: standingSeamMatch[1],
         unit: 'squares',
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
-        total: totalPrice
+        unitPrice: standingSeamMatch[2],
+        total: standingSeamMatch[3]
       });
     }
     
     // Look for ice & water shield
     const iceWaterMatch = response.match(/Ice & Water Shield.*?(\d+(?:\.\d+)?)\s*(?:rolls?|squares?)?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (iceWaterMatch) {
-      const quantity = parseFloat(iceWaterMatch[1]);
-      const unitPrice = parseFloat(iceWaterMatch[2].replace(/,/g, ''));
-      const totalPrice = parseFloat(iceWaterMatch[3].replace(/,/g, ''));
-      
-      materials.push({
-        id: Date.now() + Math.random() + 1,
+      pushItem({
         name: 'Ice & Water Shield',
-        quantity: quantity,
+        quantity: iceWaterMatch[1],
         unit: 'rolls',
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
-        total: totalPrice
+        unitPrice: iceWaterMatch[2],
+        total: iceWaterMatch[3]
       });
     }
     
     // Look for snow rail system
     const snowRailMatch = response.match(/Snow Rail System.*?(\d+(?:\.\d+)?)\s*(?:LF|linear feet?|feet?)?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (snowRailMatch) {
-      const quantity = parseFloat(snowRailMatch[1]);
-      const unitPrice = parseFloat(snowRailMatch[2].replace(/,/g, ''));
-      const totalPrice = parseFloat(snowRailMatch[3].replace(/,/g, ''));
-      
-      materials.push({
-        id: Date.now() + Math.random() + 2,
+      pushItem({
         name: 'Snow Rail System',
-        quantity: quantity,
+        quantity: snowRailMatch[1],
         unit: 'LF',
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
-        total: totalPrice
+        unitPrice: snowRailMatch[2],
+        total: snowRailMatch[3]
       });
     }
     
     // Look for tear-off costs (labor)
     const tearOffMatch = response.match(/Tear-off.*?(\d+(?:\.\d+)?)\s*squares?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (tearOffMatch) {
-      const quantity = parseFloat(tearOffMatch[1]);
-      const unitPrice = parseFloat(tearOffMatch[2].replace(/,/g, ''));
-      const totalPrice = parseFloat(tearOffMatch[3].replace(/,/g, ''));
-      
-      materials.push({
-        id: Date.now() + Math.random() + 3,
+      pushItem({
         name: 'Tear-off Existing Roof',
-        quantity: quantity,
+        quantity: tearOffMatch[1],
         unit: 'squares',
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
-        total: totalPrice
+        unitPrice: tearOffMatch[2],
+        total: tearOffMatch[3]
       });
     }
     
     // Look for installation labor
     const installMatch = response.match(/Installation.*?(\d+(?:\.\d+)?)\s*squares?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (installMatch) {
-      const quantity = parseFloat(installMatch[1]);
-      const unitPrice = parseFloat(installMatch[2].replace(/,/g, ''));
-      const totalPrice = parseFloat(installMatch[3].replace(/,/g, ''));
-      
-      materials.push({
-        id: Date.now() + Math.random() + 4,
+      pushItem({
         name: 'Installation Labor',
-        quantity: quantity,
+        quantity: installMatch[1],
         unit: 'squares',
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
-        total: totalPrice
+        unitPrice: installMatch[2],
+        total: installMatch[3]
       });
     }
     
     // Look for synthetic underlayment
     const underlaymentMatch = response.match(/(?:Synthetic )?Underlayment.*?(\d+(?:\.\d+)?)\s*(?:rolls?|squares?)?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (underlaymentMatch) {
-      const quantity = parseFloat(underlaymentMatch[1]);
-      const unitPrice = parseFloat(underlaymentMatch[2].replace(/,/g, ''));
-      const totalPrice = parseFloat(underlaymentMatch[3].replace(/,/g, ''));
-      
-      materials.push({
-        id: Date.now() + Math.random() + 5,
+      pushItem({
         name: 'Synthetic Underlayment',
-        quantity: quantity,
+        quantity: underlaymentMatch[1],
         unit: 'rolls',
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
-        total: totalPrice
+        unitPrice: underlaymentMatch[2],
+        total: underlaymentMatch[3]
       });
     }
     

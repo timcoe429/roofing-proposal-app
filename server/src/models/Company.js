@@ -3,12 +3,12 @@ import sequelize from '../config/database.js';
 
 const Company = sequelize.define('Company', {
   id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
     references: {
       model: 'Users',
@@ -64,4 +64,4 @@ const Company = sequelize.define('Company', {
   timestamps: true
 });
 
-export { Company };
+export default Company;

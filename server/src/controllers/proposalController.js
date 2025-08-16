@@ -1,11 +1,13 @@
 import Proposal from '../models/Proposal.js';
+import Company from '../models/Company.js';
+import User from '../models/User.js';
 
 // Get all proposals for a user
 export const getProposals = async (req, res) => {
   try {
-    const userId = req.user?.id || 'dummy-user-id';
+    const where = req.user?.id ? { userId: req.user.id } : {};
     const proposals = await Proposal.findAll({
-      where: { userId: userId },
+      where,
       order: [['createdAt', 'DESC']]
     });
     res.json(proposals);
@@ -18,13 +20,9 @@ export const getProposals = async (req, res) => {
 // Get single proposal
 export const getProposal = async (req, res) => {
   try {
-    const userId = req.user?.id || 'dummy-user-id';
-    const proposal = await Proposal.findOne({
-      where: { 
-        id: req.params.id,
-        userId: userId 
-      }
-    });
+    const where = { id: req.params.id };
+    if (req.user?.id) where.userId = req.user.id;
+    const proposal = await Proposal.findOne({ where });
     
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });
@@ -40,14 +38,23 @@ export const getProposal = async (req, res) => {
 // Create new proposal
 export const createProposal = async (req, res) => {
   try {
-    // For now, use dummy user data if no auth
-    const userId = req.user?.id || 'dummy-user-id';
-    const companyId = req.user?.companyId || req.body.companyId || 'dummy-company-id';
-    
+    // Resolve user/company when auth is disabled
+    let userId = req.user?.id;
+    let companyId = req.user?.companyId || req.body.companyId;
+
+    if (!userId) {
+      const user = await User.findOne();
+      userId = user?.id;
+    }
+    if (!companyId) {
+      const company = await Company.findOne();
+      companyId = company?.id;
+    }
+
     const proposalData = {
       ...req.body,
-      userId: userId,
-      companyId: companyId
+      ...(userId ? { userId } : {}),
+      ...(companyId ? { companyId } : {})
     };
     
     console.log('Creating proposal with data:', proposalData);
@@ -64,13 +71,9 @@ export const createProposal = async (req, res) => {
 // Update proposal
 export const updateProposal = async (req, res) => {
   try {
-    const userId = req.user?.id || 'dummy-user-id';
-    const proposal = await Proposal.findOne({
-      where: { 
-        id: req.params.id,
-        userId: userId 
-      }
-    });
+    const where = { id: req.params.id };
+    if (req.user?.id) where.userId = req.user.id;
+    const proposal = await Proposal.findOne({ where });
     
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });
@@ -87,13 +90,9 @@ export const updateProposal = async (req, res) => {
 // Delete proposal
 export const deleteProposal = async (req, res) => {
   try {
-    const userId = req.user?.id || 'dummy-user-id';
-    const proposal = await Proposal.findOne({
-      where: { 
-        id: req.params.id,
-        userId: userId 
-      }
-    });
+    const where = { id: req.params.id };
+    if (req.user?.id) where.userId = req.user.id;
+    const proposal = await Proposal.findOne({ where });
     
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });

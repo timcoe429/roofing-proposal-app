@@ -3,9 +3,9 @@ import sequelize from '../config/database.js';
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   email: {
     type: DataTypes.STRING,
@@ -40,4 +40,4 @@ const User = sequelize.define('User', {
   timestamps: true
 });
 
-export { User };
+export default User;
