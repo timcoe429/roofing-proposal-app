@@ -64,10 +64,11 @@ export const createProposal = async (req, res) => {
 // Update proposal
 export const updateProposal = async (req, res) => {
   try {
+    const userId = req.user?.id || 'dummy-user-id';
     const proposal = await Proposal.findOne({
       where: { 
         id: req.params.id,
-        userId: req.user.id 
+        userId: userId 
       }
     });
     
@@ -86,10 +87,11 @@ export const updateProposal = async (req, res) => {
 // Delete proposal
 export const deleteProposal = async (req, res) => {
   try {
+    const userId = req.user?.id || 'dummy-user-id';
     const proposal = await Proposal.findOne({
       where: { 
         id: req.params.id,
-        userId: req.user.id 
+        userId: userId 
       }
     });
     
