@@ -96,20 +96,6 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
                 placeholder="(555) 123-4567"
               />
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="clientAddress">
-                <MapPin size={16} />
-                Client Address
-              </label>
-              <input
-                id="clientAddress"
-                type="text"
-                value={proposalData.clientAddress || ''}
-                onChange={(e) => handleFieldChange('clientAddress', e.target.value)}
-                placeholder="Client's mailing address"
-              />
-            </div>
           </div>
         </div>
 
@@ -268,24 +254,6 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
                 <option value="urgent">Urgent (1-2 weeks)</option>
                 <option value="normal">Normal (1-2 months)</option>
                 <option value="flexible">Flexible timing</option>
-              </select>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="budget">
-                Budget Range (Optional)
-              </label>
-              <select
-                id="budget"
-                value={proposalData.budget || ''}
-                onChange={(e) => handleFieldChange('budget', e.target.value)}
-              >
-                <option value="">Select budget range</option>
-                <option value="under_10k">Under $10,000</option>
-                <option value="10k_25k">$10,000 - $25,000</option>
-                <option value="25k_50k">$25,000 - $50,000</option>
-                <option value="50k_plus">$50,000+</option>
-                <option value="get_estimate">Need estimate</option>
               </select>
             </div>
           </div>
