@@ -46,27 +46,66 @@ const BASE_QUICK_ACTIONS = [
     title: 'Compliance Check',
     description: 'Verify code compliance',
     prompt: 'Help me ensure this proposal meets all local building codes and requirements.'
+  },
+  {
+    id: 'client_info',
+    icon: User,
+    title: 'Get Client Info',
+    description: 'Collect client contact details',
+    prompt: 'I need to collect client information for this proposal. Can you help me gather their name, phone, email, and property address?'
   }
 ];
 
 export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange }) {
   // Format AI responses with proper HTML
   const formatAIResponse = (text) => {
-    return text
-      // Convert numbered lists
-      .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
-      // Convert bullet points
-      .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
-      // Wrap consecutive list items in ul tags
-      .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-      // Convert line breaks to paragraphs
-      .split('\n\n')
-      .map(paragraph => {
-        if (paragraph.includes('<ul>')) return paragraph;
-        if (paragraph.trim()) return `<p>${paragraph.replace(/\n/g, '<br>')}</p>`;
-        return '';
-      })
-      .join('');
+    // Split into paragraphs first
+    const paragraphs = text.split('\n\n');
+    
+    return paragraphs.map(paragraph => {
+      const lines = paragraph.split('\n');
+      let result = '';
+      let inList = false;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Check if this is a list item
+        if (line.match(/^[-•]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/)) {
+          if (!inList) {
+            result += '<ul>';
+            inList = true;
+          }
+          const content = line.replace(/^[-•]\s+/, '').replace(/^\d+\.\s+/, '');
+          result += `<li>${content}</li>`;
+        } else {
+          // Not a list item
+          if (inList) {
+            result += '</ul>';
+            inList = false;
+          }
+          if (line) {
+            result += line + '<br>';
+          }
+        }
+      }
+      
+      // Close any open list
+      if (inList) {
+        result += '</ul>';
+      }
+      
+      // Wrap non-list content in paragraphs
+      if (result && !result.includes('<ul>')) {
+        result = `<p>${result.replace(/<br>$/, '')}</p>`;
+      } else if (result.includes('<br>') && result.includes('<ul>')) {
+        // Mixed content - wrap text parts in paragraphs
+        result = result.replace(/^([^<]+)<br>/gm, '<p>$1</p>');
+        result = result.replace(/<\/ul>([^<]+)<br>/gm, '</ul><p>$1</p>');
+      }
+      
+      return result;
+    }).join('');
   };
 
   // Get pricing sheets from localStorage (now with raw CSV data)
@@ -251,7 +290,15 @@ You are an expert roofing contractor and estimator. Use the pricing data above t
 4. Provide professional roofing advice
 5. Build detailed proposals conversationally
 
-Be conversational, ask clarifying questions, and explain your recommendations.`;
+Be conversational, ask clarifying questions, and explain your recommendations.
+
+IMPORTANT: If you provide an estimate or quote, always ask for missing client information:
+- Client name
+- Client phone number  
+- Client email
+- Property address (if different from client address)
+
+Format estimates clearly with line items and totals. Include labor breakdown and material specifications.`;
 
       let response;
       
@@ -346,7 +393,148 @@ ${expertContext}`;
       actions.push({ type: 'navigate', tab: 'preview' });
     }
 
+    // Extract proposal data from AI response
+    const proposalUpdates = extractProposalData(response);
+    if (Object.keys(proposalUpdates).length > 0) {
+      actions.push({ type: 'updateProposal', data: proposalUpdates });
+    }
+
     return actions;
+  };
+
+  // Extract proposal data from AI response
+  const extractProposalData = (response) => {
+    const updates = {};
+    
+    // Extract client information
+    const addressMatch = response.match(/(?:Address|Property Address|Located at|Location).*?(\d+[^,\n]+(?:,\s*[^,\n]+)*)/i);
+    if (addressMatch) {
+      updates.propertyAddress = addressMatch[1].trim();
+    }
+    
+    // Extract client name
+    const nameMatch = response.match(/(?:Client|Customer|Name):\s*([A-Za-z\s]+)/i);
+    if (nameMatch) {
+      updates.clientName = nameMatch[1].trim();
+    }
+    
+    // Extract phone number
+    const phoneMatch = response.match(/(?:Phone|Tel|Call):\s*([\d\-\(\)\s]+)/i);
+    if (phoneMatch) {
+      updates.clientPhone = phoneMatch[1].trim();
+    }
+    
+    // Extract email
+    const emailMatch = response.match(/(?:Email):\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (emailMatch) {
+      updates.clientEmail = emailMatch[1].trim();
+    }
+    
+    // Extract measurements
+    const squaresMatch = response.match(/(\d+(?:\.\d+)?)\s*squares?/i);
+    if (squaresMatch) {
+      updates.measurements = {
+        ...proposalData.measurements,
+        totalSquares: parseFloat(squaresMatch[1])
+      };
+    }
+    
+    const pitchMatch = response.match(/(\d+\/\d+)\s*pitch/i);
+    if (pitchMatch) {
+      updates.measurements = {
+        ...updates.measurements || proposalData.measurements,
+        pitch: pitchMatch[1]
+      };
+    }
+    
+    // Extract materials and costs
+    const materials = [];
+    
+    // Look for standing seam metal specifically
+    const standingSeamMatch = response.match(/Standing Seam Metal.*?(\d+(?:\.\d+)?)\s*squares?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (standingSeamMatch) {
+      const quantity = parseFloat(standingSeamMatch[1]);
+      const unitPrice = parseFloat(standingSeamMatch[2].replace(/,/g, ''));
+      const totalPrice = parseFloat(standingSeamMatch[3].replace(/,/g, ''));
+      
+      materials.push({
+        id: Date.now() + Math.random(),
+        name: '24 Gauge Steel Standing Seam',
+        quantity: quantity,
+        unit: 'squares',
+        unitPrice: unitPrice,
+        totalPrice: totalPrice
+      });
+    }
+    
+    // Look for ice & water shield
+    const iceWaterMatch = response.match(/Ice & Water Shield.*?(\d+(?:\.\d+)?)\s*(?:rolls?|squares?)?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (iceWaterMatch) {
+      const quantity = parseFloat(iceWaterMatch[1]);
+      const unitPrice = parseFloat(iceWaterMatch[2].replace(/,/g, ''));
+      const totalPrice = parseFloat(iceWaterMatch[3].replace(/,/g, ''));
+      
+      materials.push({
+        id: Date.now() + Math.random() + 1,
+        name: 'Ice & Water Shield',
+        quantity: quantity,
+        unit: 'rolls',
+        unitPrice: unitPrice,
+        totalPrice: totalPrice
+      });
+    }
+    
+    // Look for snow rail system
+    const snowRailMatch = response.match(/Snow Rail System.*?(\d+(?:\.\d+)?)\s*(?:LF|linear feet?|feet?)?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (snowRailMatch) {
+      const quantity = parseFloat(snowRailMatch[1]);
+      const unitPrice = parseFloat(snowRailMatch[2].replace(/,/g, ''));
+      const totalPrice = parseFloat(snowRailMatch[3].replace(/,/g, ''));
+      
+      materials.push({
+        id: Date.now() + Math.random() + 2,
+        name: 'Snow Rail System',
+        quantity: quantity,
+        unit: 'LF',
+        unitPrice: unitPrice,
+        totalPrice: totalPrice
+      });
+    }
+    
+    // Look for tear-off costs (labor)
+    const tearOffMatch = response.match(/Tear-off.*?(\d+(?:\.\d+)?)\s*squares?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (tearOffMatch) {
+      const quantity = parseFloat(tearOffMatch[1]);
+      const unitPrice = parseFloat(tearOffMatch[2].replace(/,/g, ''));
+      const totalPrice = parseFloat(tearOffMatch[3].replace(/,/g, ''));
+      
+      materials.push({
+        id: Date.now() + Math.random() + 3,
+        name: 'Tear-off Existing Roof',
+        quantity: quantity,
+        unit: 'squares',
+        unitPrice: unitPrice,
+        totalPrice: totalPrice
+      });
+    }
+    
+    if (materials.length > 0) {
+      updates.materials = materials;
+    }
+    
+    // Extract total cost
+    const totalMatch = response.match(/Total.*?\$?([\d,]+(?:\.\d{2})?)/i);
+    if (totalMatch) {
+      updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract timeline
+    const timelineMatch = response.match(/Timeline:?\s*([^.\n]+)/i);
+    if (timelineMatch) {
+      updates.timeline = timelineMatch[1].trim();
+    }
+    
+    return updates;
   };
 
   const generateFallbackResponse = (userMessage, data) => {
@@ -427,6 +615,15 @@ ${expertContext}`;
           ...prev,
           materials: action.materials
         }));
+        break;
+      case 'updateProposal':
+        if (onUpdateProposal && action.data) {
+          console.log('Updating proposal with:', action.data);
+          onUpdateProposal(prev => ({
+            ...prev,
+            ...action.data
+          }));
+        }
         break;
       default:
         break;
