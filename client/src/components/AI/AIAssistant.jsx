@@ -750,8 +750,8 @@ ${expertContext}`;
                         alt={image.name}
                         className="message-image"
                       />
-                    ))}
-                  </div>
+                  ))}
+                </div>
                 )}
                 
                 <div 
@@ -805,12 +805,12 @@ ${expertContext}`;
           <div className="textarea-wrapper">
             <textarea
               ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               placeholder="Ask about roofing or paste an image (Ctrl+V)..."
-              disabled={isTyping}
+            disabled={isTyping}
               rows={1}
               className="chat-textarea"
             />
@@ -848,13 +848,13 @@ ${expertContext}`;
               )}
             </div>
             
-            <button 
-              onClick={() => handleSendMessage()}
-              disabled={!inputValue.trim() || isTyping}
-              className="send-btn"
-            >
-              <Send size={16} />
-            </button>
+          <button 
+            onClick={() => handleSendMessage()}
+            disabled={!inputValue.trim() || isTyping}
+            className="send-btn"
+          >
+            <Send size={16} />
+          </button>
           </div>
         </div>
       </div>

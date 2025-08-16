@@ -16,30 +16,26 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 32px;
-  background: #f8fafc;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px 12px 0 0;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 180px;
+  transition: var(--transition-fast);
+  min-width: 140px;
   text-align: left;
   position: relative;
-  margin-right: 8px;
+  color: var(--text-secondary);
 }
 
 .nav-tab:hover {
-  background: #f1f5f9;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--gray-50);
+  color: var(--text-primary);
 }
 
 .nav-tab.active {
   background: white;
-  border-color: #2563eb;
-  border-bottom: 2px solid white;
-  transform: translateY(2px);
-  z-index: 10;
+  border-bottom-color: var(--primary);
+  color: var(--primary);
 }
 
 .nav-tab.complete .tab-icon {
@@ -51,28 +47,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: #f7fafc;
-  border-radius: 8px;
   flex-shrink: 0;
 }
 
-.nav-tab.active .tab-icon-wrapper {
-  background: #e6fffa;
-}
-
-.nav-tab.complete .tab-icon-wrapper {
-  background: #f0fff4;
-}
-
 .tab-icon {
-  color: #718096;
-  transition: color 0.2s;
-}
-
-.nav-tab.active .tab-icon {
-  color: #2563eb;
+  color: inherit;
+  transition: var(--transition-fast);
 }
 
 .complete-indicator {
@@ -111,35 +91,24 @@
 }
 
 .nav-tab.required {
-  background: white;
-  border-color: #dc2626;
-  color: #dc2626;
+  border-bottom-color: var(--danger);
+  color: var(--danger);
 }
 
 .nav-tab.complete {
-  background: white;
-  border-color: #16a34a;
-  color: #16a34a;
+  border-bottom-color: var(--success);
+  color: var(--success);
 }
 
-.nav-tab.required:hover {
-  background: #fafafa;
-  border-color: #b91c1c;
-}
-
+.nav-tab.required:hover,
 .nav-tab.complete:hover {
-  background: #fafafa;
-  border-color: #15803d;
+  background: var(--gray-50);
 }
 
 .tab-label {
   font-size: 14px;
-  font-weight: 600;
-  color: #1a202c;
-}
-
-.nav-tab.active .tab-label {
-  color: #2563eb;
+  font-weight: 500;
+  color: inherit;
 }
 
 /* Responsive */
