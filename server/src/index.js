@@ -49,6 +49,12 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../../client/build')));
 }
 
+// Add request logging
+app.use((req, res, next) => {
+  console.log(`[Server] ${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/proposals', proposalRoutes);
@@ -57,6 +63,12 @@ app.use('/api/pdf', pdfRoutes);
 app.use('/api/company', companyRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/test', testRoutes);
+
+// Test endpoint
+app.post('/api/test-save', (req, res) => {
+  console.log('[Test Save] Body:', req.body);
+  res.json({ success: true, received: req.body });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {

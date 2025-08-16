@@ -126,17 +126,25 @@ const ProposalEditor = () => {
   });
 
   const handleSave = useCallback(async (isAutoSave = false) => {
+    console.log('handleSave called with proposalData:', proposalData);
+    console.log('isNewProposal:', isNewProposal);
+    console.log('proposalId:', id);
+    
     try {
-      await saveMutation.mutateAsync(proposalData);
+      const result = await saveMutation.mutateAsync(proposalData);
+      console.log('Save successful, result:', result);
       if (!isAutoSave) {
         toast.success('Proposal saved!');
       }
     } catch (error) {
+      console.error('Save failed with error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
       if (!isAutoSave) {
-        toast.error('Failed to save proposal');
+        toast.error(`Failed to save proposal: ${error.response?.data?.error || error.message || 'Unknown error'}`);
       }
     }
-  }, [saveMutation, proposalData]);
+  }, [saveMutation, proposalData, isNewProposal, id]);
 
   // Auto-save draft (disabled for now to prevent errors)
   useEffect(() => {

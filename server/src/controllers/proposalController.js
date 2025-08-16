@@ -38,17 +38,24 @@ export const getProposal = async (req, res) => {
 // Create new proposal
 export const createProposal = async (req, res) => {
   try {
+    console.log('POST /api/proposals - Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User from request:', req.user);
+    
     // Resolve user/company when auth is disabled
     let userId = req.user?.id;
     let companyId = req.user?.companyId || req.body.companyId;
 
     if (!userId) {
+      console.log('No user in request, looking up first user...');
       const user = await User.findOne();
       userId = user?.id;
+      console.log('Found user:', user?.id, user?.email);
     }
     if (!companyId) {
+      console.log('No companyId, looking up first company...');
       const company = await Company.findOne();
       companyId = company?.id;
+      console.log('Found company:', company?.id, company?.name);
     }
 
     const proposalData = {
@@ -57,33 +64,63 @@ export const createProposal = async (req, res) => {
       ...(companyId ? { companyId } : {})
     };
     
-    console.log('Creating proposal with data:', proposalData);
+    console.log('Final proposal data to create:', JSON.stringify(proposalData, null, 2));
     
     const proposal = await Proposal.create(proposalData);
+    console.log('Proposal created successfully:', proposal.id);
     res.status(201).json(proposal);
   } catch (error) {
-    console.error('Error creating proposal:', error);
-    console.error('Error details:', error.message);
-    res.status(500).json({ error: 'Failed to create proposal', details: error.message });
+    console.error('Error creating proposal - Full error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    if (error.errors) {
+      console.error('Validation errors:', error.errors);
+    }
+    if (error.sql) {
+      console.error('SQL:', error.sql);
+    }
+    res.status(500).json({ 
+      error: 'Failed to create proposal', 
+      details: error.message,
+      name: error.name,
+      errors: error.errors
+    });
   }
 };
 
 // Update proposal
 export const updateProposal = async (req, res) => {
   try {
+    console.log('PUT /api/proposals/:id - Params:', req.params);
+    console.log('PUT /api/proposals/:id - Request body:', JSON.stringify(req.body, null, 2));
+    
     const where = { id: req.params.id };
     if (req.user?.id) where.userId = req.user.id;
+    
+    console.log('Looking for proposal with where clause:', where);
     const proposal = await Proposal.findOne({ where });
     
     if (!proposal) {
+      console.log('Proposal not found');
       return res.status(404).json({ error: 'Proposal not found' });
     }
     
+    console.log('Found proposal, updating...');
     await proposal.update(req.body);
+    console.log('Proposal updated successfully');
     res.json(proposal);
   } catch (error) {
-    console.error('Error updating proposal:', error);
-    res.status(500).json({ error: 'Failed to update proposal' });
+    console.error('Error updating proposal - Full error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    if (error.sql) {
+      console.error('SQL:', error.sql);
+    }
+    res.status(500).json({ 
+      error: 'Failed to update proposal', 
+      details: error.message,
+      name: error.name
+    });
   }
 };
 
