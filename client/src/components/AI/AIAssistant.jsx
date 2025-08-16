@@ -50,6 +50,25 @@ const BASE_QUICK_ACTIONS = [
 ];
 
 export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange }) {
+  // Format AI responses with proper HTML
+  const formatAIResponse = (text) => {
+    return text
+      // Convert numbered lists
+      .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+      // Convert bullet points
+      .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
+      // Wrap consecutive list items in ul tags
+      .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+      // Convert line breaks to paragraphs
+      .split('\n\n')
+      .map(paragraph => {
+        if (paragraph.includes('<ul>')) return paragraph;
+        if (paragraph.trim()) return `<p>${paragraph.replace(/\n/g, '<br>')}</p>`;
+        return '';
+      })
+      .join('');
+  };
+
   // Get pricing sheets from localStorage (now with raw CSV data)
   const getPricingSheets = () => {
     const saved = localStorage.getItem('companyPricingSheets');
@@ -373,11 +392,14 @@ Be conversational, ask clarifying questions, and explain your recommendations.`;
                 {message.type === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
               <div className="message-content">
-                <div className="message-text">
-                  {message.content.split('\n').map((line, i) => (
-                    <div key={i}>{line}</div>
-                  ))}
-                </div>
+                <div 
+                  className="message-text"
+                  dangerouslySetInnerHTML={{ 
+                    __html: message.type === 'assistant' 
+                      ? formatAIResponse(message.content) 
+                      : message.content.replace(/\n/g, '<br>')
+                  }}
+                />
               </div>
             </div>
           ))}

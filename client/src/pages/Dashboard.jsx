@@ -63,10 +63,7 @@ export default function Dashboard() {
             <p>{companyData.name || 'Your Company'}</p>
           </div>
           <div className="header-actions">
-            <button onClick={() => setShowApiTester(true)} className="test-btn">
-              <TestTube size={18} />
-              Test API
-            </button>
+
             <button onClick={() => setShowPricing(true)} className="pricing-btn">
               <DollarSign size={18} />
               Pricing Sheets
@@ -137,20 +134,7 @@ export default function Dashboard() {
         </div>
       </main>
       
-              {/* API Tester Modal */}
-        {showApiTester && (
-          <div className="settings-modal-overlay" onClick={() => setShowApiTester(false)}>
-            <div className="settings-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px' }}>
-              <div className="settings-modal-header">
-                <h2>Google Sheets API Tester</h2>
-                <button onClick={() => setShowApiTester(false)} className="close-btn">×</button>
-              </div>
-              <div className="settings-modal-content">
-                <ApiTester />
-              </div>
-            </div>
-          </div>
-        )}
+      
 
         {/* Company Pricing Modal */}
         {showPricing && (

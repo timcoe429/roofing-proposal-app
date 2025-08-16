@@ -271,7 +271,6 @@ export default function CompanyPricing() {
     <div className="pricing-manager">
       <div className="pricing-header">
         <div>
-          <h2>Company Pricing Sheets</h2>
           <p>Manage your pricing data that will be available to all proposals</p>
         </div>
         <button onClick={() => setShowUpload(true)} className="modern-add-btn">
