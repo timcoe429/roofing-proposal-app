@@ -474,10 +474,11 @@ ${expertContext}`;
       };
     }
     
-    const pitchMatch = response.match(/(\d+\/\d+)\s*pitch/i);
+    // Pitch can appear as "6/12 pitch" or "Pitch: 6/12"
+    const pitchMatch = response.match(/(\d+\/\d+)\s*pitch/i) || response.match(/pitch:\s*(\d+\/\d+)/i);
     if (pitchMatch) {
       updates.measurements = {
-        ...updates.measurements || proposalData.measurements,
+        ...(updates.measurements || proposalData.measurements),
         pitch: pitchMatch[1]
       };
     }
@@ -498,7 +499,8 @@ ${expertContext}`;
         quantity: quantity,
         unit: 'squares',
         unitPrice: unitPrice,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        total: totalPrice
       });
     }
     
@@ -515,7 +517,8 @@ ${expertContext}`;
         quantity: quantity,
         unit: 'squares',
         unitPrice: unitPrice,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        total: totalPrice
       });
     }
     
@@ -532,7 +535,8 @@ ${expertContext}`;
         quantity: quantity,
         unit: 'rolls',
         unitPrice: unitPrice,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        total: totalPrice
       });
     }
     
@@ -549,7 +553,8 @@ ${expertContext}`;
         quantity: quantity,
         unit: 'LF',
         unitPrice: unitPrice,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        total: totalPrice
       });
     }
     
@@ -566,7 +571,8 @@ ${expertContext}`;
         quantity: quantity,
         unit: 'squares',
         unitPrice: unitPrice,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        total: totalPrice
       });
     }
     
@@ -583,7 +589,8 @@ ${expertContext}`;
         quantity: quantity,
         unit: 'squares',
         unitPrice: unitPrice,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        total: totalPrice
       });
     }
     
@@ -600,7 +607,8 @@ ${expertContext}`;
         quantity: quantity,
         unit: 'rolls',
         unitPrice: unitPrice,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        total: totalPrice
       });
     }
     
