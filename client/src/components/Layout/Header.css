@@ -8,15 +8,24 @@
 
 .header-container {
   padding: 16px 20px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
   align-items: center;
+  gap: 20px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 20px;
+  justify-self: start;
+}
+
+.header-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  justify-self: center;
 }
 
 .back-button {
@@ -55,6 +64,7 @@
 .header-actions {
   display: flex;
   gap: 12px;
+  justify-self: end;
 }
 
 .save-button, .pdf-button {

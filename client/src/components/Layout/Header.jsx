@@ -22,6 +22,9 @@ export default function Header({
             <ArrowLeft size={20} />
             Back to Dashboard
           </button>
+        </div>
+        
+        <div className="header-center">
           <div className="header-title">
             <h1>Proposal Editor</h1>
             <p>Create professional roofing proposals</p>

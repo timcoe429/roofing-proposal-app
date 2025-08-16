@@ -111,23 +111,25 @@
 }
 
 .nav-tab.required {
-  background: #fef2f2;
-  border-color: #fca5a5;
+  background: white;
+  border-color: #dc2626;
+  color: #dc2626;
 }
 
 .nav-tab.complete {
-  background: #f0fdf4;
-  border-color: #86efac;
+  background: white;
+  border-color: #16a34a;
+  color: #16a34a;
 }
 
 .nav-tab.required:hover {
-  background: #fee2e2;
-  border-color: #f87171;
+  background: #fafafa;
+  border-color: #b91c1c;
 }
 
 .nav-tab.complete:hover {
-  background: #ecfdf5;
-  border-color: #4ade80;
+  background: #fafafa;
+  border-color: #15803d;
 }
 
 .tab-label {

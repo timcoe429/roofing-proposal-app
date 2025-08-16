@@ -48,17 +48,8 @@ export default function Navigation({ activeTab, setActiveTab, proposalData }) {
             >
               <div className="tab-icon-wrapper">
                 <Icon size={20} className="tab-icon" />
-                {isComplete && (
-                  <CheckCircle size={12} className="complete-indicator" />
-                )}
-                {isRequired && !isComplete && (
-                  <div className="required-indicator">!</div>
-                )}
               </div>
               <span className="tab-label">{tab.label}</span>
-              {isRequired && !isComplete && (
-                <span className="required-badge">Required</span>
-              )}
             </button>
           );
         })}
