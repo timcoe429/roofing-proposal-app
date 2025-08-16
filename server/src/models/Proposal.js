@@ -3,12 +3,12 @@ import sequelize from '../config/database.js';
 
 const Proposal = sequelize.define('Proposal', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
     primaryKey: true
   },
   companyId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
     references: {
       model: 'Companies',
@@ -16,7 +16,7 @@ const Proposal = sequelize.define('Proposal', {
     }
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
     references: {
       model: 'Users',
