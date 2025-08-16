@@ -104,6 +104,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [pastedImages, setPastedImages] = useState([]);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -140,20 +141,55 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     }
   }, [inputValue]);
 
+  // Handle image paste
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const imageData = {
+              id: Date.now(),
+              file: file,
+              dataUrl: event.target.result,
+              name: file.name || `image-${Date.now()}.png`
+            };
+            setPastedImages(prev => [...prev, imageData]);
+          };
+          reader.readAsDataURL(file);
+        }
+        break;
+      }
+    }
+  };
+
+  // Remove pasted image
+  const removeImage = (imageId) => {
+    setPastedImages(prev => prev.filter(img => img.id !== imageId));
+  };
+
 
 
   const handleSendMessage = async (message = inputValue) => {
-    if (!message.trim()) return;
+    if (!message.trim() && pastedImages.length === 0) return;
 
     const userMessage = {
       id: Date.now(),
       type: 'user',
       content: message,
+      images: pastedImages.length > 0 ? pastedImages : null,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
+    setPastedImages([]);
     setIsTyping(true);
 
     try {
@@ -217,8 +253,36 @@ You are an expert roofing contractor and estimator. Use the pricing data above t
 
 Be conversational, ask clarifying questions, and explain your recommendations.`;
 
-      // Send to Claude AI with full expert context
-      const response = await api.chatWithAI(message + expertContext, conversationHistory);
+      let response;
+      
+      // If images are included, use GPT Vision first, then Claude for analysis
+      if (pastedImages.length > 0) {
+        try {
+          // Convert images to base64 for GPT Vision
+          const imageBase64Array = pastedImages.map(img => img.dataUrl);
+          
+          // Use GPT Vision to analyze the images
+          const visionResponse = await api.processImages(imageBase64Array, 'roofing_analysis');
+          
+          // Combine vision analysis with user message and expert context
+          const combinedMessage = `${message}
+
+=== IMAGE ANALYSIS FROM GPT VISION ===
+${visionResponse.analysis || visionResponse}
+
+${expertContext}`;
+
+          // Send combined analysis to Claude
+          response = await api.chatWithAI(combinedMessage, conversationHistory);
+        } catch (visionError) {
+          console.error('Vision analysis failed:', visionError);
+          // Fallback to text-only if vision fails
+          response = await api.chatWithAI(message + expertContext + '\n\n(Note: Image analysis failed, proceeding with text only)', conversationHistory);
+        }
+      } else {
+        // Text-only message
+        response = await api.chatWithAI(message + expertContext, conversationHistory);
+      }
       
       const assistantMessage = {
         id: Date.now() + 1,
@@ -392,6 +456,20 @@ Be conversational, ask clarifying questions, and explain your recommendations.`;
                 {message.type === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
               <div className="message-content">
+                {/* Show images if present */}
+                {message.images && (
+                  <div className="message-images">
+                    {message.images.map(image => (
+                      <img 
+                        key={image.id} 
+                        src={image.dataUrl} 
+                        alt={image.name}
+                        className="message-image"
+                      />
+                    ))}
+                  </div>
+                )}
+                
                 <div 
                   className="message-text"
                   dangerouslySetInnerHTML={{ 
@@ -423,13 +501,31 @@ Be conversational, ask clarifying questions, and explain your recommendations.`;
         </div>
 
         <div className="chat-input-container">
+          {/* Show pasted images */}
+          {pastedImages.length > 0 && (
+            <div className="pasted-images">
+              {pastedImages.map(image => (
+                <div key={image.id} className="pasted-image">
+                  <img src={image.dataUrl} alt={image.name} />
+                  <button 
+                    onClick={() => removeImage(image.id)}
+                    className="remove-image-btn"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
           <div className="textarea-wrapper">
             <textarea
               ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about your roofing project..."
+              onPaste={handlePaste}
+              placeholder="Ask about roofing or paste an image (Ctrl+V)..."
               disabled={isTyping}
               rows={1}
               className="chat-textarea"
