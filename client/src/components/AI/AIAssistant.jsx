@@ -218,6 +218,32 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const handleSendMessage = async (message = inputValue) => {
     if (!message.trim() && pastedImages.length === 0) return;
 
+    // Check if project details are complete
+    const isProjectComplete = proposalData.clientName && 
+                             proposalData.propertyAddress && 
+                             proposalData.projectType && 
+                             proposalData.materialType;
+
+    if (!isProjectComplete) {
+      const incompleteMessage = {
+        id: Date.now(),
+        type: 'assistant',
+        content: "👋 Hi! I'd love to help, but I need some basic project information first.\n\nPlease complete the **Project Details** tab (it should show a red indicator) with:\n• Client name and property address\n• Project type (replacement, repair, etc.)\n• Material type preference\n\nOnce that's filled out, I'll have all the context I need to provide accurate estimates and recommendations! 🎯",
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, {
+        id: Date.now() - 1,
+        type: 'user',
+        content: message,
+        timestamp: new Date()
+      }, incompleteMessage]);
+      
+      setInputValue('');
+      setPastedImages([]);
+      return;
+    }
+
     const userMessage = {
       id: Date.now(),
       type: 'user',
@@ -459,6 +485,23 @@ ${expertContext}`;
     // Extract materials and costs
     const materials = [];
     
+    // Look for shingles/roofing materials
+    const shinglesMatch = response.match(/Shingles?.*?(\d+(?:\.\d+)?)\s*squares?.*?@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (shinglesMatch) {
+      const quantity = parseFloat(shinglesMatch[1]);
+      const unitPrice = parseFloat(shinglesMatch[2].replace(/,/g, ''));
+      const totalPrice = parseFloat(shinglesMatch[3].replace(/,/g, ''));
+      
+      materials.push({
+        id: Date.now() + Math.random(),
+        name: 'Premium Impact-Resistant Shingles',
+        quantity: quantity,
+        unit: 'squares',
+        unitPrice: unitPrice,
+        totalPrice: totalPrice
+      });
+    }
+    
     // Look for standing seam metal specifically
     const standingSeamMatch = response.match(/Standing Seam Metal.*?(\d+(?:\.\d+)?)\s*squares?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (standingSeamMatch) {
@@ -511,7 +554,7 @@ ${expertContext}`;
     }
     
     // Look for tear-off costs (labor)
-    const tearOffMatch = response.match(/Tear-off.*?(\d+(?:\.\d+)?)\s*squares?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    const tearOffMatch = response.match(/Tear-off.*?(\d+(?:\.\d+)?)\s*squares?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
     if (tearOffMatch) {
       const quantity = parseFloat(tearOffMatch[1]);
       const unitPrice = parseFloat(tearOffMatch[2].replace(/,/g, ''));
@@ -527,14 +570,49 @@ ${expertContext}`;
       });
     }
     
+    // Look for installation labor
+    const installMatch = response.match(/Installation.*?(\d+(?:\.\d+)?)\s*squares?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (installMatch) {
+      const quantity = parseFloat(installMatch[1]);
+      const unitPrice = parseFloat(installMatch[2].replace(/,/g, ''));
+      const totalPrice = parseFloat(installMatch[3].replace(/,/g, ''));
+      
+      materials.push({
+        id: Date.now() + Math.random() + 4,
+        name: 'Installation Labor',
+        quantity: quantity,
+        unit: 'squares',
+        unitPrice: unitPrice,
+        totalPrice: totalPrice
+      });
+    }
+    
+    // Look for synthetic underlayment
+    const underlaymentMatch = response.match(/(?:Synthetic )?Underlayment.*?(\d+(?:\.\d+)?)\s*(?:rolls?|squares?)?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+    if (underlaymentMatch) {
+      const quantity = parseFloat(underlaymentMatch[1]);
+      const unitPrice = parseFloat(underlaymentMatch[2].replace(/,/g, ''));
+      const totalPrice = parseFloat(underlaymentMatch[3].replace(/,/g, ''));
+      
+      materials.push({
+        id: Date.now() + Math.random() + 5,
+        name: 'Synthetic Underlayment',
+        quantity: quantity,
+        unit: 'rolls',
+        unitPrice: unitPrice,
+        totalPrice: totalPrice
+      });
+    }
+    
     if (materials.length > 0) {
       updates.materials = materials;
     }
     
-    // Extract total cost
-    const totalMatch = response.match(/Total.*?\$?([\d,]+(?:\.\d{2})?)/i);
+    // Extract total cost - multiple patterns
+    const totalMatch = response.match(/TOTAL ESTIMATE.*?\$?([\d,]+(?:\.\d{2})?)|Total.*?\$?([\d,]+(?:\.\d{2})?)|TOTAL.*?\$?([\d,]+(?:\.\d{2})?)/i);
     if (totalMatch) {
-      updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
+      const total = totalMatch[1] || totalMatch[2] || totalMatch[3];
+      updates.totalAmount = parseFloat(total.replace(/,/g, ''));
     }
     
     // Extract timeline

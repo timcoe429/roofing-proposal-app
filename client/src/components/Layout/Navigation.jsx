@@ -5,8 +5,9 @@ import './Navigation.css';
 const tabs = [
   {
     id: 'client',
-    label: 'Client Info',
-    icon: User
+    label: 'Project Details',
+    icon: User,
+    required: true
   },
   {
     id: 'preview',
@@ -19,7 +20,10 @@ export default function Navigation({ activeTab, setActiveTab, proposalData }) {
   const isTabComplete = (tabId) => {
     switch (tabId) {
       case 'client':
-        return proposalData.clientName && proposalData.propertyAddress;
+        return proposalData.clientName && 
+               proposalData.propertyAddress && 
+               proposalData.projectType && 
+               proposalData.materialType;
       case 'preview':
         return true; // Always available
       default:
@@ -34,20 +38,27 @@ export default function Navigation({ activeTab, setActiveTab, proposalData }) {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           const isComplete = isTabComplete(tab.id);
+          const isRequired = tab.required;
           
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`nav-tab ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''}`}
+              className={`nav-tab ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''} ${isRequired && !isComplete ? 'required' : ''}`}
             >
               <div className="tab-icon-wrapper">
                 <Icon size={20} className="tab-icon" />
                 {isComplete && (
                   <CheckCircle size={12} className="complete-indicator" />
                 )}
+                {isRequired && !isComplete && (
+                  <div className="required-indicator">!</div>
+                )}
               </div>
               <span className="tab-label">{tab.label}</span>
+              {isRequired && !isComplete && (
+                <span className="required-badge">Required</span>
+              )}
             </button>
           );
         })}

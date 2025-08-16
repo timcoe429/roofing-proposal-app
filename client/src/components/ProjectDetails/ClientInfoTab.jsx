@@ -1,21 +1,50 @@
-import React from 'react';
-import { User, Mail, Phone, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Mail, Phone, MapPin, Save, Check } from 'lucide-react';
 import './ClientInfoTab.css';
 
 const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+
   const handleFieldChange = (field, value) => {
+    setHasUnsavedChanges(true);
     onUpdateProposal(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
+  const handleSave = () => {
+    // This would trigger a save in the parent component
+    setHasUnsavedChanges(false);
+    setLastSaved(new Date());
+  };
+
   return (
     <div className="client-info-tab">
       <div className="tab-header">
-        <User size={24} />
-        <h2>Client Information</h2>
-        <p>Enter client contact details for the proposal</p>
+        <div className="header-left">
+          <User size={24} />
+          <div>
+            <h2>Project Details</h2>
+            <p>Complete all project information before using AI assistant</p>
+          </div>
+        </div>
+        
+        <div className="header-right">
+          {hasUnsavedChanges && (
+            <span className="unsaved-indicator">
+              <Save size={16} />
+              Unsaved changes
+            </span>
+          )}
+          {lastSaved && !hasUnsavedChanges && (
+            <span className="saved-indicator">
+              <Check size={16} />
+              Saved {lastSaved.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="client-form">
@@ -147,7 +176,123 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
         </div>
 
         <div className="form-section">
-          <h3>Project Details</h3>
+          <h3>Project Scope</h3>
+          
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="projectType">
+                Project Type *
+              </label>
+              <select
+                id="projectType"
+                value={proposalData.projectType || ''}
+                onChange={(e) => handleFieldChange('projectType', e.target.value)}
+                required
+              >
+                <option value="">Select project type</option>
+                <option value="replacement">Full Roof Replacement</option>
+                <option value="repair">Roof Repair</option>
+                <option value="inspection">Inspection/Assessment</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="new_construction">New Construction</option>
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="materialType">
+                Material Type *
+              </label>
+              <select
+                id="materialType"
+                value={proposalData.materialType || ''}
+                onChange={(e) => handleFieldChange('materialType', e.target.value)}
+                required
+              >
+                <option value="">Select material</option>
+                <option value="asphalt_shingles">Asphalt Shingles</option>
+                <option value="metal_roofing">Metal Roofing</option>
+                <option value="tile_roofing">Tile Roofing</option>
+                <option value="slate">Slate</option>
+                <option value="flat_roof">Flat Roof Systems</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label htmlFor="roofSize">
+                Approximate Roof Size
+              </label>
+              <input
+                id="roofSize"
+                type="text"
+                value={proposalData.roofSize || ''}
+                onChange={(e) => handleFieldChange('roofSize', e.target.value)}
+                placeholder="e.g., 2,500 sq ft, 25 squares, or 'Not sure'"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h3>Special Requirements</h3>
+          
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label htmlFor="specialRequirements">
+                Special Requirements & Notes
+              </label>
+              <textarea
+                id="specialRequirements"
+                value={proposalData.specialRequirements || ''}
+                onChange={(e) => handleFieldChange('specialRequirements', e.target.value)}
+                placeholder="Any special requirements, damage areas, access issues, material preferences, etc."
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="urgency">
+                Timeline/Urgency
+              </label>
+              <select
+                id="urgency"
+                value={proposalData.urgency || ''}
+                onChange={(e) => handleFieldChange('urgency', e.target.value)}
+              >
+                <option value="">Select timeline</option>
+                <option value="emergency">Emergency (ASAP)</option>
+                <option value="urgent">Urgent (1-2 weeks)</option>
+                <option value="normal">Normal (1-2 months)</option>
+                <option value="flexible">Flexible timing</option>
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="budget">
+                Budget Range (Optional)
+              </label>
+              <select
+                id="budget"
+                value={proposalData.budget || ''}
+                onChange={(e) => handleFieldChange('budget', e.target.value)}
+              >
+                <option value="">Select budget range</option>
+                <option value="under_10k">Under $10,000</option>
+                <option value="10k_25k">$10,000 - $25,000</option>
+                <option value="25k_50k">$25,000 - $50,000</option>
+                <option value="50k_plus">$50,000+</option>
+                <option value="get_estimate">Need estimate</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h3>Project Timeline</h3>
           
           <div className="form-row">
             <div className="form-group">
@@ -159,7 +304,7 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
                 type="text"
                 value={proposalData.timeline || ''}
                 onChange={(e) => handleFieldChange('timeline', e.target.value)}
-                placeholder="e.g., 2-3 days, weather permitting"
+                placeholder="2-3 days, weather permitting"
               />
             </div>
             
@@ -172,7 +317,7 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
                 type="text"
                 value={proposalData.warranty || ''}
                 onChange={(e) => handleFieldChange('warranty', e.target.value)}
-                placeholder="e.g., 50-Year Manufacturer, 10-Year Workmanship"
+                placeholder="50-Year Manufacturer, 10-Year Workmanship"
               />
             </div>
           </div>

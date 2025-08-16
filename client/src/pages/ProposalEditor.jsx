@@ -48,8 +48,8 @@ const ProposalEditor = () => {
     laborRate: 75,
     addOns: [],
     damageAreas: [],
-    timeline: '2-3 days, weather permitting',
-    warranty: '50-Year Manufacturer Warranty, 10-Year Workmanship',
+    timeline: '',
+    warranty: '',
     notes: '',
     uploadedFiles: []
   });
