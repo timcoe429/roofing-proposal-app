@@ -196,34 +196,6 @@ export default function ProposalPreview({ proposalData, companyData }) {
             </p>
             
             <div className="legal-details">
-              <h4>Payment Terms</h4>
-              <ul>
-                <li>50% deposit required to begin work</li>
-                <li>Remaining balance due upon completion</li>
-                <li>Payment accepted via check, cash, or credit card</li>
-              </ul>
-              
-              <h4>Work Guarantee</h4>
-              <ul>
-                <li>All work guaranteed against defects in workmanship</li>
-                <li>Materials covered by manufacturer warranty</li>
-                <li>Free repairs for workmanship issues within warranty period</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div className="signature-section">
-          <div className="signature-block">
-            <div className="signature-line">
-              <span>Client Signature</span>
-              <div className="line"></div>
-              <span>Date</span>
-            </div>
-            <div className="signature-line">
-              <span>Contractor Signature</span>
-              <div className="line"></div>
-              <span>Date</span>
             </div>
           </div>
         </div>

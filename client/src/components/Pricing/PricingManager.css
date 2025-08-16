@@ -615,3 +615,26 @@
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
+
+/* Company Pricing Specific Styles */
+.pricing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pricing-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.pricing-header p {
+  margin: 0;
+  color: #718096;
+  font-size: 16px;
+}
