@@ -231,6 +231,16 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     setPastedImages([]);
     setIsTyping(true);
 
+    // Extract data from user message too
+    const userDataUpdates = extractProposalData(message);
+    if (Object.keys(userDataUpdates).length > 0) {
+      console.log('Extracting data from user message:', userDataUpdates);
+      onUpdateProposal(prev => ({
+        ...prev,
+        ...userDataUpdates
+      }));
+    }
+
     try {
       // Get conversation history for context
       const conversationHistory = messages
@@ -292,13 +302,12 @@ You are an expert roofing contractor and estimator. Use the pricing data above t
 
 Be conversational, ask clarifying questions, and explain your recommendations.
 
-IMPORTANT: If you provide an estimate or quote, always ask for missing client information:
-- Client name
-- Client phone number  
-- Client email
-- Property address (if different from client address)
-
-Format estimates clearly with line items and totals. Include labor breakdown and material specifications.`;
+IMPORTANT: 
+- Extract and populate proposal data automatically from conversations
+- Be concise and direct - avoid asking too many questions
+- When you have enough info, provide estimates immediately
+- Format estimates clearly with line items and totals
+- Include labor breakdown and material specifications`;
 
       let response;
       
@@ -412,20 +421,20 @@ ${expertContext}`;
       updates.propertyAddress = addressMatch[1].trim();
     }
     
-    // Extract client name
-    const nameMatch = response.match(/(?:Client|Customer|Name):\s*([A-Za-z\s]+)/i);
+    // Extract client name - more flexible patterns
+    const nameMatch = response.match(/(?:Client|Customer|Name):\s*([A-Za-z\s]+)|Client:\s*([A-Za-z\s]+)|Customer:\s*([A-Za-z\s]+)/i);
     if (nameMatch) {
-      updates.clientName = nameMatch[1].trim();
+      updates.clientName = (nameMatch[1] || nameMatch[2] || nameMatch[3]).trim();
     }
     
-    // Extract phone number
-    const phoneMatch = response.match(/(?:Phone|Tel|Call):\s*([\d\-\(\)\s]+)/i);
+    // Extract phone number - more flexible patterns
+    const phoneMatch = response.match(/(?:Phone|Tel|Call).*?(\(\d{3}\)\s*\d{3}-\d{4}|\d{3}[-.\s]?\d{3}[-.\s]?\d{4})/i);
     if (phoneMatch) {
       updates.clientPhone = phoneMatch[1].trim();
     }
     
-    // Extract email
-    const emailMatch = response.match(/(?:Email):\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    // Extract email - more flexible patterns
+    const emailMatch = response.match(/(?:Email|E-mail).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
     if (emailMatch) {
       updates.clientEmail = emailMatch[1].trim();
     }

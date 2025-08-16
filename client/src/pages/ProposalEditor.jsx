@@ -10,6 +10,7 @@ import Navigation from '../components/Layout/Navigation';
 import AIAssistant from '../components/AI/AIAssistant';
 // PricingManager moved to Dashboard
 import ProposalPreview from '../components/Preview/ProposalPreview';
+import ClientInfoTab from '../components/ProjectDetails/ClientInfoTab';
 
 // Services
 import api from '../services/api';
@@ -22,7 +23,7 @@ const ProposalEditor = () => {
   const navigate = useNavigate();
   const isNewProposal = !id;
   
-  const [activeTab, setActiveTab] = useState('preview');
+  const [activeTab, setActiveTab] = useState('client');
   const [proposalData, setProposalData] = useState({
     clientName: '',
     clientEmail: '',
@@ -132,16 +133,17 @@ const ProposalEditor = () => {
     }
   }, [saveMutation, proposalData]);
 
-  // Auto-save draft
+  // Auto-save draft (disabled for now to prevent errors)
   useEffect(() => {
     const autoSaveTimer = setTimeout(() => {
-      if (proposalData.clientName) {
+      // Only auto-save if we have complete client info and it's not a new proposal
+      if (proposalData.clientName && proposalData.clientEmail && !isNewProposal) {
         handleSave(true);
       }
-    }, 30000); // Auto-save every 30 seconds
+    }, 60000); // Auto-save every 60 seconds (reduced frequency)
 
     return () => clearTimeout(autoSaveTimer);
-  }, [proposalData, handleSave]);
+  }, [proposalData, handleSave, isNewProposal]);
 
   const handleGeneratePdf = async () => {
     if (!proposalData.clientName) {
@@ -205,12 +207,21 @@ const ProposalEditor = () => {
             />
           </div>
           
-                          <div className="content-body">
-                  <ProposalPreview
-                    proposalData={proposalData}
-                    companyData={companyData}
-                  />
-                </div>
+          <div className="content-body">
+            {activeTab === 'preview' && (
+              <ProposalPreview
+                proposalData={proposalData}
+                companyData={companyData}
+              />
+            )}
+            
+            {activeTab === 'client' && (
+              <ClientInfoTab
+                proposalData={proposalData}
+                onUpdateProposal={setProposalData}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
