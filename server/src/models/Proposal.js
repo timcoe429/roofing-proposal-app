@@ -67,6 +67,40 @@ const Proposal = sequelize.define('Proposal', {
     field: 'property_type'
   },
   
+  // Additional fields from ClientInfoTab
+  propertyCity: {
+    type: DataTypes.STRING,
+    field: 'property_city'
+  },
+  propertyState: {
+    type: DataTypes.STRING,
+    field: 'property_state'
+  },
+  propertyZip: {
+    type: DataTypes.STRING,
+    field: 'property_zip'
+  },
+  projectType: {
+    type: DataTypes.STRING,
+    field: 'project_type'
+  },
+  materialType: {
+    type: DataTypes.STRING,
+    field: 'material_type'
+  },
+  specialRequirements: {
+    type: DataTypes.TEXT,
+    field: 'special_requirements'
+  },
+  urgency: {
+    type: DataTypes.STRING,
+    field: 'urgency'
+  },
+  roofSize: {
+    type: DataTypes.STRING,
+    field: 'roof_size'
+  },
+  
   // Measurements
   measurements: {
     type: DataTypes.JSONB,

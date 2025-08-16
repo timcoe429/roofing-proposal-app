@@ -33,6 +33,11 @@ const ProposalEditor = () => {
     propertyCity: '',
     propertyState: '',
     propertyZip: '',
+    projectType: '',
+    materialType: '',
+    roofSize: '',
+    specialRequirements: '',
+    urgency: 'standard',
     measurements: {
       totalSquares: 0,
       ridgeLength: 0,
@@ -219,6 +224,7 @@ const ProposalEditor = () => {
               <ClientInfoTab
                 proposalData={proposalData}
                 onUpdateProposal={setProposalData}
+                onSave={handleSave}
               />
             )}
           </div>

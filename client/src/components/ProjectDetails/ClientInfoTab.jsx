@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User, Mail, Phone, MapPin, Save, Check } from 'lucide-react';
 import './ClientInfoTab.css';
 
-const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
+const ClientInfoTab = ({ proposalData, onUpdateProposal, onSave }) => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
 
@@ -14,10 +14,12 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
     }));
   };
 
-  const handleSave = () => {
-    // This would trigger a save in the parent component
-    setHasUnsavedChanges(false);
-    setLastSaved(new Date());
+  const handleSave = async () => {
+    if (onSave) {
+      await onSave();
+      setHasUnsavedChanges(false);
+      setLastSaved(new Date());
+    }
   };
 
   return (
