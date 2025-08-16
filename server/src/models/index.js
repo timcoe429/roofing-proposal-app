@@ -1,5 +1,5 @@
-import { User } from './User.js';
-import { Company } from './Company.js';
+import User from './User.js';
+import Company from './Company.js';
 
 // Define associations
 User.hasOne(Company, { foreignKey: 'userId' });
