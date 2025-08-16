@@ -3,15 +3,16 @@ import sequelize from '../config/database.js';
 
 const Company = sequelize.define('Company', {
   id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  userId: {
-    type: DataTypes.INTEGER,
+  ownerId: {
+    type: DataTypes.UUID,
     allowNull: false,
+    field: 'owner_id',
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   },

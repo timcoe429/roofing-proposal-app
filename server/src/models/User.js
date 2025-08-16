@@ -3,8 +3,8 @@ import sequelize from '../config/database.js';
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
   email: {
@@ -15,25 +15,35 @@ const User = sequelize.define('User', {
       isEmail: true
     }
   },
-  password: {
+  passwordHash: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    field: 'password_hash'
   },
   firstName: {
     type: DataTypes.STRING,
-    allowNull: false
+    field: 'first_name'
   },
   lastName: {
     type: DataTypes.STRING,
-    allowNull: false
+    field: 'last_name'
+  },
+  phone: {
+    type: DataTypes.STRING
   },
   role: {
-    type: DataTypes.ENUM('contractor', 'admin'),
-    defaultValue: 'contractor'
+    type: DataTypes.STRING,
+    defaultValue: 'user'
   },
   isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'is_active'
+  },
+  emailVerified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'email_verified'
   }
 }, {
   tableName: 'users',
