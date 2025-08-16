@@ -43,6 +43,54 @@ export const createTables = async () => {
     `);
     
     console.log('Companies table created successfully');
+    
+    // Create proposals table
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS proposals (
+        id SERIAL PRIMARY KEY,
+        "companyId" INTEGER REFERENCES companies(id),
+        "userId" INTEGER REFERENCES users(id),
+        status VARCHAR(50) DEFAULT 'draft',
+        "proposalNumber" VARCHAR(255) UNIQUE,
+        "clientName" VARCHAR(255) NOT NULL,
+        "clientEmail" VARCHAR(255),
+        "clientPhone" VARCHAR(255),
+        "clientAddress" TEXT,
+        "propertyAddress" TEXT,
+        "propertyCity" VARCHAR(255),
+        "propertyState" VARCHAR(50),
+        "propertyZip" VARCHAR(20),
+        "projectType" VARCHAR(255),
+        "materialType" VARCHAR(255),
+        "roofSize" VARCHAR(255),
+        "specialRequirements" TEXT,
+        urgency VARCHAR(50),
+        measurements JSONB DEFAULT '{}',
+        materials JSONB DEFAULT '[]',
+        "laborHours" DECIMAL(10,2) DEFAULT 0,
+        "laborRate" DECIMAL(10,2) DEFAULT 75,
+        "materialsCost" DECIMAL(10,2) DEFAULT 0,
+        "laborCost" DECIMAL(10,2) DEFAULT 0,
+        "overheadPercent" DECIMAL(5,2) DEFAULT 15,
+        "profitPercent" DECIMAL(5,2) DEFAULT 20,
+        "totalAmount" DECIMAL(10,2) DEFAULT 0,
+        "addOns" JSONB DEFAULT '[]',
+        "damageAreas" JSONB DEFAULT '[]',
+        timeline VARCHAR(255),
+        warranty VARCHAR(255),
+        notes TEXT,
+        "uploadedFiles" JSONB DEFAULT '[]',
+        "generatedPdfUrl" VARCHAR(255),
+        "validUntil" TIMESTAMP,
+        "sentAt" TIMESTAMP,
+        "viewedAt" TIMESTAMP,
+        "respondedAt" TIMESTAMP,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    
+    console.log('Proposals table created successfully');
     console.log('All database tables created successfully!');
     
   } catch (error) {

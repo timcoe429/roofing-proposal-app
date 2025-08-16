@@ -1,6 +1,6 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
-// import { createTables } from '../utils/createTables.js';
+import { createTables } from '../utils/createTables.js';
 
 dotenv.config();
 
@@ -62,9 +62,9 @@ export const setupDatabase = async () => {
     await sequelize.authenticate();
     console.log('INFO: Database connection established successfully.');
     
-    // Tables will be created by migrations
-    // await createTables();
-    // console.log('INFO: Database tables created successfully.');
+    // Create tables using raw SQL (more reliable than Sequelize sync)
+    await createTables();
+    console.log('INFO: Database tables created successfully.');
     
     return sequelize;
   } catch (error) {

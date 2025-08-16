@@ -19,7 +19,7 @@ import testRoutes from './routes/testRoutes.js';
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { setupDatabase } from './config/database.js';
-import { runMigrations } from './utils/runMigrations.js';
+// import { runMigrations } from './utils/runMigrations.js';
 // import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,9 +92,9 @@ const startServer = async () => {
     await setupDatabase();
     console.log('INFO: Database connected successfully');
     
-    // Run migrations
-    await runMigrations();
-    console.log('INFO: Database migrations completed');
+    // TODO: Run migrations
+    // await runMigrations();
+    // console.log('INFO: Database migrations completed');
     
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`INFO: Server running on port ${PORT}`);

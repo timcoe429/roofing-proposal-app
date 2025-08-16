@@ -59,15 +59,12 @@ export const runMigrations = async () => {
         const filePath = path.join(migrationsDir, file);
         const sql = await fs.readFile(filePath, 'utf8');
         
-        // Execute migration in a transaction
-        const transaction = await sequelize.transaction();
+        // Execute migration
         try {
-          await sequelize.query(sql, { transaction });
+          await sequelize.query(sql);
           await recordMigration(file);
-          await transaction.commit();
           logger.info(`✓ Migration ${file} completed`);
         } catch (error) {
-          await transaction.rollback();
           logger.error(`✗ Migration ${file} failed:`, error);
           throw error;
         }

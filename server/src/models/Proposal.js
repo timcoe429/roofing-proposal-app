@@ -3,25 +3,25 @@ import sequelize from '../config/database.js';
 
 const Proposal = sequelize.define('Proposal', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
   },
   companyId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
     field: 'company_id',
     references: {
-      model: 'companies',
+      model: 'Companies',
       key: 'id'
     }
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
     field: 'user_id',
     references: {
-      model: 'users',
+      model: 'Users',
       key: 'id'
     }
   },
@@ -69,36 +69,28 @@ const Proposal = sequelize.define('Proposal', {
   
   // Additional fields from ClientInfoTab
   propertyCity: {
-    type: DataTypes.STRING,
-    field: 'property_city'
+    type: DataTypes.STRING
   },
   propertyState: {
-    type: DataTypes.STRING,
-    field: 'property_state'
+    type: DataTypes.STRING
   },
   propertyZip: {
-    type: DataTypes.STRING,
-    field: 'property_zip'
+    type: DataTypes.STRING
   },
   projectType: {
-    type: DataTypes.STRING,
-    field: 'project_type'
+    type: DataTypes.STRING
   },
   materialType: {
-    type: DataTypes.STRING,
-    field: 'material_type'
+    type: DataTypes.STRING
   },
   specialRequirements: {
-    type: DataTypes.TEXT,
-    field: 'special_requirements'
+    type: DataTypes.TEXT
   },
   urgency: {
-    type: DataTypes.STRING,
-    field: 'urgency'
+    type: DataTypes.STRING
   },
   roofSize: {
-    type: DataTypes.STRING,
-    field: 'roof_size'
+    type: DataTypes.STRING
   },
   
   // Measurements
