@@ -33,10 +33,15 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal }) => {
         
         <div className="header-right">
           {hasUnsavedChanges && (
-            <span className="unsaved-indicator">
-              <Save size={16} />
-              Unsaved changes
-            </span>
+            <>
+              <span className="unsaved-indicator">
+                <Save size={16} />
+                Unsaved changes
+              </span>
+              <button onClick={handleSave} className="save-button">
+                Save Changes
+              </button>
+            </>
           )}
           {lastSaved && !hasUnsavedChanges && (
             <span className="saved-indicator">
