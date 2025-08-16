@@ -16,23 +16,30 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
+  padding: 20px 32px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px 12px 0 0;
   cursor: pointer;
-  transition: all 0.2s;
-  min-width: 140px;
+  transition: all 0.3s ease;
+  min-width: 180px;
   text-align: left;
+  position: relative;
+  margin-right: 8px;
 }
 
 .nav-tab:hover {
-  background: #f7fafc;
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .nav-tab.active {
-  border-bottom-color: #2563eb;
-  background: #f7fafc;
+  background: white;
+  border-color: #2563eb;
+  border-bottom: 2px solid white;
+  transform: translateY(2px);
+  z-index: 10;
 }
 
 .nav-tab.complete .tab-icon {
@@ -104,19 +111,23 @@
 }
 
 .nav-tab.required {
-  border-left: 3px solid #ef4444;
+  background: #fef2f2;
+  border-color: #fca5a5;
 }
 
 .nav-tab.complete {
-  border-left: 3px solid #10b981;
+  background: #f0fdf4;
+  border-color: #86efac;
 }
 
 .nav-tab.required:hover {
-  border-left-color: #dc2626;
+  background: #fee2e2;
+  border-color: #f87171;
 }
 
 .nav-tab.complete:hover {
-  border-left-color: #059669;
+  background: #ecfdf5;
+  border-color: #4ade80;
 }
 
 .tab-label {

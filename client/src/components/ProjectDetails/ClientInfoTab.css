@@ -1,19 +1,16 @@
 .client-info-tab {
-  padding: 0;
-  max-width: 1000px;
+  padding: 24px;
+  max-width: 800px;
   margin: 0 auto;
-  background: #f8fafc;
-  min-height: 100vh;
 }
 
 .tab-header {
-  background: white;
-  padding: 32px 40px;
-  border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .header-left {
@@ -61,10 +58,9 @@
 }
 
 .client-form {
-  padding: 40px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
 .form-section {
