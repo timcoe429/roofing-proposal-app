@@ -27,15 +27,26 @@ export const getProposal = async (req, res) => {
     // if (req.user?.id) where.userId = req.user.id;
     
     console.log('Looking for proposal with where clause:', where);
+    
+    console.log('=== EXECUTING DATABASE QUERY ===');
     const proposal = await Proposal.findOne({ where });
+    console.log('=== QUERY COMPLETED ===');
+    
+    console.log('Raw proposal result:', proposal);
+    console.log('Proposal type:', typeof proposal);
+    console.log('Proposal keys:', proposal ? Object.keys(proposal.dataValues || proposal) : 'null');
     
     if (!proposal) {
-      console.log('Proposal not found');
+      console.log('❌ Proposal not found in database');
       return res.status(404).json({ error: 'Proposal not found' });
     }
     
-    console.log('Found proposal:', proposal.id, proposal.clientName);
+    console.log('✅ Found proposal:', proposal.id, proposal.clientName);
+    console.log('Full proposal data:', JSON.stringify(proposal.dataValues || proposal, null, 2));
+    
+    console.log('=== SENDING RESPONSE ===');
     res.json(proposal);
+    console.log('=== RESPONSE SENT ===');
   } catch (error) {
     console.error('Error getting proposal - Full error:', error);
     console.error('Error name:', error.name);

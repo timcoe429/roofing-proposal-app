@@ -92,9 +92,22 @@ const ProposalEditor = () => {
 
   // Update proposal data when API data is loaded
   useEffect(() => {
+    console.log('=== FRONTEND useEffect TRIGGERED ===');
+    console.log('proposalFromApi:', proposalFromApi);
+    console.log('isNewProposal:', isNewProposal);
+    console.log('proposalFromApi type:', typeof proposalFromApi);
+    console.log('proposalFromApi keys:', proposalFromApi ? Object.keys(proposalFromApi) : 'null');
+    
     if (proposalFromApi && !isNewProposal) {
-      console.log('Setting proposal data from API:', proposalFromApi);
+      console.log('✅ Setting proposal data from API');
+      console.log('API data clientName:', proposalFromApi.clientName);
+      console.log('Full API data:', JSON.stringify(proposalFromApi, null, 2));
       setProposalData(proposalFromApi);
+      console.log('✅ setProposalData called');
+    } else {
+      console.log('❌ NOT setting proposal data');
+      console.log('Reason: proposalFromApi exists?', !!proposalFromApi);
+      console.log('Reason: is NOT new proposal?', !isNewProposal);
     }
   }, [proposalFromApi, isNewProposal]);
 
