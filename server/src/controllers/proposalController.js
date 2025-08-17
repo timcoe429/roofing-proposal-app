@@ -5,9 +5,8 @@ import User from '../models/User.js';
 // Get all proposals for a user
 export const getProposals = async (req, res) => {
   try {
-    const where = req.user?.id ? { userId: req.user.id } : {};
+    // For development - show all proposals regardless of user
     const proposals = await Proposal.findAll({
-      where,
       order: [['createdAt', 'DESC']]
     });
     res.json(proposals);

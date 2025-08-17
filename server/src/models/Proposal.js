@@ -103,33 +103,40 @@ const Proposal = sequelize.define('Proposal', {
   // Labor
   laborHours: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0
+    defaultValue: 0,
+    allowNull: true
   },
   laborRate: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 75
+    defaultValue: 75,
+    allowNull: true
   },
   
   // Pricing
   materialsCost: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0
+    defaultValue: 0,
+    allowNull: true
   },
   laborCost: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0
+    defaultValue: 0,
+    allowNull: true
   },
   overheadPercent: {
     type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 15
+    defaultValue: 15,
+    allowNull: true
   },
   profitPercent: {
     type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 20
+    defaultValue: 20,
+    allowNull: true
   },
   totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0
+    defaultValue: 0,
+    allowNull: true
   },
   
   // Add-ons
