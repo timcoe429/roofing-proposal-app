@@ -515,6 +515,7 @@
 .proposal-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .view-btn {
@@ -535,6 +536,32 @@
 .view-btn:hover {
   background: #1d4ed8;
   transform: translateY(-1px);
+}
+
+.delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 @media (max-width: 768px) {

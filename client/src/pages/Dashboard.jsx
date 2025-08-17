@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, FileText, Users, TrendingUp, LogOut, Settings, TestTube, DollarSign, Calendar, Eye } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, FileText, Users, TrendingUp, LogOut, Settings, TestTube, DollarSign, Calendar, Eye, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CompanySettings from '../components/Branding/CompanySettings';
 import ApiTester from '../components/Test/ApiTester';
@@ -11,6 +11,7 @@ import './Dashboard.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [showSettings, setShowSettings] = useState(false);
   const [showApiTester, setShowApiTester] = useState(false);
@@ -21,6 +22,19 @@ export default function Dashboard() {
     queryKey: ['proposals'],
     queryFn: api.getProposals,
     refetchOnWindowFocus: false,
+  });
+
+  // Delete proposal mutation
+  const deleteMutation = useMutation({
+    mutationFn: api.deleteProposal,
+    onSuccess: () => {
+      toast.success('Proposal deleted successfully!');
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+    },
+    onError: (error) => {
+      toast.error('Failed to delete proposal');
+      console.error(error);
+    }
   });
 
   // Calculate stats from proposals
@@ -78,6 +92,12 @@ export default function Dashboard() {
 
   const handleViewProposal = (proposalId) => {
     navigate(`/proposal/${proposalId}`);
+  };
+
+  const handleDeleteProposal = (proposalId, clientName) => {
+    if (window.confirm(`Are you sure you want to delete the proposal for "${clientName}"? This action cannot be undone.`)) {
+      deleteMutation.mutate(proposalId);
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -215,6 +235,14 @@ export default function Dashboard() {
                         >
                           <Eye size={16} />
                           View
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProposal(proposal.id, proposal.clientName || 'Unnamed Client')}
+                          className="delete-btn"
+                          disabled={deleteMutation.isLoading}
+                        >
+                          <Trash2 size={16} />
+                          {deleteMutation.isLoading ? 'Deleting...' : 'Delete'}
                         </button>
                       </div>
                     </div>
