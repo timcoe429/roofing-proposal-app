@@ -483,127 +483,98 @@ ${expertContext}`;
       };
     }
     
-    // Extract materials and costs
+    // Parse structured sections from AI response
     const materials = [];
+    const laborItems = [];
+    const additionalCosts = [];
 
-    const toNumber = (val) => {
-      if (val === undefined || val === null) return 0;
-      if (typeof val === 'number') return val;
-      return parseFloat(String(val).replace(/[^0-9.]/g, '')) || 0;
+    const toNumber = (str) => {
+      if (!str) return 0;
+      return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
     };
 
-    const pushItem = (item) => {
-      const quantity = toNumber(item.quantity);
-      const unitPrice = toNumber(item.unitPrice);
-      let total = toNumber(item.total);
-      const computed = quantity * unitPrice;
-      // If total is missing or unrealistically low, compute it
-      if (!total || total < unitPrice || total < computed * 0.5) {
-        total = computed;
-      }
-      materials.push({
+    const createLineItem = (name, quantity, unit, unitPrice, total, category = 'material') => {
+      return {
         id: Date.now() + Math.random(),
-        name: item.name,
-        quantity,
-        unit: item.unit,
-        unitPrice,
-        totalPrice: total,
-        total
-      });
+        name: name.trim(),
+        quantity: toNumber(quantity),
+        unit: unit || '',
+        unitPrice: toNumber(unitPrice),
+        total: toNumber(total),
+        category
+      };
     };
     
-    // Look for shingles/roofing materials
-    const shinglesMatch = response.match(/Shingles?.*?(\d+(?:\.\d+)?)\s*squares?.*?@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
-    if (shinglesMatch) {
-      pushItem({
-        name: 'Premium Impact-Resistant Shingles',
-        quantity: shinglesMatch[1],
-        unit: 'squares',
-        unitPrice: shinglesMatch[2],
-        total: shinglesMatch[3]
-      });
+    // Extract MATERIALS & LABOR section
+    const materialsSection = response.match(/MATERIALS\s*&\s*LABOR([\s\S]*?)(?=ADDITIONAL\s*COSTS|TOTAL\s*PROJECT\s*COST|$)/i);
+    if (materialsSection) {
+      const sectionText = materialsSection[1];
+      
+      // Parse each line item with pattern: Description\nQuantity × $Price = $Total
+      const lineItemPattern = /^([^\n]+)\n([\d.]+)\s*([^×]*?)\s*×\s*\$([\d,]+(?:\.\d{2})?)\s*=\s*\$([\d,]+(?:\.\d{2})?)/gm;
+      let match;
+      
+      while ((match = lineItemPattern.exec(sectionText)) !== null) {
+        const [, name, quantity, unit, unitPrice, total] = match;
+        
+        // Determine if it's labor or material
+        if (name.toLowerCase().includes('labor') || name.toLowerCase().includes('installation')) {
+          laborItems.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'labor'));
+        } else {
+          materials.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'material'));
+        }
+      }
+      
+      // Also catch single-line items like "Labor: 31.5 squares × $150 = $4,725"
+      const singleLinePattern = /([^\n:]+):\s*([\d.]+)\s*([^×]*?)\s*×\s*\$([\d,]+(?:\.\d{2})?)\s*=\s*\$([\d,]+(?:\.\d{2})?)/g;
+      while ((match = singleLinePattern.exec(sectionText)) !== null) {
+        const [, name, quantity, unit, unitPrice, total] = match;
+        
+        if (name.toLowerCase().includes('labor') || name.toLowerCase().includes('installation')) {
+          laborItems.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'labor'));
+        } else {
+          materials.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'material'));
+        }
+      }
     }
     
-    // Look for standing seam metal specifically
-    const standingSeamMatch = response.match(/Standing Seam Metal.*?(\d+(?:\.\d+)?)\s*squares?\s*[×x]?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i)
-      || response.match(/Standing Seam Metal[^\n]*?\(?(\d+(?:\.\d+)?)\s*squares?\s*@\s*\$?([\d,]+(?:\.\d{2})?)(?:\/square)?\)?[^\n$]*?\$?([\d,]+(?:\.\d{2})?)/i)
-      || response.match(/24\s*Gauge\s*Steel\s*Standing\s*Seam[^\n]*?\(?(\d+(?:\.\d+)?)\s*squares?\s*@\s*\$?([\d,]+(?:\.\d{2})?)(?:\/square)?\)?[^\n$]*?\$?([\d,]+(?:\.\d{2})?)/i);
-    if (standingSeamMatch) {
-      pushItem({
-        name: '24 Gauge Steel Standing Seam',
-        quantity: standingSeamMatch[1],
-        unit: 'squares',
-        unitPrice: standingSeamMatch[2],
-        total: standingSeamMatch[3]
-      });
+    // Extract ADDITIONAL COSTS section
+    const additionalSection = response.match(/ADDITIONAL\s*COSTS([\s\S]*?)(?=TOTAL\s*PROJECT\s*COST|$)/i);
+    if (additionalSection) {
+      const sectionText = additionalSection[1];
+      
+      // Parse additional cost items
+      const additionalPattern = /([^\n:]+):\s*\$([\d,]+(?:\.\d{2})?)/g;
+      let match;
+      
+      while ((match = additionalPattern.exec(sectionText)) !== null) {
+        const [, name, cost] = match;
+        additionalCosts.push({
+          id: Date.now() + Math.random(),
+          name: name.trim(),
+          cost: toNumber(cost),
+          category: 'additional'
+        });
+      }
     }
     
-    // Look for ice & water shield
-    const iceWaterMatch = response.match(/Ice & Water Shield.*?(\d+(?:\.\d+)?)\s*(?:rolls?|squares?)?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
-    if (iceWaterMatch) {
-      pushItem({
-        name: 'Ice & Water Shield',
-        quantity: iceWaterMatch[1],
-        unit: 'rolls',
-        unitPrice: iceWaterMatch[2],
-        total: iceWaterMatch[3]
-      });
+    // Combine all items for the materials array (maintaining backward compatibility)
+    const allItems = [...materials, ...laborItems];
+    if (allItems.length > 0) {
+      updates.materials = allItems;
     }
     
-    // Look for snow rail system
-    const snowRailMatch = response.match(/Snow Rail System.*?(\d+(?:\.\d+)?)\s*(?:LF|linear feet?|feet?)?\s*×?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
-    if (snowRailMatch) {
-      pushItem({
-        name: 'Snow Rail System',
-        quantity: snowRailMatch[1],
-        unit: 'LF',
-        unitPrice: snowRailMatch[2],
-        total: snowRailMatch[3]
-      });
+    // Store structured data for new preview modes
+    if (materials.length > 0 || laborItems.length > 0 || additionalCosts.length > 0) {
+      updates.structuredPricing = {
+        materials,
+        labor: laborItems,
+        additionalCosts
+      };
     }
     
-    // Look for tear-off costs (labor)
-    const tearOffMatch = response.match(/Tear-off.*?(\d+(?:\.\d+)?)\s*squares?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
-    if (tearOffMatch) {
-      pushItem({
-        name: 'Tear-off Existing Roof',
-        quantity: tearOffMatch[1],
-        unit: 'squares',
-        unitPrice: tearOffMatch[2],
-        total: tearOffMatch[3]
-      });
-    }
-    
-    // Look for installation labor
-    const installMatch = response.match(/Installation.*?(\d+(?:\.\d+)?)\s*squares?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
-    if (installMatch) {
-      pushItem({
-        name: 'Installation Labor',
-        quantity: installMatch[1],
-        unit: 'squares',
-        unitPrice: installMatch[2],
-        total: installMatch[3]
-      });
-    }
-    
-    // Look for synthetic underlayment
-    const underlaymentMatch = response.match(/(?:Synthetic )?Underlayment.*?(\d+(?:\.\d+)?)\s*(?:rolls?|squares?)?\s*@?\s*\$?([\d,]+(?:\.\d{2})?)\s*=?\s*\$?([\d,]+(?:\.\d{2})?)/i);
-    if (underlaymentMatch) {
-      pushItem({
-        name: 'Synthetic Underlayment',
-        quantity: underlaymentMatch[1],
-        unit: 'rolls',
-        unitPrice: underlaymentMatch[2],
-        total: underlaymentMatch[3]
-      });
-    }
-    
-    if (materials.length > 0) {
-      updates.materials = materials;
-    }
-    
-    // Extract total cost - multiple patterns
-    const totalMatch = response.match(/TOTAL ESTIMATE.*?\$?([\d,]+(?:\.\d{2})?)|Total.*?\$?([\d,]+(?:\.\d{2})?)|TOTAL.*?\$?([\d,]+(?:\.\d{2})?)/i);
+    // Extract total cost - improved pattern for "TOTAL PROJECT COST"
+    const totalMatch = response.match(/TOTAL\s*(?:PROJECT)?\s*COST.*?\$([\d,]+(?:\.\d{2})?)|TOTAL\s*ESTIMATE.*?\$([\d,]+(?:\.\d{2})?)|Total.*?\$([\d,]+(?:\.\d{2})?)/i);
     if (totalMatch) {
       const total = totalMatch[1] || totalMatch[2] || totalMatch[3];
       updates.totalAmount = parseFloat(total.replace(/,/g, ''));

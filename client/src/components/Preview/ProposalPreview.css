@@ -28,7 +28,45 @@
 
 .preview-actions {
   display: flex;
+  align-items: center;
   gap: 12px;
+}
+
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-right: 8px;
+}
+
+.mode-toggle span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  transition: color 0.2s;
+}
+
+.mode-toggle span.active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: #2563eb;
+  transition: transform 0.2s;
+}
+
+.toggle-btn:hover {
+  transform: scale(1.1);
 }
 
 .preview-btn,
@@ -254,6 +292,85 @@
 .total-row td {
   color: #1a202c;
   font-size: 16px;
+}
+
+/* Detailed Mode Styles */
+.detailed-mode .pricing-subsection {
+  margin-bottom: 32px;
+}
+
+.detailed-mode .pricing-subsection h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detailed-mode .total-section {
+  margin-top: 32px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.detailed-mode .total-row {
+  font-size: 20px;
+  color: #1a202c;
+}
+
+/* Simple Mode Styles */
+.simple-mode {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.simple-mode h3 {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 32px;
+  color: #1a202c;
+}
+
+.simple-pricing {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.cost-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 16px;
+}
+
+.cost-line:last-child {
+  border-bottom: none;
+}
+
+.cost-line span:first-child {
+  color: #374151;
+}
+
+.cost-line span:last-child {
+  color: #1a202c;
+  font-weight: 500;
+}
+
+.cost-line.total-line {
+  margin-top: 16px;
+  padding-top: 24px;
+  border-top: 2px solid #2563eb;
+  font-size: 20px;
+}
+
+.cost-line.total-line span {
+  color: #1a202c;
 }
 
 .terms-content h4 {

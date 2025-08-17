@@ -1,13 +1,39 @@
-import React from 'react';
-import { FileText, Download, Send, Eye } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Download, Send, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
 import './ProposalPreview.css';
 
 export default function ProposalPreview({ proposalData, companyData }) {
+  const [isDetailedMode, setIsDetailedMode] = useState(true);
   const calculateTotal = () => {
+    // Use AI's calculated total if available, otherwise calculate from components
+    if (proposalData.totalAmount) {
+      return parseFloat(proposalData.totalAmount);
+    }
+    
     const materialsTotal = proposalData.materials?.reduce((sum, material) => sum + (material.total || 0), 0) || 0;
     const laborTotal = (proposalData.laborHours || 0) * (proposalData.laborRate || 0);
     const addOnsTotal = proposalData.addOns?.reduce((sum, addon) => sum + (addon.price || 0), 0) || 0;
-    return materialsTotal + laborTotal + addOnsTotal;
+    
+    // Add additional costs from structured pricing if available
+    const additionalTotal = proposalData.structuredPricing?.additionalCosts?.reduce((sum, cost) => sum + (cost.cost || 0), 0) || 0;
+    
+    return materialsTotal + laborTotal + addOnsTotal + additionalTotal;
+  };
+
+  const getStructuredPricing = () => {
+    if (proposalData.structuredPricing) {
+      return proposalData.structuredPricing;
+    }
+    
+    // Fallback: organize existing materials by category
+    const materials = proposalData.materials?.filter(item => item.category !== 'labor') || [];
+    const labor = proposalData.materials?.filter(item => item.category === 'labor') || [];
+    
+    return {
+      materials,
+      labor,
+      additionalCosts: []
+    };
   };
 
   // Default company data if none provided
@@ -29,6 +55,16 @@ export default function ProposalPreview({ proposalData, companyData }) {
           <p>Review your proposal before generating the final PDF</p>
         </div>
         <div className="preview-actions">
+          <div className="mode-toggle">
+            <span className={!isDetailedMode ? 'active' : ''}>Simple</span>
+            <button 
+              className="toggle-btn"
+              onClick={() => setIsDetailedMode(!isDetailedMode)}
+            >
+              {isDetailedMode ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+            </button>
+            <span className={isDetailedMode ? 'active' : ''}>Detailed</span>
+          </div>
           <button className="preview-btn">
             <Eye size={18} />
             Preview PDF
@@ -119,51 +155,144 @@ export default function ProposalPreview({ proposalData, companyData }) {
           </div>
         </div>
 
-        <div className="materials-section">
-          <h3>Materials & Labor</h3>
-          <table className="materials-table">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Quantity</th>
-                <th>Unit Price</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {proposalData.materials?.map(material => (
-                <tr key={material.id}>
-                  <td>{material.name}</td>
-                  <td>{material.quantity} {material.unit}</td>
-                  <td>${material.unitPrice?.toFixed(2)}</td>
-                  <td>${material.total?.toFixed(2)}</td>
-                </tr>
-              ))}
-              {proposalData.laborHours > 0 && (
-                <tr>
-                  <td>Labor</td>
-                  <td>{proposalData.laborHours} hours</td>
-                  <td>${proposalData.laborRate?.toFixed(2)}</td>
-                  <td>${((proposalData.laborHours || 0) * (proposalData.laborRate || 0)).toFixed(2)}</td>
-                </tr>
-              )}
-              {proposalData.addOns?.map(addon => (
-                <tr key={addon.id}>
-                  <td>{addon.name}</td>
-                  <td>1</td>
-                  <td>${addon.price?.toFixed(2)}</td>
-                  <td>${addon.price?.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="total-row">
-                <td colSpan="3"><strong>TOTAL PROJECT COST</strong></td>
-                <td><strong>${calculateTotal().toFixed(2)}</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        {isDetailedMode ? (
+          // DETAILED MODE
+          <div className="materials-section detailed-mode">
+            <h3>Materials & Labor Breakdown</h3>
+            
+            {(() => {
+              const pricing = getStructuredPricing();
+              return (
+                <>
+                  {/* Materials Section */}
+                  {pricing.materials.length > 0 && (
+                    <div className="pricing-subsection">
+                      <h4>Materials</h4>
+                      <table className="materials-table">
+                        <thead>
+                          <tr>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pricing.materials.map(material => (
+                            <tr key={material.id}>
+                              <td>{material.name}</td>
+                              <td>{material.quantity} {material.unit}</td>
+                              <td>${material.unitPrice?.toFixed(2)}</td>
+                              <td>${material.total?.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Labor Section */}
+                  {pricing.labor.length > 0 && (
+                    <div className="pricing-subsection">
+                      <h4>Labor</h4>
+                      <table className="materials-table">
+                        <thead>
+                          <tr>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pricing.labor.map(labor => (
+                            <tr key={labor.id}>
+                              <td>{labor.name}</td>
+                              <td>{labor.quantity} {labor.unit}</td>
+                              <td>${labor.unitPrice?.toFixed(2)}</td>
+                              <td>${labor.total?.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Additional Costs Section */}
+                  {pricing.additionalCosts.length > 0 && (
+                    <div className="pricing-subsection">
+                      <h4>Additional Costs</h4>
+                      <table className="materials-table">
+                        <thead>
+                          <tr>
+                            <th>Description</th>
+                            <th>Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pricing.additionalCosts.map(cost => (
+                            <tr key={cost.id}>
+                              <td>{cost.name}</td>
+                              <td>${cost.cost?.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="total-section">
+                    <div className="total-row">
+                      <strong>TOTAL PROJECT COST: ${calculateTotal().toFixed(2)}</strong>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        ) : (
+          // SIMPLE MODE
+          <div className="materials-section simple-mode">
+            <h3>Project Cost</h3>
+            <div className="simple-pricing">
+              <div className="cost-line">
+                <span>Complete Roof Replacement</span>
+                <span>{proposalData.measurements?.totalSquares || 0} squares - {proposalData.materialType || 'Materials'}</span>
+              </div>
+              
+              {(() => {
+                const pricing = getStructuredPricing();
+                const materialsTotal = pricing.materials.reduce((sum, item) => sum + (item.total || 0), 0);
+                const laborTotal = pricing.labor.reduce((sum, item) => sum + (item.total || 0), 0);
+                const additionalTotal = pricing.additionalCosts.reduce((sum, item) => sum + (item.cost || 0), 0);
+                
+                return (
+                  <>
+                    {materialsTotal + laborTotal > 0 && (
+                      <div className="cost-line">
+                        <span>Materials & Installation:</span>
+                        <span>${(materialsTotal + laborTotal).toFixed(2)}</span>
+                      </div>
+                    )}
+                    
+                    {additionalTotal > 0 && (
+                      <div className="cost-line">
+                        <span>Permits & Additional Costs:</span>
+                        <span>${additionalTotal.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+              
+              <div className="cost-line total-line">
+                <span><strong>TOTAL:</strong></span>
+                <span><strong>${calculateTotal().toFixed(2)}</strong></span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {proposalData.notes && (
           <div className="notes-section">
