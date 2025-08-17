@@ -32,8 +32,7 @@ export const register = async (req, res) => {
       email,
       password: hashedPassword,
       firstName,
-      lastName,
-      role: 'contractor'
+      lastName
     });
 
     // Create default company if company name provided
@@ -70,7 +69,7 @@ export const register = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { userId: user.id, email: user.email },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
@@ -78,11 +77,7 @@ export const register = async (req, res) => {
     // Return user data (without password) and token
     const userResponse = {
       id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      createdAt: user.createdAt
+      email: user.email
     };
 
     logger.info(`New user registered: ${email}`);
@@ -132,7 +127,7 @@ export const login = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { userId: user.id, email: user.email },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
@@ -140,11 +135,7 @@ export const login = async (req, res) => {
     // Return user data (without password) and token
     const userResponse = {
       id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      createdAt: user.createdAt
+      email: user.email
     };
 
     logger.info(`User logged in: ${email}`);
