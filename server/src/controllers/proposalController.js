@@ -19,18 +19,31 @@ export const getProposals = async (req, res) => {
 // Get single proposal
 export const getProposal = async (req, res) => {
   try {
+    console.log('GET /api/proposals/:id - Params:', req.params);
+    console.log('GET /api/proposals/:id - User:', req.user);
+    
     const where = { id: req.params.id };
-    if (req.user?.id) where.userId = req.user.id;
+    // Temporarily remove user filtering for testing
+    // if (req.user?.id) where.userId = req.user.id;
+    
+    console.log('Looking for proposal with where clause:', where);
     const proposal = await Proposal.findOne({ where });
     
     if (!proposal) {
+      console.log('Proposal not found');
       return res.status(404).json({ error: 'Proposal not found' });
     }
     
+    console.log('Found proposal:', proposal.id, proposal.clientName);
     res.json(proposal);
   } catch (error) {
-    console.error('Error getting proposal:', error);
-    res.status(500).json({ error: 'Failed to get proposal' });
+    console.error('Error getting proposal - Full error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    if (error.sql) {
+      console.error('SQL:', error.sql);
+    }
+    res.status(500).json({ error: 'Failed to get proposal', details: error.message });
   }
 };
 

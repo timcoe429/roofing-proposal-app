@@ -9,11 +9,13 @@ const Proposal = sequelize.define('Proposal', {
   },
   companyId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'companyId'
   },
   userId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'userId'
   },
   status: {
     type: DataTypes.ENUM('draft', 'sent', 'viewed', 'accepted', 'rejected'),
@@ -21,13 +23,15 @@ const Proposal = sequelize.define('Proposal', {
   },
   proposalNumber: {
     type: DataTypes.STRING,
-    unique: true
+    unique: true,
+    field: 'proposalNumber'
   },
   
   // Client Information
   clientName: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    field: 'clientName'
   },
   clientEmail: {
     type: DataTypes.STRING,
@@ -39,44 +43,54 @@ const Proposal = sequelize.define('Proposal', {
         return true; // Allow empty/null values
       }
     },
-    allowNull: true
+    allowNull: true,
+    field: 'clientEmail'
   },
   clientPhone: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'clientPhone'
   },
   clientAddress: {
-    type: DataTypes.TEXT
+    type: DataTypes.TEXT,
+    field: 'clientAddress'
   },
   
   // Property Information
   propertyAddress: {
-    type: DataTypes.TEXT
+    type: DataTypes.TEXT,
+    field: 'propertyAddress'
   },
-  
-  // Additional fields from ClientInfoTab
   propertyCity: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'propertyCity'
   },
   propertyState: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'propertyState'
   },
   propertyZip: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'propertyZip'
   },
   projectType: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'projectType'
   },
   materialType: {
-    type: DataTypes.STRING
-  },
-  specialRequirements: {
-    type: DataTypes.TEXT
-  },
-  urgency: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'materialType'
   },
   roofSize: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'roofSize'
+  },
+  specialRequirements: {
+    type: DataTypes.TEXT,
+    field: 'specialRequirements'
+  },
+  urgency: {
+    type: DataTypes.STRING,
+    field: 'urgency'
   },
   
   // Measurements
@@ -104,56 +118,60 @@ const Proposal = sequelize.define('Proposal', {
   laborHours: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true
+    allowNull: true,
+    field: 'laborHours'
   },
   laborRate: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 75,
-    allowNull: true
+    allowNull: true,
+    field: 'laborRate'
   },
   
   // Pricing
   materialsCost: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true
+    allowNull: true,
+    field: 'materialsCost'
   },
   laborCost: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true
+    allowNull: true,
+    field: 'laborCost'
   },
   overheadPercent: {
     type: DataTypes.DECIMAL(5, 2),
     defaultValue: 15,
-    allowNull: true
+    allowNull: true,
+    field: 'overheadPercent'
   },
   profitPercent: {
     type: DataTypes.DECIMAL(5, 2),
     defaultValue: 20,
-    allowNull: true
-  },
-  discountAmount: {
-    type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-    allowNull: true
+    allowNull: true,
+    field: 'profitPercent'
   },
   totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true
+    allowNull: true,
+    field: 'totalAmount'
   },
   
   // Add-ons
   addOns: {
     type: DataTypes.JSONB,
-    defaultValue: []
+    defaultValue: [],
+    field: 'addOns'
   },
   
   // Damage Areas
   damageAreas: {
     type: DataTypes.JSONB,
-    defaultValue: []
+    defaultValue: [],
+    field: 'damageAreas'
   },
   
   // Project Details
@@ -168,17 +186,16 @@ const Proposal = sequelize.define('Proposal', {
   notes: {
     type: DataTypes.TEXT
   },
-  termsConditions: {
-    type: DataTypes.TEXT
-  },
   
   // Files
   uploadedFiles: {
     type: DataTypes.JSONB,
-    defaultValue: []
+    defaultValue: [],
+    field: 'uploadedFiles'
   },
   generatedPdfUrl: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'generatedPdfUrl'
   },
   
   // Dates
@@ -188,61 +205,63 @@ const Proposal = sequelize.define('Proposal', {
       const date = new Date();
       date.setDate(date.getDate() + 30);
       return date;
-    }
+    },
+    field: 'validUntil'
   },
   sentAt: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    field: 'sentAt'
   },
   viewedAt: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    field: 'viewedAt'
   },
   respondedAt: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    field: 'respondedAt'
   },
   
-  // Timestamps (matching your database)
+  // Timestamps
   createdAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    defaultValue: DataTypes.NOW,
+    field: 'createdAt'
   },
   updatedAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    defaultValue: DataTypes.NOW,
+    field: 'updatedAt'
   }
 }, {
   tableName: 'proposals',
   timestamps: true,
   hooks: {
     beforeCreate: async (proposal) => {
-      // Generate proposal number
-      const date = new Date();
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const count = await Proposal.count({
-        where: {
-          createdAt: {
-            [Op.gte]: new Date(year, date.getMonth(), 1),
-            [Op.lt]: new Date(year, date.getMonth() + 1, 1)
-          }
-        }
-      });
-      proposal.proposalNumber = `${year}${month}-${String(count + 1).padStart(4, '0')}`;
-    },
-    beforeUpdate: (proposal) => {
-      // Recalculate total
-      const materials = proposal.materialsCost || 0;
-      const labor = proposal.laborCost || 0;
-      const addOnsTotal = (proposal.addOns || [])
-        .filter(a => a.selected)
-        .reduce((sum, a) => sum + a.price, 0);
-      
-      const subtotal = materials + labor + addOnsTotal;
-      const overhead = subtotal * (proposal.overheadPercent / 100);
-      const profit = subtotal * (proposal.profitPercent / 100);
-      
-      proposal.totalAmount = subtotal + overhead + profit;
+      if (!proposal.proposalNumber) {
+        const count = await Proposal.count();
+        const year = new Date().getFullYear().toString().slice(-2);
+        const month = String(new Date().getMonth() + 1).padStart(2, '0');
+        proposal.proposalNumber = `${year}${month}${String(count + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+      }
     }
   }
 });
+
+// Define associations
+Proposal.associate = (models) => {
+  if (models.User) {
+    Proposal.belongsTo(models.User, {
+      foreignKey: 'userId',
+      as: 'user'
+    });
+  }
+  
+  if (models.Company) {
+    Proposal.belongsTo(models.Company, {
+      foreignKey: 'companyId',
+      as: 'company'
+    });
+  }
+};
 
 export default Proposal;
