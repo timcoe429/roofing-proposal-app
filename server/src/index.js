@@ -15,6 +15,7 @@ import companyRoutes from './routes/companyRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import testRoutes from './routes/testRoutes.js';
+import materialRoutes from './routes/materialRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -64,6 +65,7 @@ app.use('/api/proposals', proposalRoutes);
 app.use('/api/vision', visionRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/materials', materialRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/test', testRoutes);
 
