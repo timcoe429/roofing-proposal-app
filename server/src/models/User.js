@@ -3,9 +3,9 @@ import sequelize from '../config/database.js';
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     primaryKey: true,
-    defaultValue: DataTypes.UUIDV4
+    autoIncrement: true
   },
   email: {
     type: DataTypes.STRING,

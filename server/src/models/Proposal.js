@@ -3,19 +3,17 @@ import sequelize from '../config/database.js';
 
 const Proposal = sequelize.define('Proposal', {
   id: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     primaryKey: true,
-    defaultValue: DataTypes.UUIDV4
+    autoIncrement: true
   },
   companyId: {
-    type: DataTypes.UUID,
-    allowNull: true,
-    field: 'company_id'
+    type: DataTypes.INTEGER,
+    allowNull: true
   },
   userId: {
-    type: DataTypes.UUID,
-    allowNull: true,
-    field: 'user_id'
+    type: DataTypes.INTEGER,
+    allowNull: true
   },
   status: {
     type: DataTypes.ENUM('draft', 'sent', 'viewed', 'accepted', 'rejected'),
@@ -23,15 +21,13 @@ const Proposal = sequelize.define('Proposal', {
   },
   proposalNumber: {
     type: DataTypes.STRING,
-    unique: true,
-    field: 'proposal_number'
+    unique: true
   },
   
   // Client Information
   clientName: {
     type: DataTypes.STRING,
-    allowNull: true,
-    field: 'client_name'
+    allowNull: true
   },
   clientEmail: {
     type: DataTypes.STRING,
@@ -43,55 +39,44 @@ const Proposal = sequelize.define('Proposal', {
         return true; // Allow empty/null values
       }
     },
-    allowNull: true,
-    field: 'client_email'
+    allowNull: true
   },
   clientPhone: {
-    type: DataTypes.STRING,
-    field: 'client_phone'
+    type: DataTypes.STRING
   },
   clientAddress: {
-    type: DataTypes.TEXT,
-    field: 'client_address'
+    type: DataTypes.TEXT
   },
   
   // Property Information
   propertyAddress: {
-    type: DataTypes.TEXT,
-    field: 'property_address'
+    type: DataTypes.TEXT
   },
   
   // Additional fields from ClientInfoTab
   propertyCity: {
-    type: DataTypes.STRING,
-    field: 'property_city'
+    type: DataTypes.STRING
   },
   propertyState: {
-    type: DataTypes.STRING,
-    field: 'property_state'
+    type: DataTypes.STRING
   },
   propertyZip: {
-    type: DataTypes.STRING,
-    field: 'property_zip'
+    type: DataTypes.STRING
   },
   projectType: {
-    type: DataTypes.STRING,
-    field: 'property_type'
+    type: DataTypes.STRING
   },
   materialType: {
-    type: DataTypes.STRING,
-    field: 'material_type'
+    type: DataTypes.STRING
   },
   specialRequirements: {
-    type: DataTypes.TEXT,
-    field: 'special_requirements'
+    type: DataTypes.TEXT
   },
   urgency: {
     type: DataTypes.STRING
   },
   roofSize: {
-    type: DataTypes.STRING,
-    field: 'roof_size'
+    type: DataTypes.STRING
   },
   
   // Measurements
@@ -119,66 +104,56 @@ const Proposal = sequelize.define('Proposal', {
   laborHours: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true,
-    field: 'labor_hours'
+    allowNull: true
   },
   laborRate: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 75,
-    allowNull: true,
-    field: 'labor_rate'
+    allowNull: true
   },
   
   // Pricing
   materialsCost: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true,
-    field: 'materials_cost'
+    allowNull: true
   },
   laborCost: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true,
-    field: 'labor_cost'
+    allowNull: true
   },
   overheadPercent: {
     type: DataTypes.DECIMAL(5, 2),
     defaultValue: 15,
-    allowNull: true,
-    field: 'overhead_percent'
+    allowNull: true
   },
   profitPercent: {
     type: DataTypes.DECIMAL(5, 2),
     defaultValue: 20,
-    allowNull: true,
-    field: 'profit_percent'
+    allowNull: true
   },
   discountAmount: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true,
-    field: 'discount_amount'
+    allowNull: true
   },
   totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    allowNull: true,
-    field: 'total_amount'
+    allowNull: true
   },
   
   // Add-ons
   addOns: {
     type: DataTypes.JSONB,
-    defaultValue: [],
-    field: 'addons'
+    defaultValue: []
   },
   
   // Damage Areas
   damageAreas: {
     type: DataTypes.JSONB,
-    defaultValue: [],
-    field: 'damage_areas'
+    defaultValue: []
   },
   
   // Project Details
@@ -194,19 +169,16 @@ const Proposal = sequelize.define('Proposal', {
     type: DataTypes.TEXT
   },
   termsConditions: {
-    type: DataTypes.TEXT,
-    field: 'terms_conditions'
+    type: DataTypes.TEXT
   },
   
   // Files
   uploadedFiles: {
     type: DataTypes.JSONB,
-    defaultValue: [],
-    field: 'uploaded_files'
+    defaultValue: []
   },
   generatedPdfUrl: {
-    type: DataTypes.STRING,
-    field: 'generated_pdf_url'
+    type: DataTypes.STRING
   },
   
   // Dates
@@ -216,32 +188,26 @@ const Proposal = sequelize.define('Proposal', {
       const date = new Date();
       date.setDate(date.getDate() + 30);
       return date;
-    },
-    field: 'valid_until'
+    }
   },
   sentAt: {
-    type: DataTypes.DATE,
-    field: 'sent_at'
+    type: DataTypes.DATE
   },
   viewedAt: {
-    type: DataTypes.DATE,
-    field: 'viewed_at'
+    type: DataTypes.DATE
   },
   respondedAt: {
-    type: DataTypes.DATE,
-    field: 'responded_at'
+    type: DataTypes.DATE
   },
   
   // Timestamps (matching your database)
   createdAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-    field: 'created_at'
+    defaultValue: DataTypes.NOW
   },
   updatedAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-    field: 'updated_at'
+    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'proposals',
