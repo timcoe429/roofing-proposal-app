@@ -203,46 +203,38 @@ export default function Dashboard() {
                   <p>No proposals yet. Create your first one!</p>
                 </div>
               ) : (
-                <div className="proposals-grid">
-                  {proposals.slice(0, 6).map((proposal) => (
-                    <div key={proposal.id} className="proposal-card">
-                      <div className="proposal-header">
-                        <h3>{proposal.clientName || 'Unnamed Client'}</h3>
+                <div className="proposals-list">
+                  {proposals.slice(0, 12).map((proposal) => (
+                    <div key={proposal.id} className="proposal-row">
+                      <div className="proposal-info">
+                        <div className="proposal-main">
+                          <h4>{proposal.clientName || 'Unnamed Client'}</h4>
+                          <span className="proposal-address">{proposal.propertyAddress || 'No address'}</span>
+                        </div>
                         <span className={`status-badge status-${proposal.status}`}>
                           {proposal.status}
                         </span>
                       </div>
-                      <div className="proposal-details">
-                        <p className="property-address">
-                          {proposal.propertyAddress || 'No address provided'}
-                        </p>
-                        <div className="proposal-meta">
-                          <div className="meta-item">
-                            <Calendar size={14} />
-                            <span>{formatDate(proposal.createdAt)}</span>
-                          </div>
-                          {proposal.totalAmount && (
-                            <div className="meta-item">
-                              <span className="amount">{formatCurrency(proposal.totalAmount)}</span>
-                            </div>
-                          )}
-                        </div>
+                      <div className="proposal-meta">
+                        <span className="proposal-date">{formatDate(proposal.createdAt)}</span>
+                        {proposal.totalAmount > 0 && (
+                          <span className="proposal-amount">{formatCurrency(proposal.totalAmount)}</span>
+                        )}
                       </div>
                       <div className="proposal-actions">
                         <button
                           onClick={() => handleViewProposal(proposal.id)}
-                          className="view-btn"
+                          className="view-btn-small"
                         >
-                          <Eye size={16} />
+                          <Eye size={14} />
                           View
                         </button>
                         <button
                           onClick={() => handleDeleteProposal(proposal.id, proposal.clientName || 'Unnamed Client')}
-                          className="delete-btn"
+                          className="delete-btn-small"
                           disabled={deleteMutation.isLoading}
                         >
-                          <Trash2 size={16} />
-                          {deleteMutation.isLoading ? 'Deleting...' : 'Delete'}
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>

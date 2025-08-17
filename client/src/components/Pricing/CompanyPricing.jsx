@@ -245,10 +245,6 @@ export default function CompanyPricing() {
             
             <div className="sheet-stats">
               <div className="stat">
-                <span className="stat-value">{sheet.specifications?.itemCount || sheet.specifications?.files?.length || '1'}</span>
-                <span className="stat-label">Items</span>
-              </div>
-              <div className="stat">
                 <span className="stat-value">{new Date(sheet.updatedAt || sheet.createdAt).toLocaleDateString()}</span>
                 <span className="stat-label">Updated</span>
               </div>
