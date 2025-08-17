@@ -84,14 +84,19 @@ const ProposalEditor = () => {
   const [companyData, setCompanyData] = useState(getCompanyData);
 
   // Fetch existing proposal if editing
-  const { isLoading } = useQuery({
+  const { data: proposalFromApi, isLoading } = useQuery({
     queryKey: ['proposal', id],
     queryFn: () => api.getProposal(id),
-    enabled: !isNewProposal,
-    onSuccess: (data) => {
-      setProposalData(data);
-    }
+    enabled: !isNewProposal
   });
+
+  // Update proposal data when API data is loaded
+  useEffect(() => {
+    if (proposalFromApi && !isNewProposal) {
+      console.log('Setting proposal data from API:', proposalFromApi);
+      setProposalData(proposalFromApi);
+    }
+  }, [proposalFromApi, isNewProposal]);
 
   // Save proposal mutation
   const saveMutation = useMutation({
