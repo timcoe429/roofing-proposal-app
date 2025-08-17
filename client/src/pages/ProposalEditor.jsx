@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 // Components
@@ -21,6 +21,7 @@ import './ProposalEditor.css';
 const ProposalEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isNewProposal = !id;
   
   const [activeTab, setActiveTab] = useState('client');
@@ -101,6 +102,8 @@ const ProposalEditor = () => {
     },
     onSuccess: (response) => {
       toast.success('Proposal saved successfully!');
+      // Invalidate and refetch proposals list for dashboard
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
       if (isNewProposal) {
         navigate(`/proposal/${response.id}`);
       }

@@ -49,11 +49,11 @@ const api = {
   changePassword: (data) => apiClient.put('/auth/change-password', data),
 
   // Proposals
-  getProposals: () => apiClient.get('/proposals'),
-  getProposal: (id) => apiClient.get(`/proposals/${id}`),
-  createProposal: (data) => apiClient.post('/proposals', data),
-  updateProposal: (id, data) => apiClient.put(`/proposals/${id}`, data),
-  deleteProposal: (id) => apiClient.delete(`/proposals/${id}`),
+  getProposals: () => apiClient.get('/proposals').then(res => res.data),
+  getProposal: (id) => apiClient.get(`/proposals/${id}`).then(res => res.data),
+  createProposal: (data) => apiClient.post('/proposals', data).then(res => res.data),
+  updateProposal: (id, data) => apiClient.put(`/proposals/${id}`, data).then(res => res.data),
+  deleteProposal: (id) => apiClient.delete(`/proposals/${id}`).then(res => res.data),
 
   // Vision AI (GPT-4 Vision)
   processImages: (images, documentType) => 

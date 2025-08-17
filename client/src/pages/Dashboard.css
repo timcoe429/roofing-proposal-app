@@ -387,3 +387,164 @@
   margin: 0;
   font-size: 16px;
 }
+
+.loading-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #718096;
+}
+
+.loading-state p {
+  margin: 12px 0 0 0;
+  font-size: 14px;
+}
+
+.error-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #e53e3e;
+}
+
+.error-state p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.proposals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.proposal-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s;
+}
+
+.proposal-card:hover {
+  background: white;
+  border-color: #cbd5e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.proposal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.proposal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.status-draft {
+  background: #fef5e7;
+  color: #d69e2e;
+}
+
+.status-badge.status-sent {
+  background: #e6fffa;
+  color: #319795;
+}
+
+.status-badge.status-viewed {
+  background: #ebf8ff;
+  color: #3182ce;
+}
+
+.status-badge.status-accepted {
+  background: #f0fff4;
+  color: #38a169;
+}
+
+.status-badge.status-rejected {
+  background: #fed7d7;
+  color: #e53e3e;
+}
+
+.proposal-details {
+  margin-bottom: 16px;
+}
+
+.property-address {
+  color: #4a5568;
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.proposal-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #718096;
+  font-size: 12px;
+}
+
+.meta-item .amount {
+  font-weight: 600;
+  color: #38a169;
+  font-size: 14px;
+}
+
+.proposal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.view-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.view-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .proposals-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .proposal-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

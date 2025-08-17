@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Users, TrendingUp, LogOut, Settings, TestTube, DollarSign } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, FileText, Users, TrendingUp, LogOut, Settings, TestTube, DollarSign, Calendar, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CompanySettings from '../components/Branding/CompanySettings';
 import ApiTester from '../components/Test/ApiTester';
 import CompanyPricing from '../components/Pricing/CompanyPricing';
+import api from '../services/api';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -13,6 +15,26 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [showApiTester, setShowApiTester] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+
+  // Fetch proposals
+  const { data: proposals = [], isLoading: proposalsLoading, error: proposalsError } = useQuery({
+    queryKey: ['proposals'],
+    queryFn: api.getProposals,
+    refetchOnWindowFocus: false,
+  });
+
+  // Calculate stats from proposals
+  const totalProposals = proposals.length;
+  const activeClients = new Set(proposals.map(p => p.clientEmail || p.clientName)).size;
+  const thisMonthRevenue = proposals
+    .filter(p => {
+      const createdDate = new Date(p.createdAt);
+      const now = new Date();
+      return createdDate.getMonth() === now.getMonth() && 
+             createdDate.getFullYear() === now.getFullYear() &&
+             p.status === 'accepted';
+    })
+    .reduce((sum, p) => sum + (parseFloat(p.totalAmount) || 0), 0);
   
   // Load company data from localStorage or use defaults
   const getInitialCompanyData = () => {
@@ -54,6 +76,27 @@ export default function Dashboard() {
     navigate('/proposal/new');
   };
 
+  const handleViewProposal = (proposalId) => {
+    navigate(`/proposal/${proposalId}`);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount || 0);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -88,7 +131,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Total Proposals</h3>
-              <p className="stat-number">0</p>
+              <p className="stat-number">{proposalsLoading ? '...' : totalProposals}</p>
             </div>
           </div>
 
@@ -98,7 +141,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Active Clients</h3>
-              <p className="stat-number">0</p>
+              <p className="stat-number">{proposalsLoading ? '...' : activeClients}</p>
             </div>
           </div>
 
@@ -108,7 +151,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>This Month</h3>
-              <p className="stat-number">$0</p>
+              <p className="stat-number">{proposalsLoading ? '...' : formatCurrency(thisMonthRevenue)}</p>
             </div>
           </div>
         </div>
@@ -126,9 +169,58 @@ export default function Dashboard() {
           <div className="recent-section">
             <h2>Recent Proposals</h2>
             <div className="proposal-list">
-              <div className="empty-state">
-                <p>No proposals yet. Create your first one!</p>
-              </div>
+              {proposalsLoading ? (
+                <div className="loading-state">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p>Loading proposals...</p>
+                </div>
+              ) : proposalsError ? (
+                <div className="error-state">
+                  <p>Failed to load proposals. Please try again.</p>
+                </div>
+              ) : proposals.length === 0 ? (
+                <div className="empty-state">
+                  <p>No proposals yet. Create your first one!</p>
+                </div>
+              ) : (
+                <div className="proposals-grid">
+                  {proposals.slice(0, 6).map((proposal) => (
+                    <div key={proposal.id} className="proposal-card">
+                      <div className="proposal-header">
+                        <h3>{proposal.clientName || 'Unnamed Client'}</h3>
+                        <span className={`status-badge status-${proposal.status}`}>
+                          {proposal.status}
+                        </span>
+                      </div>
+                      <div className="proposal-details">
+                        <p className="property-address">
+                          {proposal.propertyAddress || 'No address provided'}
+                        </p>
+                        <div className="proposal-meta">
+                          <div className="meta-item">
+                            <Calendar size={14} />
+                            <span>{formatDate(proposal.createdAt)}</span>
+                          </div>
+                          {proposal.totalAmount && (
+                            <div className="meta-item">
+                              <span className="amount">{formatCurrency(proposal.totalAmount)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="proposal-actions">
+                        <button
+                          onClick={() => handleViewProposal(proposal.id)}
+                          className="view-btn"
+                        >
+                          <Eye size={16} />
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
