@@ -9,21 +9,13 @@ const Proposal = sequelize.define('Proposal', {
   },
   companyId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    field: 'company_id',
-    references: {
-      model: 'Companies',
-      key: 'id'
-    }
+    allowNull: true,
+    field: 'company_id'
   },
   userId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    field: 'user_id',
-    references: {
-      model: 'Users',
-      key: 'id'
-    }
+    allowNull: true,
+    field: 'user_id'
   },
   status: {
     type: DataTypes.ENUM('draft', 'sent', 'viewed', 'accepted', 'rejected'),
@@ -38,14 +30,20 @@ const Proposal = sequelize.define('Proposal', {
   // Client Information
   clientName: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     field: 'client_name'
   },
   clientEmail: {
     type: DataTypes.STRING,
     validate: {
-      isEmail: true
+      isEmail: function(value) {
+        if (value && value.trim() !== '') {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        }
+        return true; // Allow empty/null values
+      }
     },
+    allowNull: true,
     field: 'client_email'
   },
   clientPhone: {
@@ -217,7 +215,7 @@ const Proposal = sequelize.define('Proposal', {
   }
 }, {
   tableName: 'proposals',
-  timestamps: true,
+  timestamps: false,
   underscored: true,
   hooks: {
     beforeCreate: async (proposal) => {
