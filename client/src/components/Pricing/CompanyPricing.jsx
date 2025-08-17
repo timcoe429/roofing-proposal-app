@@ -245,7 +245,7 @@ export default function CompanyPricing() {
             
             <div className="sheet-stats">
               <div className="stat">
-                <span className="stat-value">{new Date(sheet.updatedAt || sheet.createdAt).toLocaleDateString()}</span>
+                <span className="stat-value">{sheet.lastUpdated}</span>
                 <span className="stat-label">Updated</span>
               </div>
             </div>
