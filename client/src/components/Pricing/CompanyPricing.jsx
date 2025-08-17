@@ -1,13 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Plus, Edit, Trash2, DollarSign, FileSpreadsheet, FileText, FileImage, Brain, Zap } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 import './PricingManager.css';
 
 export default function CompanyPricing() {
-  // Load saved pricing sheets from localStorage
-  const [pricingSheets, setPricingSheets] = useState(() => {
-    const saved = localStorage.getItem('companyPricingSheets');
-    return saved ? JSON.parse(saved) : [];
+  const queryClient = useQueryClient();
+  
+  // Load pricing sheets from database
+  const { data: pricingSheets = [], isLoading: sheetsLoading, error: sheetsError } = useQuery({
+    queryKey: ['materials'],
+    queryFn: api.getMaterials,
+    refetchOnWindowFocus: false,
+  });
+
+  // Create material mutation
+  const createMaterialMutation = useMutation({
+    mutationFn: api.createMaterial,
+    onSuccess: () => {
+      toast.success('Pricing sheet saved to database!');
+      queryClient.invalidateQueries({ queryKey: ['materials'] });
+    },
+    onError: (error) => {
+      toast.error('Failed to save pricing sheet');
+      console.error(error);
+    }
+  });
+
+  // Delete material mutation
+  const deleteMaterialMutation = useMutation({
+    mutationFn: api.deleteMaterial,
+    onSuccess: () => {
+      toast.success('Pricing sheet deleted!');
+      queryClient.invalidateQueries({ queryKey: ['materials'] });
+    },
+    onError: (error) => {
+      toast.error('Failed to delete pricing sheet');
+      console.error(error);
+    }
   });
 
   const [showUpload, setShowUpload] = useState(false);
@@ -26,41 +57,39 @@ export default function CompanyPricing() {
   const handlePricingUpload = async () => {
     // Check if required fields are filled
     if (!sheetName.trim()) {
-      alert('Please fill in Document Name');
+      toast.error('Please fill in Document Name');
       return;
     }
 
     // Check if we have either file or URL based on selected method
     if (inputMethod === 'file' && selectedFiles.length === 0) {
-      alert('Please select a file to upload');
+      toast.error('Please select a file to upload');
       return;
     }
 
     if (inputMethod === 'url' && !documentUrl.trim()) {
-      alert('Please enter a Google Sheets URL');
+      toast.error('Please enter a Google Sheets URL');
       return;
     }
 
     try {
-      // Show processing state
-      const processingSheet = {
-        id: Date.now(),
+      // Create material in database
+      const materialData = {
         name: sheetName,
-        supplier: 'Processing...',
-        lastUpdated: new Date().toISOString().split('T')[0],
-        itemCount: '...',
-        isActive: true, // Default to active for company pricing
-        type: inputMethod === 'file' ? getFileType(selectedFiles[0]) : 'url',
-        files: inputMethod === 'file' ? selectedFiles.map(f => ({ name: f.name, size: f.size })) : [{ name: documentUrl, size: 0 }],
-        isProcessing: true
+        category: 'pricing_sheet',
+        subcategory: inputMethod === 'file' ? getFileType(selectedFiles[0]) : 'url',
+        description: `Pricing sheet: ${sheetName}`,
+        specifications: {
+          type: inputMethod,
+          files: inputMethod === 'file' ? selectedFiles.map(f => ({ name: f.name, size: f.size })) : [{ name: documentUrl, size: 0 }],
+          uploadDate: new Date().toISOString(),
+          isActive: true
+        },
+        isActive: true
       };
 
-      // Add processing sheet immediately
-      const updatedSheets = [...pricingSheets, processingSheet];
-      setPricingSheets(updatedSheets);
-
-      // Save to localStorage immediately
-      localStorage.setItem('companyPricingSheets', JSON.stringify(updatedSheets));
+      console.log('Saving pricing sheet to database:', materialData);
+      createMaterialMutation.mutate(materialData);
 
       // Close modal
       setShowUpload(false);
@@ -117,7 +146,7 @@ export default function CompanyPricing() {
       );
 
       setPricingSheets(finalSheets);
-      localStorage.setItem('companyPricingSheets', JSON.stringify(finalSheets));
+      // Data now managed by React Query and database
 
     } catch (error) {
       console.error('Error processing document:', error);
@@ -134,9 +163,10 @@ export default function CompanyPricing() {
   };
 
   const deleteSheet = (id) => {
-    const updatedSheets = pricingSheets.filter(sheet => sheet.id !== id);
-    setPricingSheets(updatedSheets);
-    localStorage.setItem('companyPricingSheets', JSON.stringify(updatedSheets));
+    if (window.confirm('Are you sure you want to delete this pricing sheet? This action cannot be undone.')) {
+      console.log('Deleting pricing sheet from database:', id);
+      deleteMaterialMutation.mutate(id);
+    }
   };
 
   const toggleActive = (id) => {
@@ -144,7 +174,7 @@ export default function CompanyPricing() {
       sheet.id === id ? { ...sheet, isActive: !sheet.isActive } : sheet
     );
     setPricingSheets(updatedSheets);
-    localStorage.setItem('companyPricingSheets', JSON.stringify(updatedSheets));
+    // Data now managed by React Query and database
   };
 
   const startEdit = (sheet) => {
@@ -187,7 +217,7 @@ export default function CompanyPricing() {
         sheet.id === editingSheet.id ? processingSheet : sheet
       );
       setPricingSheets(updatedSheets);
-      localStorage.setItem('companyPricingSheets', JSON.stringify(updatedSheets));
+      // Data now managed by React Query and database
 
       // Close modal
       setShowEdit(false);
@@ -229,7 +259,7 @@ export default function CompanyPricing() {
       );
 
       setPricingSheets(finalSheets);
-      localStorage.setItem('companyPricingSheets', JSON.stringify(finalSheets));
+      // Data now managed by React Query and database
 
     } catch (error) {
       console.error('Error updating document:', error);
@@ -280,8 +310,22 @@ export default function CompanyPricing() {
       </div>
 
       <div className="pricing-grid">
-        {pricingSheets.map(sheet => (
-          <div key={sheet.id} className={`pricing-card ${sheet.isActive ? 'active' : 'inactive'}`}>
+        {sheetsLoading ? (
+          <div className="loading-state">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p>Loading pricing sheets from database...</p>
+          </div>
+        ) : sheetsError ? (
+          <div className="error-state">
+            <p>Failed to load pricing sheets. Please try again.</p>
+          </div>
+        ) : pricingSheets.length === 0 ? (
+          <div className="empty-state">
+            <p>No pricing sheets yet. Upload your first one!</p>
+          </div>
+        ) : (
+          pricingSheets.map(sheet => (
+            <div key={sheet.id} className={`pricing-card ${sheet.isActive ? 'active' : 'inactive'}`}>
             <div className="card-header">
               <div className="card-title">
                 <div className="sheet-icon">
@@ -293,7 +337,7 @@ export default function CompanyPricing() {
                 </div>
                 <div>
                   <h3>{sheet.name}</h3>
-                  <p>{sheet.supplier}</p>
+                  <p>{sheet.manufacturer || sheet.subcategory || 'Pricing Sheet'}</p>
                 </div>
               </div>
               {sheet.isActive && <div className="active-badge">Active</div>}
@@ -301,11 +345,11 @@ export default function CompanyPricing() {
             
             <div className="sheet-stats">
               <div className="stat">
-                <span className="stat-value">{sheet.itemCount}</span>
+                <span className="stat-value">{sheet.specifications?.itemCount || '1'}</span>
                 <span className="stat-label">Items</span>
               </div>
               <div className="stat">
-                <span className="stat-value">{sheet.lastUpdated}</span>
+                <span className="stat-value">{new Date(sheet.updatedAt || sheet.createdAt).toLocaleDateString()}</span>
                 <span className="stat-label">Updated</span>
               </div>
             </div>
@@ -334,13 +378,16 @@ export default function CompanyPricing() {
               </button>
             </div>
           </div>
-        ))}
+          ))
+        )}
         
-        <div className="add-pricing-card" onClick={() => setShowUpload(true)}>
-          <Plus size={32} />
-          <h3>Add Pricing Sheet</h3>
-          <p>Upload pricing data for all your proposals</p>
-        </div>
+        {!sheetsLoading && !sheetsError && (
+          <div className="add-pricing-card" onClick={() => setShowUpload(true)}>
+            <Plus size={32} />
+            <h3>Add Pricing Sheet</h3>
+            <p>Upload pricing data for all your proposals</p>
+          </div>
+        )}
       </div>
 
       {/* Upload Modal - Same as before but with company branding */}
