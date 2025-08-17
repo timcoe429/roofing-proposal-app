@@ -9,13 +9,11 @@ const Proposal = sequelize.define('Proposal', {
   },
   companyId: {
     type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'company_id'
+    allowNull: true
   },
   userId: {
     type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'user_id'
+    allowNull: true
   },
   status: {
     type: DataTypes.ENUM('draft', 'sent', 'viewed', 'accepted', 'rejected'),
@@ -23,15 +21,13 @@ const Proposal = sequelize.define('Proposal', {
   },
   proposalNumber: {
     type: DataTypes.STRING,
-    unique: true,
-    field: 'proposal_number'
+    unique: true
   },
   
   // Client Information
   clientName: {
     type: DataTypes.STRING,
-    allowNull: true,
-    field: 'client_name'
+    allowNull: true
   },
   clientEmail: {
     type: DataTypes.STRING,
@@ -43,26 +39,21 @@ const Proposal = sequelize.define('Proposal', {
         return true; // Allow empty/null values
       }
     },
-    allowNull: true,
-    field: 'client_email'
+    allowNull: true
   },
   clientPhone: {
-    type: DataTypes.STRING,
-    field: 'client_phone'
+    type: DataTypes.STRING
   },
   clientAddress: {
-    type: DataTypes.TEXT,
-    field: 'client_address'
+    type: DataTypes.TEXT
   },
   
   // Property Information
   propertyAddress: {
-    type: DataTypes.TEXT,
-    field: 'property_address'
+    type: DataTypes.TEXT
   },
   propertyType: {
-    type: DataTypes.STRING,
-    field: 'property_type'
+    type: DataTypes.STRING
   },
   
   // Additional fields from ClientInfoTab
@@ -94,7 +85,6 @@ const Proposal = sequelize.define('Proposal', {
   // Measurements
   measurements: {
     type: DataTypes.JSONB,
-    field: 'measurements',
     defaultValue: {
       totalSquares: 0,
       ridgeLength: 0,
@@ -110,61 +100,51 @@ const Proposal = sequelize.define('Proposal', {
   // Materials
   materials: {
     type: DataTypes.JSONB,
-    field: 'materials',
     defaultValue: []
   },
   
   // Labor
   laborHours: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-    field: 'labor_hours'
+    defaultValue: 0
   },
   laborRate: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 75,
-    field: 'labor_rate'
+    defaultValue: 75
   },
   
   // Pricing
   materialsCost: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-    field: 'materials_cost'
+    defaultValue: 0
   },
   laborCost: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-    field: 'labor_cost'
+    defaultValue: 0
   },
   overheadPercent: {
     type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 15,
-    field: 'overhead_percent'
+    defaultValue: 15
   },
   profitPercent: {
     type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 20,
-    field: 'profit_percent'
+    defaultValue: 20
   },
   totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-    field: 'total_amount'
+    defaultValue: 0
   },
   
   // Add-ons
   addOns: {
     type: DataTypes.JSONB,
-    defaultValue: [],
-    field: 'addons'
+    defaultValue: []
   },
   
   // Damage Areas
   damageAreas: {
     type: DataTypes.JSONB,
-    defaultValue: [],
-    field: 'damage_areas'
+    defaultValue: []
   },
   
   // Project Details
@@ -183,18 +163,15 @@ const Proposal = sequelize.define('Proposal', {
   // Files
   uploadedFiles: {
     type: DataTypes.JSONB,
-    defaultValue: [],
-    field: 'uploaded_files'
+    defaultValue: []
   },
   generatedPdfUrl: {
-    type: DataTypes.STRING,
-    field: 'generated_pdf_url'
+    type: DataTypes.STRING
   },
   
   // Dates
   validUntil: {
     type: DataTypes.DATE,
-    field: 'valid_until',
     defaultValue: () => {
       const date = new Date();
       date.setDate(date.getDate() + 30);
@@ -202,21 +179,27 @@ const Proposal = sequelize.define('Proposal', {
     }
   },
   sentAt: {
-    type: DataTypes.DATE,
-    field: 'sent_at'
+    type: DataTypes.DATE
   },
   viewedAt: {
-    type: DataTypes.DATE,
-    field: 'viewed_at'
+    type: DataTypes.DATE
   },
   respondedAt: {
+    type: DataTypes.DATE
+  },
+  
+  // Timestamps (matching your database)
+  createdAt: {
     type: DataTypes.DATE,
-    field: 'responded_at'
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'proposals',
-  timestamps: false,
-  underscored: true,
+  timestamps: true,
   hooks: {
     beforeCreate: async (proposal) => {
       // Generate proposal number
