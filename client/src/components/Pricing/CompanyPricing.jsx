@@ -232,7 +232,7 @@ export default function CompanyPricing() {
                   {sheet.isProcessing ? (
                     <div className="processing-spinner">⏳</div>
                   ) : (
-                    getFileIcon(sheet.files?.[0] || { name: sheet.type })
+                    getFileIcon(sheet.specifications?.files?.[0] || { name: sheet.subcategory || 'file' })
                   )}
                 </div>
                 <div>
@@ -245,7 +245,7 @@ export default function CompanyPricing() {
             
             <div className="sheet-stats">
               <div className="stat">
-                <span className="stat-value">{sheet.specifications?.itemCount || '1'}</span>
+                <span className="stat-value">{sheet.specifications?.itemCount || sheet.specifications?.files?.length || '1'}</span>
                 <span className="stat-label">Items</span>
               </div>
               <div className="stat">
