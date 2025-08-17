@@ -52,9 +52,6 @@ const Proposal = sequelize.define('Proposal', {
   propertyAddress: {
     type: DataTypes.TEXT
   },
-  propertyType: {
-    type: DataTypes.STRING
-  },
   
   // Additional fields from ClientInfoTab
   propertyCity: {
