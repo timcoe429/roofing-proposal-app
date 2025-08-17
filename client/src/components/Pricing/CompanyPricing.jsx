@@ -98,67 +98,9 @@ export default function CompanyPricing() {
       setDocumentUrl('');
       setInputMethod('file');
 
-      // Actually process with Claude AI
-      let processedData;
-      if (inputMethod === 'url') {
-        // Process Google Sheets URL
-        processedData = await api.analyzePricingDocument({
-          documentUrl: documentUrl,
-          documentType: 'google_sheets'
-        });
-      } else {
-        // Process uploaded files
-        const fileData = await Promise.all(
-          selectedFiles.map(file => {
-            return new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve({
-                name: file.name,
-                data: e.target.result,
-                type: file.type
-              });
-              reader.readAsDataURL(file);
-            });
-          })
-        );
-
-        processedData = await api.analyzePricingDocument({
-          files: fileData,
-          documentType: 'pricing_sheet'
-        });
-      }
-
-      // Debug the API response
-      console.log('API Response:', processedData);
-
-      // Update with real processed data
-      const finalSheet = {
-        ...processingSheet,
-        supplier: 'Multiple Suppliers',
-        itemCount: processedData.itemCount || processedData.data?.itemCount || 0,
-        extractedData: processedData.data || processedData,
-        isProcessing: false
-      };
-
-      // Update the processing sheet with real data
-      const finalSheets = updatedSheets.map(sheet =>
-        sheet.id === processingSheet.id ? finalSheet : sheet
-      );
-
-      setPricingSheets(finalSheets);
-      // Data now managed by React Query and database
-
     } catch (error) {
-      console.error('Error processing document:', error);
-
-      // Show detailed error message
-      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
-      alert(`Failed to process document: ${errorMessage}\n\nPlease check:\n1. ANTHROPIC_API_KEY is set\n2. Google Sheets URL is publicly accessible\n3. Network connection is stable`);
-
-      // Remove the processing sheet on error
-      const sheetsWithoutProcessing = pricingSheets.filter(sheet => !sheet.isProcessing);
-      setPricingSheets(sheetsWithoutProcessing);
-      localStorage.setItem('companyPricingSheets', JSON.stringify(sheetsWithoutProcessing));
+      console.error('Error saving pricing sheet:', error);
+      toast.error('Failed to save pricing sheet');
     }
   };
 
@@ -170,22 +112,28 @@ export default function CompanyPricing() {
   };
 
   const toggleActive = (id) => {
-    const updatedSheets = pricingSheets.map(sheet =>
-      sheet.id === id ? { ...sheet, isActive: !sheet.isActive } : sheet
-    );
-    setPricingSheets(updatedSheets);
-    // Data now managed by React Query and database
+    // Find the sheet to toggle
+    const sheet = pricingSheets.find(s => s.id === id);
+    if (sheet) {
+      // Update in database
+      const updatedData = { ...sheet, isActive: !sheet.isActive };
+      console.log('Toggling sheet active state:', updatedData);
+      // TODO: Add update mutation when needed
+      toast.info('Active state toggled (database update coming soon)');
+    }
   };
 
   const startEdit = (sheet) => {
-    setEditingSheet(sheet);
-    setSheetName(sheet.name);
-    setInputMethod(sheet.type === 'url' ? 'url' : 'file');
-    setDocumentUrl(sheet.files?.[0]?.name || '');
-    setShowEdit(true);
+    toast.info('Edit functionality coming soon - database integration in progress');
+    // setEditingSheet(sheet);
+    // setSheetName(sheet.name);
+    // setShowEdit(true);
   };
 
   const handleEditSave = async () => {
+    toast.info('Edit save functionality coming soon');
+    return;
+    /*
     if (!editingSheet) return;
 
     // Check if required fields are filled
@@ -275,6 +223,7 @@ export default function CompanyPricing() {
       setPricingSheets(sheetsWithoutProcessing);
       localStorage.setItem('companyPricingSheets', JSON.stringify(sheetsWithoutProcessing));
     }
+    */
   };
 
   const getFileType = (file) => {
