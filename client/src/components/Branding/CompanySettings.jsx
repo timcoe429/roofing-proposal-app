@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Building, Phone, Mail, MapPin, Upload, Palette, Shield } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '../../services/api';
 import './Branding.css';
 
 export default function CompanySettings({ companyData, onCompanyDataChange }) {
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleChange = (field, value) => {
     onCompanyDataChange({
       ...companyData,
@@ -23,9 +27,27 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
     }
   };
 
-  const handleSave = () => {
-    // Settings are auto-saved via onCompanyDataChange
-    // No popup needed - just silent save
+  const handleSave = async () => {
+    console.log('=== COMPANY SETTINGS SAVE CLICKED ===');
+    console.log('Company data to save:', companyData);
+    setIsSaving(true);
+    try {
+      // Save to database via API
+      console.log('Calling api.updateCompanySettings...');
+      const result = await api.updateCompanySettings(companyData);
+      console.log('✅ API call successful, result:', result);
+      
+      // Also save to localStorage for immediate UI updates
+      localStorage.setItem('companyData', JSON.stringify(companyData));
+      console.log('✅ Saved to localStorage');
+      
+      toast.success('Company settings saved successfully!');
+    } catch (error) {
+      console.error('❌ Error saving company settings:', error);
+      toast.error('Failed to save company settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -223,8 +245,12 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
       </div>
 
       <div className="save-section">
-        <button className="save-settings-btn" onClick={handleSave}>
-          Save Company Settings
+        <button 
+          className="save-settings-btn" 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : 'Save Company Settings'}
         </button>
         <p className="save-note">
           These settings will be applied to all future proposals and can be updated anytime.
