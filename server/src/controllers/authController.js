@@ -234,6 +234,50 @@ export const updateProfile = async (req, res) => {
   }
 };
 
+// Admin password reset (temporary endpoint for emergency reset)
+export const adminResetPassword = async (req, res) => {
+  try {
+    const { email, newPassword, adminSecret } = req.body;
+
+    // Simple admin secret check (you can set this in Railway env vars)
+    if (adminSecret !== process.env.ADMIN_RESET_SECRET) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ 
+        error: 'Email and new password are required' 
+      });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Hash new password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    user.password = hashedPassword;
+
+    await user.save();
+
+    logger.info(`Admin password reset for user: ${user.email}`);
+    
+    res.json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+
+  } catch (error) {
+    logger.error('Error in admin password reset:', error);
+    res.status(500).json({ 
+      error: 'Failed to reset password',
+      details: error.message 
+    });
+  }
+};
+
 // Change password
 export const changePassword = async (req, res) => {
   try {
