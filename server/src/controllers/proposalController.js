@@ -45,7 +45,8 @@ export const getProposal = async (req, res) => {
     console.log('Full proposal data:', JSON.stringify(proposal.dataValues || proposal, null, 2));
     
     console.log('=== SENDING RESPONSE ===');
-    res.json(proposal);
+    console.log('Sending proposal.dataValues:', proposal.dataValues);
+    res.json(proposal.dataValues || proposal);
     console.log('=== RESPONSE SENT ===');
   } catch (error) {
     console.error('Error getting proposal - Full error:', error);
