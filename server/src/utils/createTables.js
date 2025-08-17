@@ -91,6 +91,30 @@ export const createTables = async () => {
     `);
     
     console.log('Proposals table created successfully');
+    
+    // Create materials table
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS materials (
+        id SERIAL PRIMARY KEY,
+        "companyId" INTEGER REFERENCES companies(id),
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(100),
+        subcategory VARCHAR(100),
+        manufacturer VARCHAR(255),
+        sku VARCHAR(100),
+        unit VARCHAR(50) DEFAULT 'each',
+        cost DECIMAL(10,2),
+        price DECIMAL(10,2),
+        description TEXT,
+        specifications JSONB DEFAULT '{}',
+        "imageUrl" VARCHAR(500),
+        "isActive" BOOLEAN DEFAULT true,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    
+    console.log('Materials table created successfully');
     console.log('All database tables created successfully!');
     
   } catch (error) {

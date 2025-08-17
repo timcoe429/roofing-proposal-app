@@ -111,61 +111,59 @@ export default function CompanyPricing() {
     }
   };
 
+  // Update material mutation
+  const updateMaterialMutation = useMutation({
+    mutationFn: ({ id, data }) => api.updateMaterial(id, data),
+    onSuccess: () => {
+      toast.success('Material updated!');
+      queryClient.invalidateQueries({ queryKey: ['materials'] });
+    },
+    onError: (error) => {
+      toast.error('Failed to update material');
+      console.error(error);
+    }
+  });
+
   const toggleActive = (id) => {
     // Find the sheet to toggle
     const sheet = pricingSheets.find(s => s.id === id);
     if (sheet) {
       // Update in database
-      const updatedData = { ...sheet, isActive: !sheet.isActive };
+      const updatedData = { isActive: !sheet.isActive };
       console.log('Toggling sheet active state:', updatedData);
-      // TODO: Add update mutation when needed
-      toast.info('Active state toggled (database update coming soon)');
+      updateMaterialMutation.mutate({ id, data: updatedData });
     }
   };
 
   const startEdit = (sheet) => {
-    toast.info('Edit functionality coming soon - database integration in progress');
-    // setEditingSheet(sheet);
-    // setSheetName(sheet.name);
-    // setShowEdit(true);
+    setEditingSheet(sheet);
+    setSheetName(sheet.name);
+    setInputMethod(sheet.specifications?.type || 'file');
+    setDocumentUrl(sheet.specifications?.files?.[0]?.name || '');
+    setShowEdit(true);
   };
 
   const handleEditSave = async () => {
-    toast.info('Edit save functionality coming soon');
-    return;
-    /*
     if (!editingSheet) return;
 
-    // Check if required fields are filled
     if (!sheetName.trim()) {
-      alert('Please fill in Document Name');
-      return;
-    }
-
-    if (inputMethod === 'url' && !documentUrl.trim()) {
-      alert('Please enter a Google Sheets URL');
+      toast.error('Please fill in Document Name');
       return;
     }
 
     try {
-      // Show processing state
-      const processingSheet = {
-        ...editingSheet,
+      const updatedData = {
         name: sheetName,
-        supplier: 'Processing...',
-        lastUpdated: new Date().toISOString().split('T')[0],
-        itemCount: '...',
-        type: inputMethod === 'url' ? 'url' : 'file',
-        files: inputMethod === 'url' ? [{ name: documentUrl, size: 0 }] : editingSheet.files,
-        isProcessing: true
+        description: `Updated pricing sheet: ${sheetName}`,
+        specifications: {
+          ...editingSheet.specifications,
+          type: inputMethod,
+          updatedDate: new Date().toISOString()
+        }
       };
 
-      // Update the sheet with processing state
-      const updatedSheets = pricingSheets.map(sheet =>
-        sheet.id === editingSheet.id ? processingSheet : sheet
-      );
-      setPricingSheets(updatedSheets);
-      // Data now managed by React Query and database
+      console.log('Updating material in database:', updatedData);
+      updateMaterialMutation.mutate({ id: editingSheet.id, data: updatedData });
 
       // Close modal
       setShowEdit(false);
@@ -173,57 +171,10 @@ export default function CompanyPricing() {
       setSheetName('');
       setDocumentUrl('');
 
-      // Actually process with Claude AI
-      let processedData;
-      if (inputMethod === 'url') {
-        // Process Google Sheets URL
-        processedData = await api.analyzePricingDocument({
-          documentUrl: documentUrl,
-          documentType: 'google_sheets'
-        });
-      } else {
-        // Keep existing file data for file-based sheets
-        processedData = await api.analyzePricingDocument({
-          files: editingSheet.extractedData || [],
-          documentType: 'pricing_sheet'
-        });
-      }
-
-      // Debug the API response
-      console.log('Edit API Response:', processedData);
-
-      // Update with real processed data
-      const finalSheet = {
-        ...processingSheet,
-        supplier: 'Multiple Suppliers',
-        itemCount: processedData.itemCount || processedData.data?.itemCount || 0,
-        extractedData: processedData.data || processedData,
-        isProcessing: false
-      };
-
-      // Update the processing sheet with real data
-      const finalSheets = updatedSheets.map(sheet =>
-        sheet.id === editingSheet.id ? finalSheet : sheet
-      );
-
-      setPricingSheets(finalSheets);
-      // Data now managed by React Query and database
-
     } catch (error) {
-      console.error('Error updating document:', error);
-
-      // Show detailed error message
-      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
-      alert(`Failed to update document: ${errorMessage}\n\nPlease check:\n1. GOOGLE_SHEETS_API_KEY is set\n2. Google Sheets URL is publicly accessible\n3. Network connection is stable`);
-
-      // Remove the processing state on error
-      const sheetsWithoutProcessing = pricingSheets.map(sheet =>
-        sheet.id === editingSheet.id ? editingSheet : sheet
-      );
-      setPricingSheets(sheetsWithoutProcessing);
-      localStorage.setItem('companyPricingSheets', JSON.stringify(sheetsWithoutProcessing));
+      console.error('Error updating material:', error);
+      toast.error('Failed to update material');
     }
-    */
   };
 
   const getFileType = (file) => {

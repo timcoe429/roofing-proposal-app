@@ -18,10 +18,14 @@ export const getMaterials = async (req, res) => {
       console.log('Found company:', company?.id, company?.name);
     }
     
-    // For now, return materials from database (when Material model is properly set up)
-    // Since Material model isn't fully implemented yet, return empty array
-    console.log('Returning empty materials array (Material model needs implementation)');
-    res.json([]);
+    // Get materials from database
+    const materials = await Material.findAll({
+      where: companyId ? { companyId } : {},
+      order: [['createdAt', 'DESC']]
+    });
+    
+    console.log(`Found ${materials.length} materials`);
+    res.json(materials);
   } catch (error) {
     console.error('Error getting materials:', error);
     res.status(500).json({ error: 'Failed to get materials' });
@@ -52,14 +56,10 @@ export const createMaterial = async (req, res) => {
     
     console.log('Final material data to create:', JSON.stringify(materialData, null, 2));
     
-    // For now, just return success since Material model needs proper implementation
-    console.log('Material creation simulated (Material model needs implementation)');
-    res.status(201).json({ 
-      id: Date.now(), 
-      ...materialData,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+    // Create material in database
+    const material = await Material.create(materialData);
+    console.log('Material created successfully:', material.id);
+    res.status(201).json(material.dataValues || material);
   } catch (error) {
     console.error('Error creating material:', error);
     res.status(500).json({ error: 'Failed to create material' });
@@ -72,13 +72,16 @@ export const updateMaterial = async (req, res) => {
     console.log('PUT /api/materials/:id - Params:', req.params);
     console.log('PUT /api/materials/:id - Request body:', JSON.stringify(req.body, null, 2));
     
-    // For now, just return success
-    console.log('Material update simulated (Material model needs implementation)');
-    res.json({ 
-      id: req.params.id, 
-      ...req.body,
-      updatedAt: new Date()
-    });
+    // Update material in database
+    const material = await Material.findByPk(req.params.id);
+    
+    if (!material) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    await material.update(req.body);
+    console.log('Material updated successfully');
+    res.json(material.dataValues || material);
   } catch (error) {
     console.error('Error updating material:', error);
     res.status(500).json({ error: 'Failed to update material' });
@@ -90,8 +93,15 @@ export const deleteMaterial = async (req, res) => {
   try {
     console.log('DELETE /api/materials/:id - Params:', req.params);
     
-    // For now, just return success
-    console.log('Material deletion simulated (Material model needs implementation)');
+    // Delete material from database
+    const material = await Material.findByPk(req.params.id);
+    
+    if (!material) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    await material.destroy();
+    console.log('Material deleted successfully');
     res.json({ message: 'Material deleted successfully' });
   } catch (error) {
     console.error('Error deleting material:', error);
