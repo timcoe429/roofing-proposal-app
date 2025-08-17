@@ -84,11 +84,29 @@ const ProposalEditor = () => {
   const [companyData, setCompanyData] = useState(getCompanyData);
 
   // Fetch existing proposal if editing
-  const { data: proposalFromApi, isLoading } = useQuery({
+  const { data: proposalFromApi, isLoading, error, isError } = useQuery({
     queryKey: ['proposal', id],
-    queryFn: () => api.getProposal(id),
-    enabled: !isNewProposal
+    queryFn: async () => {
+      console.log('=== REACT QUERY EXECUTING ===');
+      console.log('Calling api.getProposal with id:', id);
+      try {
+        const result = await api.getProposal(id);
+        console.log('✅ API call successful, result:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ API call failed:', error);
+        throw error;
+      }
+    },
+    enabled: !isNewProposal,
+    retry: 1
   });
+
+  console.log('=== REACT QUERY STATE ===');
+  console.log('isLoading:', isLoading);
+  console.log('isError:', isError);
+  console.log('error:', error);
+  console.log('proposalFromApi:', proposalFromApi);
 
   // Update proposal data when API data is loaded
   useEffect(() => {
