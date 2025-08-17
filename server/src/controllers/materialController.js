@@ -1,6 +1,7 @@
 import Material from '../models/Material.js';
 import User from '../models/User.js';
 import Company from '../models/Company.js';
+import { fetchGoogleSheetData } from '../services/googleSheetsService.js';
 
 // Get all materials for a company
 export const getMaterials = async (req, res) => {
@@ -49,10 +50,39 @@ export const createMaterial = async (req, res) => {
       console.log('Found company:', company?.id, company?.name);
     }
 
-    const materialData = {
+    let materialData = {
       ...req.body,
       companyId
     };
+    
+    // If it's a Google Sheets URL, fetch the actual data to get item count
+    if (materialData.specifications?.type === 'url' && materialData.specifications?.files?.[0]?.name) {
+      const sheetUrl = materialData.specifications.files[0].name;
+      console.log('Processing Google Sheet URL:', sheetUrl);
+      
+      try {
+        const sheetData = await fetchGoogleSheetData(sheetUrl);
+        console.log(`✅ Google Sheet processed: ${sheetData.dataRowCount} items found`);
+        
+        // Update specifications with actual item count
+        materialData.specifications = {
+          ...materialData.specifications,
+          itemCount: sheetData.dataRowCount,
+          totalRows: sheetData.rowCount,
+          processedAt: new Date().toISOString(),
+          extractedData: sheetData.rows.slice(0, 10) // Store first 10 rows as preview
+        };
+      } catch (error) {
+        console.error('Failed to process Google Sheet:', error);
+        // Continue with creation but mark as failed to process
+        materialData.specifications = {
+          ...materialData.specifications,
+          itemCount: 0,
+          processingError: error.message,
+          processedAt: new Date().toISOString()
+        };
+      }
+    }
     
     console.log('Final material data to create:', JSON.stringify(materialData, null, 2));
     
