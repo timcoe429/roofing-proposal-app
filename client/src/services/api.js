@@ -75,8 +75,12 @@ const api = {
   checkAIServices: () => apiClient.get('/ai/status'),
 
   // PDF Generation
-  generatePdf: (proposalId) => apiClient.post(`/pdf/generate/${proposalId}`),
-  downloadPdf: (proposalId) => apiClient.get(`/pdf/download/${proposalId}`),
+  generatePdf: async (proposalId) => {
+    const response = await apiClient.post(`/pdf/generate/${proposalId}`, {}, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
 
   // Company
   getCompanySettings: () => apiClient.get('/company/settings'),

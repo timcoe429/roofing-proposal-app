@@ -152,11 +152,20 @@ const ProposalEditor = () => {
 
   // Generate PDF mutation
   const generatePdfMutation = useMutation({
-    mutationFn: () => api.generatePdf(id || proposalData),
-    onSuccess: (response) => {
-      toast.success('PDF generated successfully!');
-      // Open PDF in new tab or trigger download
-      window.open(response.pdfUrl, '_blank');
+    mutationFn: () => api.generatePdf(id),
+    onSuccess: (pdfBlob) => {
+      toast.success('PDF generated and downloaded!');
+      
+      // Create blob URL and trigger download
+      const blob = new Blob([pdfBlob], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `proposal-${proposalData.clientName || 'client'}-${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     },
     onError: (error) => {
       toast.error('Failed to generate PDF');
@@ -185,17 +194,7 @@ const ProposalEditor = () => {
     }
   }, [saveMutation, proposalData, isNewProposal, id]);
 
-  // Auto-save draft (disabled for now to prevent errors)
-  useEffect(() => {
-    const autoSaveTimer = setTimeout(() => {
-      // Only auto-save if we have complete client info and it's not a new proposal
-      if (proposalData.clientName && proposalData.clientEmail && !isNewProposal) {
-        handleSave(true);
-      }
-    }, 60000); // Auto-save every 60 seconds (reduced frequency)
-
-    return () => clearTimeout(autoSaveTimer);
-  }, [proposalData, handleSave, isNewProposal]);
+  // Auto-save disabled per user request
 
   const handleGeneratePdf = async () => {
     if (!proposalData.clientName) {
@@ -203,7 +202,34 @@ const ProposalEditor = () => {
       return;
     }
     
-    generatePdfMutation.mutate();
+    // If it's a new proposal, save it first
+    if (isNewProposal) {
+      try {
+        const savedProposal = await saveMutation.mutateAsync(proposalData);
+        // Use the saved proposal ID for PDF generation
+        api.generatePdf(savedProposal.id).then(pdfBlob => {
+          toast.success('PDF generated and downloaded!');
+          
+          const blob = new Blob([pdfBlob], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `proposal-${proposalData.clientName || 'client'}-${Date.now()}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }).catch(error => {
+          toast.error('Failed to generate PDF');
+          console.error(error);
+        });
+      } catch (error) {
+        toast.error('Please save the proposal first');
+        return;
+      }
+    } else {
+      generatePdfMutation.mutate();
+    }
   };
 
   const updateProposalData = (section, data) => {

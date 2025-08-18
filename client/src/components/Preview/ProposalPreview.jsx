@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, Send, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ToggleLeft, ToggleRight } from 'lucide-react';
 import './ProposalPreview.css';
 
 export default function ProposalPreview({ proposalData, companyData }) {
@@ -65,14 +65,7 @@ export default function ProposalPreview({ proposalData, companyData }) {
             </button>
             <span className={isDetailedMode ? 'active' : ''}>Detailed</span>
           </div>
-          <button className="preview-btn">
-            <Eye size={18} />
-            Preview PDF
-          </button>
-          <button className="download-btn">
-            <Download size={18} />
-            Download PDF
-          </button>
+
         </div>
       </div>
 
