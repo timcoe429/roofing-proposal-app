@@ -154,22 +154,33 @@ const ProposalEditor = () => {
   const generatePdfMutation = useMutation({
     mutationFn: () => api.generatePdf(id),
     onSuccess: (pdfBlob) => {
+      console.log('PDF blob received:', pdfBlob);
+      console.log('PDF blob type:', typeof pdfBlob);
+      console.log('PDF blob size:', pdfBlob.size || pdfBlob.length);
+      
       toast.success('PDF generated and downloaded!');
       
       // Create blob URL and trigger download
       const blob = new Blob([pdfBlob], { type: 'application/pdf' });
+      console.log('Created blob size:', blob.size);
+      
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `proposal-${proposalData.clientName || 'client'}-${Date.now()}.pdf`;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
     },
     onError: (error) => {
       toast.error('Failed to generate PDF');
-      console.error(error);
+      console.error('PDF generation error:', error);
     }
   });
 
@@ -208,20 +219,28 @@ const ProposalEditor = () => {
         const savedProposal = await saveMutation.mutateAsync(proposalData);
         // Use the saved proposal ID for PDF generation
         api.generatePdf(savedProposal.id).then(pdfBlob => {
+          console.log('PDF blob received for new proposal:', pdfBlob);
           toast.success('PDF generated and downloaded!');
           
           const blob = new Blob([pdfBlob], { type: 'application/pdf' });
+          console.log('Created blob size for new proposal:', blob.size);
+          
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
           link.download = `proposal-${proposalData.clientName || 'client'}-${Date.now()}.pdf`;
+          link.style.display = 'none';
           document.body.appendChild(link);
           link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          }, 100);
         }).catch(error => {
           toast.error('Failed to generate PDF');
-          console.error(error);
+          console.error('PDF generation error for new proposal:', error);
         });
       } catch (error) {
         toast.error('Please save the proposal first');

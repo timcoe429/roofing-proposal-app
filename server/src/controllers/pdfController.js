@@ -23,7 +23,21 @@ export const generatePDF = async (req, res) => {
     };
 
     // Generate PDF
+    console.log('Generating PDF for proposal:', proposal.clientName);
     const pdfBuffer = await pdfService.generateProposalPDF(proposal, companyData);
+    console.log('PDF buffer generated, size:', pdfBuffer.length, 'bytes');
+    
+    // Validate PDF buffer
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error('Generated PDF buffer is empty');
+    }
+    
+    // Check if buffer starts with PDF header
+    const pdfHeader = pdfBuffer.slice(0, 4).toString();
+    console.log('PDF header:', pdfHeader);
+    if (pdfHeader !== '%PDF') {
+      console.warn('Warning: PDF buffer does not start with %PDF header');
+    }
     
     // Set headers for file download
     const filename = `proposal-${proposal.clientName || 'client'}-${Date.now()}.pdf`;

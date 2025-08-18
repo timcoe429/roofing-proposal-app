@@ -10,15 +10,32 @@ const pdfService = {
         });
         
         const buffers = [];
-        doc.on('data', buffers.push.bind(buffers));
-        doc.on('end', () => {
-          const pdfData = Buffer.concat(buffers);
-          resolve(pdfData);
+        
+        // Properly handle data events
+        doc.on('data', (chunk) => {
+          buffers.push(chunk);
         });
-        doc.on('error', reject);
+        
+        doc.on('end', () => {
+          try {
+            const pdfData = Buffer.concat(buffers);
+            console.log(`PDF generated successfully, size: ${pdfData.length} bytes`);
+            resolve(pdfData);
+          } catch (concatError) {
+            console.error('Buffer concatenation error:', concatError);
+            reject(concatError);
+          }
+        });
+        
+        doc.on('error', (error) => {
+          console.error('PDFDocument error:', error);
+          reject(error);
+        });
 
         // Generate PDF content
         this.buildPDF(doc, proposalData, companyData);
+        
+        // Important: End the document
         doc.end();
         
       } catch (error) {
@@ -67,10 +84,15 @@ const pdfService = {
     // Header
     doc.fontSize(28).fillColor(primaryColor).text(company.name, 50, 50);
     doc.fontSize(16).fillColor(grayColor).text('Professional Roofing Services', 50, 85);
+    
+    // Contact info with safe text handling
+    const contactText = `${company.phone || 'Phone'} • ${company.email || 'Email'}`;
+    const licenseText = `License: ${company.license || 'N/A'} • Insured: ${company.insurance || 'N/A'}`;
+    
     doc.fontSize(12).fillColor(grayColor)
-       .text(`${company.phone} • ${company.email}`, 50, 110)
-       .text(`License: ${company.license} • Insured: ${company.insurance}`, 50, 125)
-       .text(company.address, 50, 140);
+       .text(contactText, 50, 110)
+       .text(licenseText, 50, 125)
+       .text(company.address || 'Address', 50, 140);
 
     // Header line
     doc.strokeColor(primaryColor).lineWidth(3).moveTo(50, 180).lineTo(545, 180).stroke();
