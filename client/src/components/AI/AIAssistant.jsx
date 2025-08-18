@@ -483,101 +483,115 @@ ${expertContext}`;
       };
     }
     
-    // Parse structured sections from AI response
-    const materials = [];
-    const laborItems = [];
-    const additionalCosts = [];
+    // Use AI to parse its own response - the smart way!
+    try {
+      const parsingPrompt = `Extract the materials, labor, and costs from this roofing estimate and return ONLY a JSON object with this exact structure:
 
-    const toNumber = (str) => {
-      if (!str) return 0;
-      return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
-    };
+{
+  "materials": [
+    {"name": "Material Name", "quantity": 30, "unit": "squares", "unitPrice": 450, "total": 13500}
+  ],
+  "labor": [
+    {"name": "Labor Description", "quantity": 30, "unit": "squares", "unitPrice": 150, "total": 4500}
+  ],
+  "additionalCosts": [
+    {"name": "Cost Name", "cost": 1000}
+  ],
+  "totalAmount": 43227,
+  "timeline": "5-7 working days"
+}
 
-    const createLineItem = (name, quantity, unit, unitPrice, total, category = 'material') => {
-      return {
-        id: Date.now() + Math.random(),
-        name: name.trim(),
-        quantity: toNumber(quantity),
-        unit: unit || '',
-        unitPrice: toNumber(unitPrice),
-        total: toNumber(total),
-        category
-      };
-    };
-    
-    // Extract MATERIALS & LABOR section
-    const materialsSection = response.match(/MATERIALS\s*&\s*LABOR([\s\S]*?)(?=ADDITIONAL\s*COSTS|TOTAL\s*PROJECT\s*COST|$)/i);
-    if (materialsSection) {
-      const sectionText = materialsSection[1];
+Estimate text to parse:
+${response}
+
+Return ONLY the JSON object, no other text.`;
+
+      // Send to AI for intelligent parsing
+      const parseResponse = await api.chatWithAI(parsingPrompt);
       
-      // Parse each line item with pattern: Description\nQuantity × $Price = $Total
-      const lineItemPattern = /^([^\n]+)\n([\d.]+)\s*([^×]*?)\s*×\s*\$([\d,]+(?:\.\d{2})?)\s*=\s*\$([\d,]+(?:\.\d{2})?)/gm;
-      let match;
-      
-      while ((match = lineItemPattern.exec(sectionText)) !== null) {
-        const [, name, quantity, unit, unitPrice, total] = match;
+      try {
+        // Try to extract JSON from the response
+        let jsonText = parseResponse.response;
         
-        // Determine if it's labor or material
-        if (name.toLowerCase().includes('labor') || name.toLowerCase().includes('installation')) {
-          laborItems.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'labor'));
-        } else {
-          materials.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'material'));
+        // Clean up the response - sometimes AI adds extra text
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonText = jsonMatch[0];
+        }
+        
+        const parsedData = JSON.parse(jsonText);
+        
+        // Add IDs to items for React keys
+        if (parsedData.materials) {
+          parsedData.materials = parsedData.materials.map(item => ({
+            ...item,
+            id: Date.now() + Math.random(),
+            category: 'material'
+          }));
+        }
+        
+        if (parsedData.labor) {
+          parsedData.labor = parsedData.labor.map(item => ({
+            ...item,
+            id: Date.now() + Math.random(),
+            category: 'labor'
+          }));
+        }
+        
+        if (parsedData.additionalCosts) {
+          parsedData.additionalCosts = parsedData.additionalCosts.map(item => ({
+            ...item,
+            id: Date.now() + Math.random(),
+            category: 'additional'
+          }));
+        }
+        
+        // Combine materials and labor for backward compatibility
+        const allItems = [...(parsedData.materials || []), ...(parsedData.labor || [])];
+        if (allItems.length > 0) {
+          updates.materials = allItems;
+        }
+        
+        // Store structured data
+        if (parsedData.materials || parsedData.labor || parsedData.additionalCosts) {
+          updates.structuredPricing = {
+            materials: parsedData.materials || [],
+            labor: parsedData.labor || [],
+            additionalCosts: parsedData.additionalCosts || []
+          };
+        }
+        
+        // Set total amount
+        if (parsedData.totalAmount) {
+          updates.totalAmount = parsedData.totalAmount;
+        }
+        
+        // Set timeline
+        if (parsedData.timeline) {
+          updates.timeline = parsedData.timeline;
+        }
+        
+        console.log('✅ AI successfully parsed estimate data:', parsedData);
+        
+      } catch (parseError) {
+        console.error('Failed to parse AI response as JSON:', parseError);
+        console.log('AI parsing response was:', parseResponse.response);
+        
+        // Fallback: try to extract at least the total
+        const totalMatch = response.match(/(?:Total|Subtotal|TOTAL).*?\$([0-9,]+(?:\.[0-9]{2})?)/i);
+        if (totalMatch) {
+          updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
         }
       }
       
-      // Also catch single-line items like "Labor: 31.5 squares × $150 = $4,725"
-      const singleLinePattern = /([^\n:]+):\s*([\d.]+)\s*([^×]*?)\s*×\s*\$([\d,]+(?:\.\d{2})?)\s*=\s*\$([\d,]+(?:\.\d{2})?)/g;
-      while ((match = singleLinePattern.exec(sectionText)) !== null) {
-        const [, name, quantity, unit, unitPrice, total] = match;
-        
-        if (name.toLowerCase().includes('labor') || name.toLowerCase().includes('installation')) {
-          laborItems.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'labor'));
-        } else {
-          materials.push(createLineItem(name, quantity, unit.trim(), unitPrice, total, 'material'));
-        }
-      }
-    }
-    
-    // Extract ADDITIONAL COSTS section
-    const additionalSection = response.match(/ADDITIONAL\s*COSTS([\s\S]*?)(?=TOTAL\s*PROJECT\s*COST|$)/i);
-    if (additionalSection) {
-      const sectionText = additionalSection[1];
+    } catch (aiError) {
+      console.error('AI parsing request failed:', aiError);
       
-      // Parse additional cost items
-      const additionalPattern = /([^\n:]+):\s*\$([\d,]+(?:\.\d{2})?)/g;
-      let match;
-      
-      while ((match = additionalPattern.exec(sectionText)) !== null) {
-        const [, name, cost] = match;
-        additionalCosts.push({
-          id: Date.now() + Math.random(),
-          name: name.trim(),
-          cost: toNumber(cost),
-          category: 'additional'
-        });
+      // Fallback: extract total with simple pattern
+      const totalMatch = response.match(/(?:Total|Subtotal|TOTAL).*?\$([0-9,]+(?:\.[0-9]{2})?)/i);
+      if (totalMatch) {
+        updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
       }
-    }
-    
-    // Combine all items for the materials array (maintaining backward compatibility)
-    const allItems = [...materials, ...laborItems];
-    if (allItems.length > 0) {
-      updates.materials = allItems;
-    }
-    
-    // Store structured data for new preview modes
-    if (materials.length > 0 || laborItems.length > 0 || additionalCosts.length > 0) {
-      updates.structuredPricing = {
-        materials,
-        labor: laborItems,
-        additionalCosts
-      };
-    }
-    
-    // Extract total cost - improved pattern for "TOTAL PROJECT COST"
-    const totalMatch = response.match(/TOTAL\s*(?:PROJECT)?\s*COST.*?\$([\d,]+(?:\.\d{2})?)|TOTAL\s*ESTIMATE.*?\$([\d,]+(?:\.\d{2})?)|Total.*?\$([\d,]+(?:\.\d{2})?)/i);
-    if (totalMatch) {
-      const total = totalMatch[1] || totalMatch[2] || totalMatch[3];
-      updates.totalAmount = parseFloat(total.replace(/,/g, ''));
     }
     
     // Extract timeline
