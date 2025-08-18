@@ -381,6 +381,22 @@ ${expertContext}`;
         assistantMessage.actions.forEach(action => executeAction(action));
       }
 
+      // Parse detailed data with AI (asynchronous enhancement)
+      console.log('🚀 Starting intelligent AI parsing...');
+      try {
+        const detailedData = await parseAIResponseWithAI(response.response);
+        if (Object.keys(detailedData).length > 0) {
+          console.log('✅ Applying detailed AI parsing results:', detailedData);
+          onUpdateProposal(prev => ({
+            ...prev,
+            ...detailedData
+          }));
+        }
+      } catch (error) {
+        console.error('❌ Detailed AI parsing failed:', error);
+        // No problem - basic extraction already worked
+      }
+
     } catch (error) {
       console.error('Error getting AI response:', error);
       
@@ -437,7 +453,113 @@ ${expertContext}`;
     return actions;
   };
 
-  // Extract proposal data from AI response
+  // Parse AI response with AI for detailed extraction
+  const parseAIResponseWithAI = async (response) => {
+    try {
+      const parsingPrompt = `Extract the materials, labor, and costs from this roofing estimate and return ONLY a JSON object with this exact structure:
+
+{
+  "materials": [
+    {"name": "Material Name", "quantity": 30, "unit": "squares", "unitPrice": 450, "total": 13500}
+  ],
+  "labor": [
+    {"name": "Labor Description", "quantity": 30, "unit": "squares", "unitPrice": 150, "total": 4500}
+  ],
+  "additionalCosts": [
+    {"name": "Cost Name", "cost": 1000}
+  ],
+  "totalAmount": 43227,
+  "timeline": "5-7 working days"
+}
+
+Estimate text to parse:
+${response}
+
+Return ONLY the JSON object, no other text.`;
+
+      console.log('🤖 Sending AI response for intelligent parsing...');
+      const parseResponse = await api.chatWithAI(parsingPrompt);
+      
+      try {
+        // Try to extract JSON from the response
+        let jsonText = parseResponse.response;
+        
+        // Clean up the response - sometimes AI adds extra text
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonText = jsonMatch[0];
+        }
+        
+        const parsedData = JSON.parse(jsonText);
+        
+        // Add IDs to items for React keys
+        if (parsedData.materials) {
+          parsedData.materials = parsedData.materials.map(item => ({
+            ...item,
+            id: Date.now() + Math.random(),
+            category: 'material'
+          }));
+        }
+        
+        if (parsedData.labor) {
+          parsedData.labor = parsedData.labor.map(item => ({
+            ...item,
+            id: Date.now() + Math.random(),
+            category: 'labor'
+          }));
+        }
+        
+        if (parsedData.additionalCosts) {
+          parsedData.additionalCosts = parsedData.additionalCosts.map(item => ({
+            ...item,
+            id: Date.now() + Math.random(),
+            category: 'additional'
+          }));
+        }
+        
+        const updates = {};
+        
+        // Combine materials and labor for backward compatibility
+        const allItems = [...(parsedData.materials || []), ...(parsedData.labor || [])];
+        if (allItems.length > 0) {
+          updates.materials = allItems;
+        }
+        
+        // Store structured data
+        if (parsedData.materials || parsedData.labor || parsedData.additionalCosts) {
+          updates.structuredPricing = {
+            materials: parsedData.materials || [],
+            labor: parsedData.labor || [],
+            additionalCosts: parsedData.additionalCosts || []
+          };
+        }
+        
+        // Set total amount
+        if (parsedData.totalAmount) {
+          updates.totalAmount = parsedData.totalAmount;
+        }
+        
+        // Set timeline
+        if (parsedData.timeline) {
+          updates.timeline = parsedData.timeline;
+        }
+        
+        console.log('✅ AI successfully parsed estimate data:', parsedData);
+        return updates;
+        
+      } catch (parseError) {
+        console.error('Failed to parse AI response as JSON:', parseError);
+        console.log('AI parsing response was:', parseResponse.response);
+        return {};
+      }
+      
+    } catch (aiError) {
+      console.error('AI parsing request failed:', aiError);
+      return {};
+    }
+  };
+
+  // Extract proposal data from AI response (synchronous basic extraction)
   const extractProposalData = (response) => {
     const updates = {};
     
@@ -483,115 +605,10 @@ ${expertContext}`;
       };
     }
     
-    // Use AI to parse its own response - the smart way!
-    try {
-      const parsingPrompt = `Extract the materials, labor, and costs from this roofing estimate and return ONLY a JSON object with this exact structure:
-
-{
-  "materials": [
-    {"name": "Material Name", "quantity": 30, "unit": "squares", "unitPrice": 450, "total": 13500}
-  ],
-  "labor": [
-    {"name": "Labor Description", "quantity": 30, "unit": "squares", "unitPrice": 150, "total": 4500}
-  ],
-  "additionalCosts": [
-    {"name": "Cost Name", "cost": 1000}
-  ],
-  "totalAmount": 43227,
-  "timeline": "5-7 working days"
-}
-
-Estimate text to parse:
-${response}
-
-Return ONLY the JSON object, no other text.`;
-
-      // Send to AI for intelligent parsing
-      const parseResponse = await api.chatWithAI(parsingPrompt);
-      
-      try {
-        // Try to extract JSON from the response
-        let jsonText = parseResponse.response;
-        
-        // Clean up the response - sometimes AI adds extra text
-        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          jsonText = jsonMatch[0];
-        }
-        
-        const parsedData = JSON.parse(jsonText);
-        
-        // Add IDs to items for React keys
-        if (parsedData.materials) {
-          parsedData.materials = parsedData.materials.map(item => ({
-            ...item,
-            id: Date.now() + Math.random(),
-            category: 'material'
-          }));
-        }
-        
-        if (parsedData.labor) {
-          parsedData.labor = parsedData.labor.map(item => ({
-            ...item,
-            id: Date.now() + Math.random(),
-            category: 'labor'
-          }));
-        }
-        
-        if (parsedData.additionalCosts) {
-          parsedData.additionalCosts = parsedData.additionalCosts.map(item => ({
-            ...item,
-            id: Date.now() + Math.random(),
-            category: 'additional'
-          }));
-        }
-        
-        // Combine materials and labor for backward compatibility
-        const allItems = [...(parsedData.materials || []), ...(parsedData.labor || [])];
-        if (allItems.length > 0) {
-          updates.materials = allItems;
-        }
-        
-        // Store structured data
-        if (parsedData.materials || parsedData.labor || parsedData.additionalCosts) {
-          updates.structuredPricing = {
-            materials: parsedData.materials || [],
-            labor: parsedData.labor || [],
-            additionalCosts: parsedData.additionalCosts || []
-          };
-        }
-        
-        // Set total amount
-        if (parsedData.totalAmount) {
-          updates.totalAmount = parsedData.totalAmount;
-        }
-        
-        // Set timeline
-        if (parsedData.timeline) {
-          updates.timeline = parsedData.timeline;
-        }
-        
-        console.log('✅ AI successfully parsed estimate data:', parsedData);
-        
-      } catch (parseError) {
-        console.error('Failed to parse AI response as JSON:', parseError);
-        console.log('AI parsing response was:', parseResponse.response);
-        
-        // Fallback: try to extract at least the total
-        const totalMatch = response.match(/(?:Total|Subtotal|TOTAL).*?\$([0-9,]+(?:\.[0-9]{2})?)/i);
-        if (totalMatch) {
-          updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
-        }
-      }
-      
-    } catch (aiError) {
-      console.error('AI parsing request failed:', aiError);
-      
-      // Fallback: extract total with simple pattern
-      const totalMatch = response.match(/(?:Total|Subtotal|TOTAL).*?\$([0-9,]+(?:\.[0-9]{2})?)/i);
-      if (totalMatch) {
-        updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
-      }
+    // Basic extraction - extract total amount with simple pattern
+    const totalMatch = response.match(/(?:Total|Subtotal|TOTAL).*?\$([0-9,]+(?:\.[0-9]{2})?)/i);
+    if (totalMatch) {
+      updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
     }
     
     // Extract timeline
