@@ -152,10 +152,21 @@ const ProposalEditor = () => {
 
   // Generate PDF mutation
   const generatePdfMutation = useMutation({
-    mutationFn: () => api.generatePdf(id),
+    mutationFn: () => {
+      console.log('PDF mutation starting for ID:', id);
+      return api.generatePdf(id);
+    },
     onSuccess: (pdfBlob) => {
+      console.log('PDF mutation onSuccess called');
       console.log('PDF blob received:', pdfBlob);
       console.log('PDF blob type:', typeof pdfBlob);
+      console.log('PDF blob constructor:', pdfBlob?.constructor?.name);
+      
+      if (!pdfBlob) {
+        toast.error('No PDF data received');
+        return;
+      }
+      
       console.log('PDF blob size:', pdfBlob.size || pdfBlob.length);
       
       toast.success('PDF generated and downloaded!');
@@ -179,8 +190,10 @@ const ProposalEditor = () => {
       }, 100);
     },
     onError: (error) => {
+      console.error('PDF mutation onError called');
       toast.error('Failed to generate PDF');
       console.error('PDF generation error:', error);
+      console.error('Error details:', error.response?.data);
     }
   });
 

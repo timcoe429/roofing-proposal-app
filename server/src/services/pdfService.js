@@ -1,5 +1,7 @@
 import PDFDocument from 'pdfkit';
 
+console.log('PDFKit imported:', !!PDFDocument);
+
 const pdfService = {
   async generateProposalPDF(proposalData, companyData) {
     return new Promise((resolve, reject) => {

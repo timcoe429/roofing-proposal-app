@@ -76,10 +76,26 @@ const api = {
 
   // PDF Generation
   generatePdf: async (proposalId) => {
-    const response = await apiClient.post(`/pdf/generate/${proposalId}`, {}, {
-      responseType: 'blob'
-    });
-    return response.data;
+    try {
+      console.log('Making PDF request for proposal ID:', proposalId);
+      const response = await apiClient.post(`/pdf/generate/${proposalId}`, {}, {
+        responseType: 'blob'
+      });
+      console.log('PDF response received:', response);
+      console.log('PDF response data:', response.data);
+      console.log('PDF response status:', response.status);
+      console.log('PDF response headers:', response.headers);
+      
+      if (!response.data) {
+        throw new Error('No PDF data received from server');
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('PDF API error:', error);
+      console.error('PDF API error response:', error.response);
+      throw error;
+    }
   },
 
   // Company

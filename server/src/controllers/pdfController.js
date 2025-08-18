@@ -2,14 +2,23 @@ import pdfService from '../services/pdfService.js';
 import { Proposal } from '../models/index.js';
 
 export const generatePDF = async (req, res) => {
+  console.log('=== PDF GENERATION STARTED ===');
+  console.log('Request params:', req.params);
+  
   try {
     const { id } = req.params;
+    console.log('Looking for proposal with ID:', id);
     
     // Get proposal data
     const proposal = await Proposal.findByPk(id);
+    console.log('Proposal found:', !!proposal);
+    
     if (!proposal) {
+      console.log('Proposal not found, returning 404');
       return res.status(404).json({ error: 'Proposal not found' });
     }
+    
+    console.log('Proposal client name:', proposal.clientName);
 
     // Get company data (you can expand this to fetch from database)
     const companyData = {
@@ -64,8 +73,16 @@ export const generatePDF = async (req, res) => {
     res.send(pdfBuffer);
     
   } catch (error) {
-    console.error('PDF generation error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    console.error('=== PDF GENERATION ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error:', error);
+    
+    res.status(500).json({ 
+      error: 'Failed to generate PDF',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
