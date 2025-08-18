@@ -11,4 +11,4 @@ cmds = [
 cmds = ['cd client && npm run build']
 
 [start]
-cmd = 'cd server && PORT=$PORT npm start'
+cmd = 'cd server && NODE_ENV=production PORT=$PORT npm start'

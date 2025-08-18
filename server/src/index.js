@@ -37,8 +37,15 @@ console.log(`DEBUG: Using PORT: ${PORT}`);
 app.use(helmet());
 app.use(compression());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
+  origin: [
+    process.env.CLIENT_URL || 'http://localhost:3000',
+    /\.railway\.app$/,  // Allow Railway subdomains
+    /localhost:\d+/     // Allow localhost with any port
+  ],
+  credentials: true,
+  exposedHeaders: ['Content-Disposition'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Body parsing
@@ -103,9 +110,26 @@ if (process.env.NODE_ENV === 'production') {
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
+// Environment validation for Railway
+const validateEnvironment = () => {
+  const requiredEnvVars = ['DATABASE_URL'];
+  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.warn(`WARNING: Missing environment variables: ${missingVars.join(', ')}`);
+  }
+  
+  console.log('INFO: Environment check completed');
+  console.log(`INFO: NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`INFO: DATABASE_URL: ${process.env.DATABASE_URL ? 'Set' : 'Not set'}`);
+  console.log(`INFO: PORT: ${process.env.PORT || 'Not set (using default)'}`);
+};
+
 // Initialize database and start server
 const startServer = async () => {
   try {
+    validateEnvironment();
+    
     await setupDatabase();
     console.log('INFO: Database connected successfully');
     

@@ -1,48 +1,34 @@
-import puppeteer from 'puppeteer';
+import PDFDocument from 'pdfkit';
 
 const pdfService = {
   async generateProposalPDF(proposalData, companyData) {
-    let browser = null;
-    
-    try {
-      browser = await puppeteer.launch({
-        headless: 'new',
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu'
-        ]
-      });
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ 
+          size: 'A4',
+          margins: { top: 50, bottom: 50, left: 50, right: 50 }
+        });
+        
+        const buffers = [];
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+          const pdfData = Buffer.concat(buffers);
+          resolve(pdfData);
+        });
+        doc.on('error', reject);
 
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1200, height: 800 });
-      
-      const htmlContent = this.generateProposalHTML(proposalData, companyData);
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
-      });
-
-      return pdfBuffer;
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      throw new Error(`Failed to generate PDF: ${error.message}`);
-    } finally {
-      if (browser) {
-        await browser.close();
+        // Generate PDF content
+        this.buildPDF(doc, proposalData, companyData);
+        doc.end();
+        
+      } catch (error) {
+        console.error('PDF generation error:', error);
+        reject(new Error(`Failed to generate PDF: ${error.message}`));
       }
-    }
+    });
   },
 
-  generateProposalHTML(proposalData, companyData) {
+  buildPDF(doc, proposalData, companyData) {
     const company = companyData || {
       name: 'Your Company Name',
       address: 'Company Address',
@@ -54,9 +40,7 @@ const pdfService = {
     };
 
     const calculateTotal = () => {
-      if (proposalData.totalAmount) {
-        return parseFloat(proposalData.totalAmount);
-      }
+      if (proposalData.totalAmount) return parseFloat(proposalData.totalAmount);
       
       const materialsTotal = proposalData.materials?.reduce((sum, material) => sum + (material.total || 0), 0) || 0;
       const laborTotal = (proposalData.laborHours || 0) * (proposalData.laborRate || 0);
@@ -67,9 +51,7 @@ const pdfService = {
     };
 
     const getStructuredPricing = () => {
-      if (proposalData.structuredPricing) {
-        return proposalData.structuredPricing;
-      }
+      if (proposalData.structuredPricing) return proposalData.structuredPricing;
       
       const materials = proposalData.materials?.filter(item => item.category !== 'labor') || [];
       const labor = proposalData.materials?.filter(item => item.category === 'labor') || [];
@@ -79,142 +61,128 @@ const pdfService = {
 
     const pricing = getStructuredPricing();
     const total = calculateTotal();
+    const primaryColor = '#2563eb';
+    const grayColor = '#6b7280';
 
-    return `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Roofing Proposal</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background: white; }
-        .document { max-width: 800px; margin: 0 auto; padding: 40px; }
-        .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
-        .company-name { font-size: 28px; font-weight: bold; color: #2563eb; margin-bottom: 5px; }
-        .company-tagline { font-size: 16px; color: #666; margin-bottom: 10px; }
-        .contact-info { font-size: 14px; color: #666; }
-        .proposal-title { text-align: center; margin: 30px 0; }
-        .proposal-title h1 { font-size: 24px; color: #2563eb; margin-bottom: 10px; }
-        .proposal-meta { display: flex; justify-content: space-between; font-size: 14px; color: #666; }
-        .section { margin-bottom: 30px; }
-        .section h2 { font-size: 18px; color: #2563eb; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px; }
-        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
-        .detail-row:last-child { border-bottom: none; }
-        .detail-row span:first-child { font-weight: 600; color: #374151; }
-        .materials-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        .materials-table th, .materials-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-        .materials-table th { background-color: #f9fafb; font-weight: 600; color: #374151; }
-        .materials-table td { color: #6b7280; }
-        .total-section { background-color: #f9fafb; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; }
-        .total-amount { font-size: 24px; font-weight: bold; color: #2563eb; }
-        .notes-section { background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; }
-        .terms-section { font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px; }
-    </style>
-</head>
-<body>
-    <div class="document">
-        <div class="header">
-            <div class="company-name">${company.name}</div>
-            <div class="company-tagline">Professional Roofing Services</div>
-            <div class="contact-info">
-                ${company.phone} • ${company.email}<br>
-                License: ${company.license} • Insured: ${company.insurance}<br>
-                ${company.address}${company.website ? `<br>${company.website}` : ''}
-            </div>
-        </div>
+    // Header
+    doc.fontSize(28).fillColor(primaryColor).text(company.name, 50, 50);
+    doc.fontSize(16).fillColor(grayColor).text('Professional Roofing Services', 50, 85);
+    doc.fontSize(12).fillColor(grayColor)
+       .text(`${company.phone} • ${company.email}`, 50, 110)
+       .text(`License: ${company.license} • Insured: ${company.insurance}`, 50, 125)
+       .text(company.address, 50, 140);
 
-        <div class="proposal-title">
-            <h1>ROOFING PROPOSAL</h1>
-            <div class="proposal-meta">
-                <span>Proposal #: ${Date.now().toString().slice(-6)}</span>
-                <span>Date: ${new Date().toLocaleDateString()}</span>
-            </div>
-        </div>
+    // Header line
+    doc.strokeColor(primaryColor).lineWidth(3).moveTo(50, 180).lineTo(545, 180).stroke();
 
-        <div class="section">
-            <h2>Client Information</h2>
-            <div class="detail-row"><span>Name:</span><span>${proposalData.clientName || 'Not specified'}</span></div>
-            <div class="detail-row"><span>Email:</span><span>${proposalData.clientEmail || 'Not specified'}</span></div>
-            <div class="detail-row"><span>Phone:</span><span>${proposalData.clientPhone || 'Not specified'}</span></div>
-            <div class="detail-row"><span>Property Address:</span><span>${proposalData.propertyAddress || proposalData.clientAddress || 'Not specified'}</span></div>
-        </div>
+    // Proposal title
+    doc.fontSize(24).fillColor(primaryColor).text('ROOFING PROPOSAL', 50, 200);
+    
+    const proposalNumber = Date.now().toString().slice(-6);
+    const currentDate = new Date().toLocaleDateString();
+    doc.fontSize(12).fillColor(grayColor)
+       .text(`Proposal #: ${proposalNumber}`, 50, 235)
+       .text(`Date: ${currentDate}`, 400, 235);
 
-        <div class="section">
-            <h2>Project Details</h2>
-            <div class="detail-row"><span>Scope:</span><span>Complete Roof Replacement</span></div>
-            <div class="detail-row"><span>Roof Area:</span><span>${proposalData.measurements?.totalSquares || 0} squares</span></div>
-            <div class="detail-row"><span>Pitch:</span><span>${proposalData.measurements?.pitch || 'Not specified'}</span></div>
-            <div class="detail-row"><span>Timeline:</span><span>${proposalData.timeline || 'Not specified'}</span></div>
-            <div class="detail-row"><span>Warranty:</span><span>${proposalData.warranty || 'Not specified'}</span></div>
-        </div>
+    let y = 270;
 
-        <div class="section">
-            <h2>Materials & Labor Breakdown</h2>
-            ${pricing.materials.length > 0 ? `
-                <h3>Materials</h3>
-                <table class="materials-table">
-                    <thead><tr><th>Description</th><th>Quantity</th><th>Unit Price</th><th>Total</th></tr></thead>
-                    <tbody>
-                        ${pricing.materials.map(material => `
-                            <tr>
-                                <td>${material.name}</td>
-                                <td>${material.quantity} ${material.unit}</td>
-                                <td>$${material.unitPrice?.toFixed(2)}</td>
-                                <td>$${material.total?.toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            ` : ''}
+    // Client Information
+    doc.fontSize(18).fillColor(primaryColor).text('Client Information', 50, y);
+    y += 30;
+    
+    const clientInfo = [
+      ['Name:', proposalData.clientName || 'Not specified'],
+      ['Email:', proposalData.clientEmail || 'Not specified'],
+      ['Phone:', proposalData.clientPhone || 'Not specified'],
+      ['Property:', proposalData.propertyAddress || proposalData.clientAddress || 'Not specified']
+    ];
 
-            ${pricing.labor.length > 0 ? `
-                <h3>Labor</h3>
-                <table class="materials-table">
-                    <thead><tr><th>Description</th><th>Quantity</th><th>Unit Price</th><th>Total</th></tr></thead>
-                    <tbody>
-                        ${pricing.labor.map(labor => `
-                            <tr>
-                                <td>${labor.name}</td>
-                                <td>${labor.quantity} ${labor.unit}</td>
-                                <td>$${labor.unitPrice?.toFixed(2)}</td>
-                                <td>$${labor.total?.toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            ` : ''}
+    clientInfo.forEach(([label, value]) => {
+      doc.fontSize(12).fillColor('#374151').text(label, 50, y);
+      doc.fillColor(grayColor).text(value, 150, y);
+      y += 20;
+    });
 
-            ${pricing.additionalCosts.length > 0 ? `
-                <h3>Additional Costs</h3>
-                <table class="materials-table">
-                    <thead><tr><th>Description</th><th>Amount</th></tr></thead>
-                    <tbody>
-                        ${pricing.additionalCosts.map(cost => `
-                            <tr><td>${cost.name}</td><td>$${cost.cost?.toFixed(2)}</td></tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            ` : ''}
+    y += 20;
 
-            <div class="total-section">
-                <div class="total-amount">TOTAL PROJECT COST: $${total.toFixed(2)}</div>
-            </div>
-        </div>
+    // Project Details
+    doc.fontSize(18).fillColor(primaryColor).text('Project Details', 50, y);
+    y += 30;
 
-        ${proposalData.notes ? `
-            <div class="section">
-                <h2>Additional Notes</h2>
-                <div class="notes-section"><p>${proposalData.notes}</p></div>
-            </div>
-        ` : ''}
+    const projectInfo = [
+      ['Scope:', 'Complete Roof Replacement'],
+      ['Roof Area:', `${proposalData.measurements?.totalSquares || 0} squares`],
+      ['Timeline:', proposalData.timeline || 'Not specified'],
+      ['Warranty:', proposalData.warranty || 'Not specified']
+    ];
 
-        <div class="terms-section">
-            <h2>Legal Information</h2>
-            <p>This proposal is subject to our Terms & Conditions. All work performed is guaranteed according to our warranty terms. Proposal is valid for 30 days from date of issue.</p>
-        </div>
-    </div>
-</body>
-</html>`;
+    projectInfo.forEach(([label, value]) => {
+      doc.fontSize(12).fillColor('#374151').text(label, 50, y);
+      doc.fillColor(grayColor).text(value, 150, y);
+      y += 20;
+    });
+
+    y += 30;
+
+    // Materials & Labor
+    if (y > 650) {
+      doc.addPage();
+      y = 50;
+    }
+
+    doc.fontSize(18).fillColor(primaryColor).text('Materials & Labor Breakdown', 50, y);
+    y += 30;
+
+    // Simple pricing display
+    if (pricing.materials.length > 0) {
+      const materialsTotal = pricing.materials.reduce((sum, item) => sum + (item.total || 0), 0);
+      doc.fontSize(14).fillColor('#374151').text('Materials:', 50, y);
+      doc.text(`$${materialsTotal.toFixed(2)}`, 400, y);
+      y += 25;
+    }
+
+    if (pricing.labor.length > 0) {
+      const laborTotal = pricing.labor.reduce((sum, item) => sum + (item.total || 0), 0);
+      doc.fontSize(14).fillColor('#374151').text('Labor:', 50, y);
+      doc.text(`$${laborTotal.toFixed(2)}`, 400, y);
+      y += 25;
+    }
+
+    if (pricing.additionalCosts.length > 0) {
+      const additionalTotal = pricing.additionalCosts.reduce((sum, item) => sum + (item.cost || 0), 0);
+      doc.fontSize(14).fillColor('#374151').text('Additional Costs:', 50, y);
+      doc.text(`$${additionalTotal.toFixed(2)}`, 400, y);
+      y += 25;
+    }
+
+    y += 20;
+
+    // Total
+    doc.rect(50, y, 495, 40).fillAndStroke('#f9fafb', '#e5e7eb');
+    doc.fontSize(20).fillColor(primaryColor)
+       .text(`TOTAL: $${total.toFixed(2)}`, 0, y + 12, { align: 'center', width: 595 });
+
+    y += 60;
+
+    // Notes
+    if (proposalData.notes) {
+      if (y > 650) {
+        doc.addPage();
+        y = 50;
+      }
+      doc.fontSize(16).fillColor(primaryColor).text('Additional Notes', 50, y);
+      y += 25;
+      doc.fontSize(12).fillColor('#374151').text(proposalData.notes, 50, y, { width: 495 });
+      y += 60;
+    }
+
+    // Terms
+    if (y > 700) {
+      doc.addPage();
+      y = 50;
+    }
+    doc.fontSize(10).fillColor(grayColor)
+       .text('This proposal is valid for 30 days. All work guaranteed according to warranty terms.', 50, y);
   }
 };
 

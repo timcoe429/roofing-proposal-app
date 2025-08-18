@@ -17,13 +17,37 @@ const getDatabaseConfig = () => {
           ssl: process.env.NODE_ENV === 'production' ? {
             require: true,
             rejectUnauthorized: false
-          } : false
+          } : false,
+          // Railway-specific connection options
+          connectTimeout: 60000,
+          socketTimeout: 60000,
+          keepAlive: true,
+          keepAliveInitialDelayMillis: 0
         },
         pool: {
-          max: 5,
-          min: 0,
-          acquire: 30000,
-          idle: 10000
+          max: 10, // Increased for Railway
+          min: 2,  // Keep minimum connections
+          acquire: 60000, // Increased timeout
+          idle: 30000,    // Increased idle time
+          evict: 1000,    // Railway-specific: evict connections
+          handleDisconnects: true
+        },
+        retry: {
+          match: [
+            /ETIMEDOUT/,
+            /EHOSTUNREACH/,
+            /ECONNRESET/,
+            /ECONNREFUSED/,
+            /ENOTFOUND/,
+            /EAI_AGAIN/,
+            /SequelizeConnectionError/,
+            /SequelizeConnectionRefusedError/,
+            /SequelizeHostNotFoundError/,
+            /SequelizeHostNotReachableError/,
+            /SequelizeInvalidConnectionError/,
+            /SequelizeConnectionTimedOutError/
+          ],
+          max: 3
         }
       }
     };
