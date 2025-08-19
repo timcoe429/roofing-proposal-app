@@ -4,6 +4,7 @@ import { Proposal } from '../models/index.js';
 export const generatePDF = async (req, res) => {
   console.log('=== PDF GENERATION STARTED ===');
   console.log('Request params:', req.params);
+  console.log('Request body keys:', Object.keys(req.body));
   
   try {
     const { id } = req.params;
@@ -20,7 +21,7 @@ export const generatePDF = async (req, res) => {
     
     console.log('Proposal client name:', proposal.clientName);
 
-    // Get company data from request body or use defaults
+    // Get company data and PDF options from request body
     const companyData = req.body.companyData || {
       name: 'Professional Roofing Co.',
       address: '123 Business Ave, City, State 12345',
@@ -31,11 +32,15 @@ export const generatePDF = async (req, res) => {
       insurance: 'Insured & Bonded'
     };
     
+    // Get PDF options (detailed vs simple)
+    const pdfOptions = req.body.pdfOptions || { isDetailed: true };
+    
     console.log('Using company data:', companyData.name);
+    console.log('PDF options:', pdfOptions);
 
     // Generate PDF
     console.log('Generating PDF for proposal:', proposal.clientName);
-    const pdfBuffer = await pdfService.generateProposalPDF(proposal, companyData);
+    const pdfBuffer = await pdfService.generateProposalPDF(proposal, companyData, pdfOptions);
     console.log('PDF buffer generated, size:', pdfBuffer.length, 'bytes');
     
     // Validate PDF buffer

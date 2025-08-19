@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
 import './ProposalPreview.css';
 
-export default function ProposalPreview({ proposalData, companyData }) {
-  const [isDetailedMode, setIsDetailedMode] = useState(true);
+export default function ProposalPreview({ 
+  proposalData, 
+  companyData, 
+  isDetailedMode = true, 
+  onDetailedModeChange 
+}) {
   const calculateTotal = () => {
     // Use AI's calculated total if available, otherwise calculate from components
     if (proposalData.totalAmount) {
@@ -59,7 +63,7 @@ export default function ProposalPreview({ proposalData, companyData }) {
             <span className={!isDetailedMode ? 'active' : ''}>Simple</span>
             <button 
               className="toggle-btn"
-              onClick={() => setIsDetailedMode(!isDetailedMode)}
+              onClick={() => onDetailedModeChange && onDetailedModeChange(!isDetailedMode)}
             >
               {isDetailedMode ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
             </button>

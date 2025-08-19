@@ -25,6 +25,7 @@ const ProposalEditor = () => {
   const isNewProposal = !id;
   
   const [activeTab, setActiveTab] = useState('client');
+  const [isDetailedMode, setIsDetailedMode] = useState(true);
   const [proposalData, setProposalData] = useState({
     clientName: '',
     clientEmail: '',
@@ -154,7 +155,8 @@ const ProposalEditor = () => {
   const generatePdfMutation = useMutation({
     mutationFn: () => {
       console.log('PDF mutation starting for ID:', id);
-      return api.generatePdf(id);
+      console.log('Using detailed mode:', isDetailedMode);
+      return api.generatePdf(id, { isDetailed: isDetailedMode });
     },
     onSuccess: (pdfBlob) => {
       console.log('PDF mutation onSuccess called');
@@ -231,7 +233,7 @@ const ProposalEditor = () => {
       try {
         const savedProposal = await saveMutation.mutateAsync(proposalData);
         // Use the saved proposal ID for PDF generation
-        api.generatePdf(savedProposal.id).then(pdfBlob => {
+        api.generatePdf(savedProposal.id, { isDetailed: isDetailedMode }).then(pdfBlob => {
           console.log('PDF blob received for new proposal:', pdfBlob);
           toast.success('PDF generated and downloaded!');
           
@@ -322,6 +324,8 @@ const ProposalEditor = () => {
               <ProposalPreview
                 proposalData={proposalData}
                 companyData={companyData}
+                isDetailedMode={isDetailedMode}
+                onDetailedModeChange={setIsDetailedMode}
               />
             )}
             

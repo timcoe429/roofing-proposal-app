@@ -82,9 +82,10 @@ const api = {
   checkAIServices: () => apiClient.get('/ai/status'),
 
   // PDF Generation
-  generatePdf: async (proposalId) => {
+  generatePdf: async (proposalId, options = {}) => {
     try {
       console.log('Making PDF request for proposal ID:', proposalId);
+      console.log('PDF options:', options);
       
       // Get company data from localStorage
       const companyData = (() => {
@@ -100,7 +101,8 @@ const api = {
       console.log('Sending company data:', companyData?.name || 'Using defaults');
       
       const response = await apiClient.post(`/pdf/generate/${proposalId}`, {
-        companyData
+        companyData,
+        pdfOptions: options
       }, {
         responseType: 'blob'
       });

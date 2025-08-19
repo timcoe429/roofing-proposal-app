@@ -3,12 +3,12 @@ import PDFDocument from 'pdfkit';
 console.log('PDFKit imported:', !!PDFDocument);
 
 const pdfService = {
-  async generateProposalPDF(proposalData, companyData) {
+  async generateProposalPDF(proposalData, companyData, pdfOptions = {}) {
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ 
           size: 'A4',
-          margins: { top: 50, bottom: 50, left: 50, right: 50 }
+          margins: { top: 60, bottom: 80, left: 50, right: 50 }
         });
         
         const buffers = [];
@@ -35,7 +35,7 @@ const pdfService = {
         });
 
         // Generate PDF content
-        this.buildPDF(doc, proposalData, companyData);
+        this.buildPDF(doc, proposalData, companyData, pdfOptions);
         
         // Important: End the document
         doc.end();
@@ -47,7 +47,7 @@ const pdfService = {
     });
   },
 
-  buildPDF(doc, proposalData, companyData) {
+  buildPDF(doc, proposalData, companyData, pdfOptions = {}) {
     const company = companyData || {
       name: 'Professional Roofing Co.',
       address: '123 Business Ave, City, State 12345',
@@ -57,6 +57,8 @@ const pdfService = {
       license: 'License #123456',
       insurance: 'Insured & Bonded'
     };
+
+    const isDetailed = pdfOptions.isDetailed !== false; // Default to detailed
 
     const calculateTotal = () => {
       if (proposalData.totalAmount) return parseFloat(proposalData.totalAmount);
@@ -82,46 +84,49 @@ const pdfService = {
     const total = calculateTotal();
     
     // Professional color scheme
-    const darkGray = '#2d3748';
-    const mediumGray = '#4a5568';
-    const lightGray = '#718096';
-    const veryLightGray = '#edf2f7';
-    const accentColor = '#1a365d'; // Professional dark blue, used sparingly
+    const darkText = '#2d3748';
+    const mediumText = '#4a5568';
+    const lightText = '#718096';
+    const borderColor = '#e2e8f0';
+    const headerBg = '#f7fafc';
 
     // HEADER SECTION
-    doc.fontSize(24).fillColor(darkGray).text(company.name, 50, 40);
-    doc.fontSize(12).fillColor(mediumGray).text('Licensed & Insured Roofing Contractor', 50, 70);
+    doc.fontSize(26).fillColor(darkText).text(company.name, 50, 60);
+    doc.fontSize(12).fillColor(mediumText).text('Licensed & Insured Roofing Contractor', 50, 90);
     
-    // Company contact info - right aligned
-    doc.fontSize(10).fillColor(lightGray)
-       .text(company.phone, 400, 40)
-       .text(company.email, 400, 55)
-       .text(company.website, 400, 70)
-       .text(company.address, 400, 85);
+    // Logo placeholder (if logo URL is provided)
+    if (company.logo) {
+      // TODO: Add logo support - would need to download and embed image
+      doc.fontSize(10).fillColor(lightText).text('[LOGO]', 450, 60);
+    }
 
-    // Clean separator line
-    doc.strokeColor('#e2e8f0').lineWidth(1).moveTo(50, 110).lineTo(545, 110).stroke();
+    // Separator line
+    doc.strokeColor(borderColor).lineWidth(1).moveTo(50, 120).lineTo(545, 120).stroke();
 
-    // PROPOSAL TITLE
-    doc.fontSize(20).fillColor(darkGray).text('ROOFING PROPOSAL', 50, 130);
+    // PROPOSAL TITLE & INFO
+    doc.fontSize(18).fillColor(darkText).text('ROOFING PROPOSAL', 50, 140);
     
-    // Proposal details - right aligned
-    const proposalNumber = proposalData.proposalNumber || Date.now().toString().slice(-6);
+    // Proposal meta info - right aligned
+    const proposalNumber = proposalData.proposalNumber || `P${Date.now().toString().slice(-6)}`;
     const currentDate = new Date().toLocaleDateString();
-    doc.fontSize(10).fillColor(lightGray)
-       .text(`Proposal #: ${proposalNumber}`, 400, 130)
-       .text(`Date: ${currentDate}`, 400, 145)
-       .text(`Valid Until: ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}`, 400, 160);
-
-    let y = 190;
-
-    // CLIENT & PROJECT INFO - Two column layout
-    doc.fontSize(14).fillColor(darkGray).text('CLIENT INFORMATION', 50, y);
-    doc.text('PROJECT DETAILS', 300, y);
+    const validUntil = new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString();
     
-    y += 25;
+    doc.fontSize(10).fillColor(lightText)
+       .text(`Proposal #: ${proposalNumber}`, 400, 140)
+       .text(`Date: ${currentDate}`, 400, 155)
+       .text(`Valid Until: ${validUntil}`, 400, 170);
+
+    let y = 200;
+
+    // CLIENT & PROJECT INFO - Clean two-column layout
+    doc.rect(50, y, 495, 25).fillAndStroke(headerBg, borderColor);
+    doc.fontSize(12).fillColor(darkText)
+       .text('CLIENT INFORMATION', 60, y + 8)
+       .text('PROJECT DETAILS', 310, y + 8);
     
-    // Left column - Client info
+    y += 35;
+    
+    // Client info (left column)
     const clientInfo = [
       ['Client:', proposalData.clientName || 'Not specified'],
       ['Email:', proposalData.clientEmail || 'Not specified'],
@@ -129,7 +134,7 @@ const pdfService = {
       ['Property:', proposalData.propertyAddress || proposalData.clientAddress || 'Not specified']
     ];
 
-    // Right column - Project info
+    // Project info (right column)
     const projectInfo = [
       ['Scope:', 'Complete Roof Replacement'],
       ['Area:', `${proposalData.measurements?.totalSquares || 0} squares`],
@@ -137,150 +142,164 @@ const pdfService = {
       ['Timeline:', proposalData.timeline || '5-7 business days']
     ];
 
+    // Draw info in columns
     clientInfo.forEach(([label, value], index) => {
-      const lineY = y + (index * 18);
-      doc.fontSize(10).fillColor(mediumGray).text(label, 50, lineY);
-      doc.fillColor(darkGray).text(value, 120, lineY);
+      const lineY = y + (index * 16);
+      doc.fontSize(9).fillColor(mediumText).text(label, 60, lineY);
+      doc.fillColor(darkText).text(value, 130, lineY, { width: 150 });
     });
 
     projectInfo.forEach(([label, value], index) => {
-      const lineY = y + (index * 18);
-      doc.fontSize(10).fillColor(mediumGray).text(label, 300, lineY);
-      doc.fillColor(darkGray).text(value, 370, lineY);
+      const lineY = y + (index * 16);
+      doc.fontSize(9).fillColor(mediumText).text(label, 310, lineY);
+      doc.fillColor(darkText).text(value, 380, lineY, { width: 150 });
     });
 
-    y += 100;
+    y += 80;
 
-    // DETAILED BREAKDOWN
-    if (y > 600) {
-      doc.addPage();
-      y = 50;
-    }
+    // COST BREAKDOWN SECTION
+    doc.rect(50, y, 495, 25).fillAndStroke(headerBg, borderColor);
+    doc.fontSize(12).fillColor(darkText).text('COST BREAKDOWN', 60, y + 8);
+    y += 35;
 
-    doc.fontSize(14).fillColor(darkGray).text('COST BREAKDOWN', 50, y);
-    y += 30;
-
-    // Materials section
-    if (pricing.materials.length > 0) {
-      doc.fontSize(12).fillColor(mediumGray).text('MATERIALS', 50, y);
-      y += 20;
-      
-      pricing.materials.forEach(material => {
-        if (y > 720) {
-          doc.addPage();
-          y = 50;
-        }
+    if (isDetailed) {
+      // DETAILED VIEW - Proper tables
+      if (pricing.materials.length > 0) {
+        // Materials table header
+        doc.fontSize(11).fillColor(mediumText).text('MATERIALS', 60, y);
+        y += 20;
         
-        doc.fontSize(10).fillColor(darkGray)
-           .text(material.name || 'Material', 60, y)
-           .text(`${material.quantity || 0} ${material.unit || ''}`, 250, y)
-           .text(`$${(material.unitPrice || 0).toFixed(2)}`, 350, y)
-           .text(`$${(material.total || 0).toFixed(2)}`, 450, y);
+        // Table header
+        doc.rect(50, y, 495, 20).fillAndStroke('#f8f9fa', borderColor);
+        doc.fontSize(9).fillColor(darkText)
+           .text('Description', 60, y + 6)
+           .text('Qty', 250, y + 6)
+           .text('Unit Price', 320, y + 6)
+           .text('Total', 450, y + 6);
+        y += 20;
+
+        // Materials rows
+        pricing.materials.forEach(material => {
+          doc.rect(50, y, 495, 18).stroke(borderColor);
+          doc.fontSize(8).fillColor(darkText)
+             .text(material.name || 'Material', 60, y + 5, { width: 180 })
+             .text(`${material.quantity || 0} ${material.unit || ''}`, 250, y + 5)
+             .text(`$${(material.unitPrice || 0).toFixed(2)}`, 320, y + 5)
+             .text(`$${(material.total || 0).toFixed(2)}`, 450, y + 5);
+          y += 18;
+        });
         
-        y += 16;
-      });
-      
+        // Materials subtotal
+        const materialsTotal = pricing.materials.reduce((sum, item) => sum + (item.total || 0), 0);
+        doc.rect(350, y, 195, 18).fillAndStroke('#f1f5f9', borderColor);
+        doc.fontSize(9).fillColor(mediumText)
+           .text('Materials Subtotal:', 360, y + 5)
+           .text(`$${materialsTotal.toFixed(2)}`, 450, y + 5);
+        y += 30;
+      }
+
+      if (pricing.labor.length > 0) {
+        // Labor table
+        doc.fontSize(11).fillColor(mediumText).text('LABOR', 60, y);
+        y += 20;
+        
+        // Table header
+        doc.rect(50, y, 495, 20).fillAndStroke('#f8f9fa', borderColor);
+        doc.fontSize(9).fillColor(darkText)
+           .text('Description', 60, y + 6)
+           .text('Qty', 250, y + 6)
+           .text('Unit Price', 320, y + 6)
+           .text('Total', 450, y + 6);
+        y += 20;
+
+        // Labor rows
+        pricing.labor.forEach(labor => {
+          doc.rect(50, y, 495, 18).stroke(borderColor);
+          doc.fontSize(8).fillColor(darkText)
+             .text(labor.name || 'Labor', 60, y + 5, { width: 180 })
+             .text(`${labor.quantity || 0} ${labor.unit || ''}`, 250, y + 5)
+             .text(`$${(labor.unitPrice || 0).toFixed(2)}`, 320, y + 5)
+             .text(`$${(labor.total || 0).toFixed(2)}`, 450, y + 5);
+          y += 18;
+        });
+        
+        // Labor subtotal
+        const laborTotal = pricing.labor.reduce((sum, item) => sum + (item.total || 0), 0);
+        doc.rect(350, y, 195, 18).fillAndStroke('#f1f5f9', borderColor);
+        doc.fontSize(9).fillColor(mediumText)
+           .text('Labor Subtotal:', 360, y + 5)
+           .text(`$${laborTotal.toFixed(2)}`, 450, y + 5);
+        y += 30;
+      }
+    } else {
+      // SIMPLE VIEW - Clean summary
       const materialsTotal = pricing.materials.reduce((sum, item) => sum + (item.total || 0), 0);
-      doc.fontSize(11).fillColor(mediumGray)
-         .text('Materials Subtotal:', 350, y + 5)
-         .text(`$${materialsTotal.toFixed(2)}`, 450, y + 5);
-      
-      y += 30;
-    }
-
-    // Labor section
-    if (pricing.labor.length > 0) {
-      doc.fontSize(12).fillColor(mediumGray).text('LABOR', 50, y);
-      y += 20;
-      
-      pricing.labor.forEach(labor => {
-        if (y > 720) {
-          doc.addPage();
-          y = 50;
-        }
-        
-        doc.fontSize(10).fillColor(darkGray)
-           .text(labor.name || 'Labor', 60, y)
-           .text(`${labor.quantity || 0} ${labor.unit || ''}`, 250, y)
-           .text(`$${(labor.unitPrice || 0).toFixed(2)}`, 350, y)
-           .text(`$${(labor.total || 0).toFixed(2)}`, 450, y);
-        
-        y += 16;
-      });
-      
       const laborTotal = pricing.labor.reduce((sum, item) => sum + (item.total || 0), 0);
-      doc.fontSize(11).fillColor(mediumGray)
-         .text('Labor Subtotal:', 350, y + 5)
-         .text(`$${laborTotal.toFixed(2)}`, 450, y + 5);
       
-      y += 30;
+      if (materialsTotal > 0) {
+        doc.fontSize(11).fillColor(darkText).text('Materials & Supplies:', 60, y);
+        doc.text(`$${materialsTotal.toFixed(2)}`, 450, y);
+        y += 25;
+      }
+      
+      if (laborTotal > 0) {
+        doc.fontSize(11).fillColor(darkText).text('Installation & Labor:', 60, y);
+        doc.text(`$${laborTotal.toFixed(2)}`, 450, y);
+        y += 25;
+      }
+      
+      y += 10;
     }
 
     // TOTAL SECTION
-    if (y > 680) {
-      doc.addPage();
-      y = 50;
-    }
-
-    // Clean total box
-    doc.rect(50, y, 495, 50).fillAndStroke(veryLightGray, '#d1d5db');
-    doc.fontSize(16).fillColor(accentColor)
-       .text(`PROJECT TOTAL: $${total.toFixed(2)}`, 0, y + 18, { 
+    doc.rect(50, y, 495, 40).fillAndStroke('#e6f3ff', '#1e40af');
+    doc.fontSize(16).fillColor('#1e40af')
+       .text(`PROJECT TOTAL: $${total.toFixed(2)}`, 0, y + 12, { 
          align: 'center', 
          width: 595 
        });
 
-    y += 70;
+    y += 60;
 
-    // NOTES SECTION
+    // NOTES SECTION (if present)
     if (proposalData.notes) {
-      if (y > 650) {
-        doc.addPage();
-        y = 50;
-      }
-      
-      doc.fontSize(12).fillColor(darkGray).text('ADDITIONAL NOTES', 50, y);
+      doc.fontSize(12).fillColor(darkText).text('ADDITIONAL NOTES', 60, y);
       y += 20;
       
-      doc.rect(50, y, 495, 60).fillAndStroke('#f7fafc', '#e2e8f0');
-      doc.fontSize(10).fillColor(mediumGray)
-         .text(proposalData.notes, 60, y + 10, { width: 475, height: 40 });
+      doc.rect(50, y, 495, 50).fillAndStroke('#fffbeb', '#f59e0b');
+      doc.fontSize(10).fillColor(mediumText)
+         .text(proposalData.notes, 60, y + 10, { width: 475, height: 30 });
       
-      y += 80;
+      y += 70;
     }
 
     // TERMS & CONDITIONS
-    if (y > 680) {
-      doc.addPage();
-      y = 50;
-    }
-
-    doc.strokeColor('#e2e8f0').lineWidth(1).moveTo(50, y).lineTo(545, y).stroke();
-    y += 15;
-
-    doc.fontSize(11).fillColor(darkGray).text('TERMS & CONDITIONS', 50, y);
+    doc.fontSize(11).fillColor(darkText).text('TERMS & CONDITIONS', 60, y);
     y += 15;
 
     const terms = [
       '• This proposal is valid for 30 days from the date above',
       '• All work performed according to local building codes and manufacturer specifications',
       '• Materials and workmanship warranty as specified',
-      '• Final payment due upon completion and customer satisfaction',
-      '• Weather conditions may affect project timeline'
+      '• Final payment due upon completion and customer satisfaction'
     ];
 
-    doc.fontSize(9).fillColor(lightGray);
+    doc.fontSize(9).fillColor(lightText);
     terms.forEach(term => {
-      doc.text(term, 50, y);
+      doc.text(term, 60, y);
       y += 12;
     });
 
-    y += 20;
-
-    // FOOTER
-    doc.fontSize(8).fillColor(lightGray)
-       .text(`${company.license} | ${company.insurance}`, 50, y)
-       .text('Thank you for choosing our services!', 0, y, { align: 'center', width: 595 });
+    // FOOTER with company info
+    const footerY = 750; // Fixed footer position
+    doc.strokeColor(borderColor).lineWidth(1).moveTo(50, footerY).lineTo(545, footerY).stroke();
+    
+    doc.fontSize(8).fillColor(lightText)
+       .text(`${company.name} | ${company.phone} | ${company.email}`, 60, footerY + 10)
+       .text(`${company.license} | ${company.insurance}`, 60, footerY + 22)
+       .text(company.address, 60, footerY + 34);
+    
+    doc.text('Thank you for choosing our services!', 400, footerY + 22);
   }
 };
 
