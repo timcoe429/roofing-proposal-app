@@ -453,25 +453,20 @@ const pdfService = {
       width: 595 
     });
 
-    // FOOTER with company info - always at bottom of last page
+    // FOOTER with company info - write after content, not at page bottom
     console.log(`Before footer Y: ${y}`);
-    const currentPage = doc.page;
-    const pageHeight = currentPage.height;
-    const footerY = pageHeight - 60; // 60px from bottom
-    console.log(`Page height: ${pageHeight}, Footer Y: ${footerY}`);
+    y += 30; // Add some space before footer
     
-    // Only add footer line if we have space
-    if (y < footerY - 50) {
-      doc.strokeColor(borderColor).lineWidth(1).moveTo(50, footerY - 20).lineTo(545, footerY - 20).stroke();
-    }
+    doc.strokeColor(borderColor).lineWidth(1).moveTo(50, y).lineTo(545, y).stroke();
+    y += 15;
     
-    console.log(`Writing footer at Y: ${footerY}`);
+    console.log(`Writing footer at Y: ${y}`);
     doc.fontSize(8).fillColor(lightText)
-       .text(`${company.name} | ${company.phone} | ${company.email}`, 60, footerY)
-       .text(`${company.license} | ${company.insurance}`, 60, footerY + 12)
-       .text(company.address, 60, footerY + 24);
+       .text(`${company.name} | ${company.phone} | ${company.email}`, 60, y)
+       .text(`${company.license} | ${company.insurance}`, 60, y + 12)
+       .text(company.address, 60, y + 24);
     
-    doc.text('Thank you for choosing our services!', 400, footerY + 12);
+    doc.text('Thank you for choosing our services!', 400, y + 12);
     console.log(`=== PDF GENERATION COMPLETE ===`);
   }
 };
