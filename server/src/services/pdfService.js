@@ -391,12 +391,7 @@ const pdfService = {
 
     y += 200; // Move past the steps
 
-    // CLEAR CALL TO ACTION
-    doc.fontSize(16).fillColor(darkText).text('TO ACCEPT THIS PROPOSAL:', 0, y, { 
-      align: 'center', 
-      width: 595 
-    });
-    y += 30;
+    // Remove the extra header to save space
 
     // BIG CLICKABLE ACCEPT LINK (styled like button)
     const buttonY = y;
