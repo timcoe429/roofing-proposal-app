@@ -1,10 +1,11 @@
 import PDFDocument from 'pdfkit';
+import fetch from 'node-fetch';
 
 console.log('PDFKit imported:', !!PDFDocument);
 
 const pdfService = {
   async generateProposalPDF(proposalData, companyData, pdfOptions = {}) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({ 
           size: 'A4',
@@ -35,7 +36,7 @@ const pdfService = {
         });
 
         // Generate PDF content
-        this.buildPDF(doc, proposalData, companyData, pdfOptions);
+        await this.buildPDF(doc, proposalData, companyData, pdfOptions);
         
         // Important: End the document
         doc.end();
@@ -47,7 +48,7 @@ const pdfService = {
     });
   },
 
-  buildPDF(doc, proposalData, companyData, pdfOptions = {}) {
+  async buildPDF(doc, proposalData, companyData, pdfOptions = {}) {
     const company = companyData || {
       name: 'Professional Roofing Co.',
       address: '123 Business Ave, City, State 12345',
@@ -57,6 +58,12 @@ const pdfService = {
       license: 'License #123456',
       insurance: 'Insured & Bonded'
     };
+    
+    console.log('Company data for PDF:', {
+      name: company.name,
+      hasLogo: !!company.logo,
+      logoUrl: company.logo
+    });
 
     const isDetailed = pdfOptions.isDetailed !== false; // Default to detailed
 
@@ -91,20 +98,49 @@ const pdfService = {
     const headerBg = '#f7fafc';
 
     // HEADER SECTION
-    doc.fontSize(26).fillColor(darkText).text(company.name, 50, 60);
-    doc.fontSize(12).fillColor(mediumText).text('Licensed & Insured Roofing Contractor', 50, 90);
+    let headerHeight = 90;
     
-    // Logo placeholder (if logo URL is provided)
+    // Handle logo vs company name
     if (company.logo) {
-      // TODO: Add logo support - would need to download and embed image
-      doc.fontSize(10).fillColor(lightText).text('[LOGO]', 450, 60);
+      try {
+        // Try to fetch and embed the logo
+        console.log('Attempting to fetch logo:', company.logo);
+        const logoResponse = await fetch(company.logo);
+        if (logoResponse.ok) {
+          const logoBuffer = await logoResponse.buffer();
+          console.log('Logo fetched successfully, size:', logoBuffer.length);
+          
+          // Embed logo (left side)
+          doc.image(logoBuffer, 50, 60, { 
+            fit: [200, 60],
+            align: 'left'
+          });
+          
+          // Company tagline below logo
+          doc.fontSize(12).fillColor(mediumText).text('Licensed & Insured Roofing Contractor', 50, 130);
+          headerHeight = 140;
+        } else {
+          throw new Error('Logo fetch failed');
+        }
+      } catch (error) {
+        console.warn('Could not load logo, falling back to company name:', error.message);
+        // Fallback to company name
+        doc.fontSize(26).fillColor(darkText).text(company.name, 50, 60);
+        doc.fontSize(12).fillColor(mediumText).text('Licensed & Insured Roofing Contractor', 50, 90);
+      }
+    } else {
+      // No logo, use company name
+      doc.fontSize(26).fillColor(darkText).text(company.name, 50, 60);
+      doc.fontSize(12).fillColor(mediumText).text('Licensed & Insured Roofing Contractor', 50, 90);
     }
 
-    // Separator line
-    doc.strokeColor(borderColor).lineWidth(1).moveTo(50, 120).lineTo(545, 120).stroke();
+    // Separator line (dynamic position based on logo)
+    const separatorY = headerHeight + 10;
+    doc.strokeColor(borderColor).lineWidth(1).moveTo(50, separatorY).lineTo(545, separatorY).stroke();
 
     // PROPOSAL TITLE & INFO
-    doc.fontSize(18).fillColor(darkText).text('ROOFING PROPOSAL', 50, 140);
+    const titleY = separatorY + 20;
+    doc.fontSize(18).fillColor(darkText).text('ROOFING PROPOSAL', 50, titleY);
     
     // Proposal meta info - right aligned
     const proposalNumber = proposalData.proposalNumber || `P${Date.now().toString().slice(-6)}`;
@@ -112,11 +148,11 @@ const pdfService = {
     const validUntil = new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString();
     
     doc.fontSize(10).fillColor(lightText)
-       .text(`Proposal #: ${proposalNumber}`, 400, 140)
-       .text(`Date: ${currentDate}`, 400, 155)
-       .text(`Valid Until: ${validUntil}`, 400, 170);
+       .text(`Proposal #: ${proposalNumber}`, 400, titleY)
+       .text(`Date: ${currentDate}`, 400, titleY + 15)
+       .text(`Valid Until: ${validUntil}`, 400, titleY + 30);
 
-    let y = 200;
+    let y = titleY + 60;
 
     // CLIENT & PROJECT INFO - Clean two-column layout
     doc.rect(50, y, 495, 25).fillAndStroke(headerBg, borderColor);
