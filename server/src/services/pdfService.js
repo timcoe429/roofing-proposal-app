@@ -21,6 +21,7 @@ const pdfService = {
         doc.on('end', () => {
           try {
             const pdfData = Buffer.concat(buffers);
+            console.log(`PDF completed with ${doc._pageBuffer.length} pages`);
             resolve(pdfData);
           } catch (concatError) {
             reject(concatError);
@@ -144,12 +145,14 @@ const pdfService = {
     let y = titleY + 60;
 
     // CLIENT & PROJECT INFO - Clean two-column layout
+    console.log(`=== PDF DEBUG: Starting content Y: ${y} ===`);
     doc.rect(50, y, 495, 25).fillAndStroke(headerBg, borderColor);
     doc.fontSize(12).fillColor(darkText)
        .text('CLIENT INFORMATION', 60, y + 8)
        .text('PROJECT DETAILS', 310, y + 8);
     
     y += 35;
+    console.log(`After client headers Y: ${y}`);
     
     // Client info (left column)
     const clientInfo = [
@@ -183,9 +186,11 @@ const pdfService = {
     y += 80;
 
     // COST BREAKDOWN SECTION
+    console.log(`Before cost breakdown Y: ${y}`);
     doc.rect(50, y, 495, 25).fillAndStroke(headerBg, borderColor);
     doc.fontSize(12).fillColor(darkText).text('COST BREAKDOWN', 60, y + 8);
     y += 35;
+    console.log(`After cost breakdown header Y: ${y}`);
 
     if (isDetailed) {
       // DETAILED VIEW - Proper tables
@@ -204,9 +209,11 @@ const pdfService = {
         y += 20;
 
         // Materials rows
-        pricing.materials.forEach(material => {
+        pricing.materials.forEach((material, index) => {
+          console.log(`Material ${index + 1} Y: ${y}`);
           // Check if we need a new page (conservative check)
           if (y > 720) {
+            console.log(`=== MATERIALS PAGE BREAK AT Y: ${y} ===`);
             doc.addPage();
             y = 60;
             // Redraw table header on new page
@@ -333,13 +340,16 @@ const pdfService = {
     }
 
     // TERMS & CONDITIONS - check space first
+    console.log(`Before terms Y: ${y}`);
     if (y > 650) {
+      console.log(`=== TERMS PAGE BREAK AT Y: ${y} ===`);
       doc.addPage();
       y = 60;
     }
 
     doc.fontSize(11).fillColor(darkText).text('TERMS & CONDITIONS', 60, y);
     y += 20;
+    console.log(`After terms header Y: ${y}`);
 
     const terms = [
       '• This proposal is valid for 30 days from the date above',
@@ -356,10 +366,13 @@ const pdfService = {
     });
 
     y += 80; // Fixed height for terms section
+    console.log(`After terms content Y: ${y}`);
 
     // NEXT STEPS - Force to new page to control layout
+    console.log(`=== FORCING NEXT STEPS PAGE BREAK ===`);
     doc.addPage();
     y = 80;
+    console.log(`Next steps page Y: ${y}`);
 
     // Page title
     doc.fontSize(24).fillColor(darkText).text('NEXT STEPS', 0, y, { 
@@ -441,21 +454,25 @@ const pdfService = {
     });
 
     // FOOTER with company info - always at bottom of last page
+    console.log(`Before footer Y: ${y}`);
     const currentPage = doc.page;
     const pageHeight = currentPage.height;
     const footerY = pageHeight - 60; // 60px from bottom
+    console.log(`Page height: ${pageHeight}, Footer Y: ${footerY}`);
     
     // Only add footer line if we have space
     if (y < footerY - 50) {
       doc.strokeColor(borderColor).lineWidth(1).moveTo(50, footerY - 20).lineTo(545, footerY - 20).stroke();
     }
     
+    console.log(`Writing footer at Y: ${footerY}`);
     doc.fontSize(8).fillColor(lightText)
        .text(`${company.name} | ${company.phone} | ${company.email}`, 60, footerY)
        .text(`${company.license} | ${company.insurance}`, 60, footerY + 12)
        .text(company.address, 60, footerY + 24);
     
     doc.text('Thank you for choosing our services!', 400, footerY + 12);
+    console.log(`=== PDF GENERATION COMPLETE ===`);
   }
 };
 
