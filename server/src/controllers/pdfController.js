@@ -2,24 +2,14 @@ import pdfService from '../services/pdfService.js';
 import { Proposal } from '../models/index.js';
 
 export const generatePDF = async (req, res) => {
-  console.log('=== PDF GENERATION STARTED ===');
-  console.log('Request params:', req.params);
-  console.log('Request body keys:', Object.keys(req.body));
-  
   try {
     const { id } = req.params;
-    console.log('Looking for proposal with ID:', id);
     
     // Get proposal data
     const proposal = await Proposal.findByPk(id);
-    console.log('Proposal found:', !!proposal);
-    
     if (!proposal) {
-      console.log('Proposal not found, returning 404');
       return res.status(404).json({ error: 'Proposal not found' });
     }
-    
-    console.log('Proposal client name:', proposal.clientName);
 
     // Get company data and PDF options from request body
     const companyData = req.body.companyData || {
@@ -34,25 +24,13 @@ export const generatePDF = async (req, res) => {
     
     // Get PDF options (detailed vs simple)
     const pdfOptions = req.body.pdfOptions || { isDetailed: true };
-    
-    console.log('Using company data:', companyData.name);
-    console.log('PDF options:', pdfOptions);
 
     // Generate PDF
-    console.log('Generating PDF for proposal:', proposal.clientName);
     const pdfBuffer = await pdfService.generateProposalPDF(proposal, companyData, pdfOptions);
-    console.log('PDF buffer generated, size:', pdfBuffer.length, 'bytes');
     
     // Validate PDF buffer
     if (!pdfBuffer || pdfBuffer.length === 0) {
       throw new Error('Generated PDF buffer is empty');
-    }
-    
-    // Check if buffer starts with PDF header
-    const pdfHeader = pdfBuffer.slice(0, 4).toString();
-    console.log('PDF header:', pdfHeader);
-    if (pdfHeader !== '%PDF') {
-      console.warn('Warning: PDF buffer does not start with %PDF header');
     }
     
     // Set headers for file download

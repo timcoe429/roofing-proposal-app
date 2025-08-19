@@ -2,9 +2,6 @@ import PDFDocument from 'pdfkit';
 import fetch from 'node-fetch';
 import QRCode from 'qrcode';
 
-console.log('PDFKit imported:', !!PDFDocument);
-console.log('QRCode imported:', !!QRCode);
-
 const pdfService = {
   async generateProposalPDF(proposalData, companyData, pdfOptions = {}) {
     return new Promise(async (resolve, reject) => {
@@ -24,16 +21,13 @@ const pdfService = {
         doc.on('end', () => {
           try {
             const pdfData = Buffer.concat(buffers);
-            console.log(`PDF generated successfully, size: ${pdfData.length} bytes`);
             resolve(pdfData);
           } catch (concatError) {
-            console.error('Buffer concatenation error:', concatError);
             reject(concatError);
           }
         });
         
         doc.on('error', (error) => {
-          console.error('PDFDocument error:', error);
           reject(error);
         });
 
@@ -61,11 +55,7 @@ const pdfService = {
       insurance: 'Insured & Bonded'
     };
     
-    console.log('Company data for PDF:', {
-      name: company.name,
-      hasLogo: !!company.logo,
-      logoUrl: company.logo
-    });
+
 
     const isDetailed = pdfOptions.isDetailed !== false; // Default to detailed
 
@@ -106,11 +96,9 @@ const pdfService = {
     if (company.logo) {
       try {
         // Try to fetch and embed the logo
-        console.log('Attempting to fetch logo:', company.logo);
         const logoResponse = await fetch(company.logo);
         if (logoResponse.ok) {
-          const logoBuffer = await logoResponse.buffer();
-          console.log('Logo fetched successfully, size:', logoBuffer.length);
+          const logoBuffer = Buffer.from(await logoResponse.arrayBuffer());
           
           // Embed logo (left side)
           doc.image(logoBuffer, 50, 60, { 
@@ -125,7 +113,6 @@ const pdfService = {
           throw new Error('Logo fetch failed');
         }
       } catch (error) {
-        console.warn('Could not load logo, falling back to company name:', error.message);
         // Fallback to company name
         doc.fontSize(26).fillColor(darkText).text(company.name, 50, 60);
         doc.fontSize(12).fillColor(mediumText).text('Licensed & Insured Roofing Contractor', 50, 90);
@@ -458,7 +445,6 @@ const pdfService = {
       
       y += qrSize + 30;
     } catch (qrError) {
-      console.error('QR code generation failed:', qrError);
       // Fallback to placeholder if QR generation fails
       const qrSize = 120;
       const qrX = (595 - qrSize) / 2;

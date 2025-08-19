@@ -84,21 +84,15 @@ const api = {
   // PDF Generation
   generatePdf: async (proposalId, options = {}) => {
     try {
-      console.log('Making PDF request for proposal ID:', proposalId);
-      console.log('PDF options:', options);
-      
       // Get company data from localStorage
       const companyData = (() => {
         try {
           const saved = localStorage.getItem('companyData');
           return saved ? JSON.parse(saved) : null;
         } catch (e) {
-          console.warn('Could not parse company data from localStorage');
           return null;
         }
       })();
-      
-      console.log('Sending company data:', companyData?.name || 'Using defaults');
       
       const response = await apiClient.post(`/pdf/generate/${proposalId}`, {
         companyData,
@@ -107,20 +101,14 @@ const api = {
         responseType: 'blob'
       });
       
-      console.log('PDF response received:', response);
-      console.log('PDF response data type:', typeof response.data);
-      console.log('PDF response status:', response.status);
-      
       // The response.data should be the blob directly
       if (!response.data || response.data.size === 0) {
         throw new Error('No PDF data received from server');
       }
       
-      console.log('Returning PDF blob with size:', response.data.size);
       return response.data;
     } catch (error) {
-      console.error('PDF API error:', error);
-      console.error('PDF API error response:', error.response);
+      console.error('PDF generation failed:', error.message);
       throw error;
     }
   },

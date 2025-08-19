@@ -154,28 +154,18 @@ const ProposalEditor = () => {
   // Generate PDF mutation
   const generatePdfMutation = useMutation({
     mutationFn: () => {
-      console.log('PDF mutation starting for ID:', id);
-      console.log('Using detailed mode:', isDetailedMode);
       return api.generatePdf(id, { isDetailed: isDetailedMode });
     },
     onSuccess: (pdfBlob) => {
-      console.log('PDF mutation onSuccess called');
-      console.log('PDF blob received:', pdfBlob);
-      console.log('PDF blob type:', typeof pdfBlob);
-      console.log('PDF blob constructor:', pdfBlob?.constructor?.name);
-      
       if (!pdfBlob) {
         toast.error('No PDF data received');
         return;
       }
       
-      console.log('PDF blob size:', pdfBlob.size || pdfBlob.length);
-      
       toast.success('PDF generated and downloaded!');
       
       // Create blob URL and trigger download
       const blob = new Blob([pdfBlob], { type: 'application/pdf' });
-      console.log('Created blob size:', blob.size);
       
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -192,10 +182,8 @@ const ProposalEditor = () => {
       }, 100);
     },
     onError: (error) => {
-      console.error('PDF mutation onError called');
       toast.error('Failed to generate PDF');
-      console.error('PDF generation error:', error);
-      console.error('Error details:', error.response?.data);
+      console.error('PDF generation error:', error.message);
     }
   });
 
@@ -234,11 +222,9 @@ const ProposalEditor = () => {
         const savedProposal = await saveMutation.mutateAsync(proposalData);
         // Use the saved proposal ID for PDF generation
         api.generatePdf(savedProposal.id, { isDetailed: isDetailedMode }).then(pdfBlob => {
-          console.log('PDF blob received for new proposal:', pdfBlob);
           toast.success('PDF generated and downloaded!');
           
           const blob = new Blob([pdfBlob], { type: 'application/pdf' });
-          console.log('Created blob size for new proposal:', blob.size);
           
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -255,7 +241,7 @@ const ProposalEditor = () => {
           }, 100);
         }).catch(error => {
           toast.error('Failed to generate PDF');
-          console.error('PDF generation error for new proposal:', error);
+          console.error('PDF generation error:', error.message);
         });
       } catch (error) {
         toast.error('Please save the proposal first');
