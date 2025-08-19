@@ -216,6 +216,12 @@ const pdfService = {
 
         // Materials rows
         pricing.materials.forEach(material => {
+          // Only check for page break if we're really running out of space
+          if (y > 720) {
+            doc.addPage();
+            y = 60;
+          }
+          
           doc.rect(50, y, 495, 18).stroke(borderColor);
           doc.fontSize(8).fillColor(darkText)
              .text(material.name || 'Material', 60, y + 5, { width: 180 })
@@ -250,6 +256,12 @@ const pdfService = {
 
         // Labor rows
         pricing.labor.forEach(labor => {
+          // Only check for page break if we're really running out of space
+          if (y > 720) {
+            doc.addPage();
+            y = 60;
+          }
+          
           doc.rect(50, y, 495, 18).stroke(borderColor);
           doc.fontSize(8).fillColor(darkText)
              .text(labor.name || 'Labor', 60, y + 5, { width: 180 })
@@ -299,6 +311,12 @@ const pdfService = {
 
     // NOTES SECTION (if present)
     if (proposalData.notes) {
+      // Only add page break if we really need space
+      if (y > 680) {
+        doc.addPage();
+        y = 60;
+      }
+      
       doc.fontSize(12).fillColor(darkText).text('ADDITIONAL NOTES', 60, y);
       y += 20;
       
@@ -309,33 +327,148 @@ const pdfService = {
       y += 70;
     }
 
-    // TERMS & CONDITIONS
+    // TERMS & CONDITIONS - Check if we need a new page first
+    if (y > 650) {
+      doc.addPage();
+      y = 60; // Start from top margin
+    }
+
     doc.fontSize(11).fillColor(darkText).text('TERMS & CONDITIONS', 60, y);
-    y += 15;
+    y += 20;
 
     const terms = [
       '• This proposal is valid for 30 days from the date above',
-      '• All work performed according to local building codes and manufacturer specifications',
+      '• All work performed according to local building codes and manufacturer specifications', 
       '• Materials and workmanship warranty as specified',
       '• Final payment due upon completion and customer satisfaction'
     ];
 
-    doc.fontSize(9).fillColor(lightText);
-    terms.forEach(term => {
-      doc.text(term, 60, y);
-      y += 12;
+    // Write all terms as a single text block to avoid page breaks
+    const termsText = terms.join('\n');
+    doc.fontSize(9).fillColor(lightText).text(termsText, 60, y, {
+      width: 485,
+      lineGap: 3
     });
 
-    // FOOTER with company info
-    const footerY = 750; // Fixed footer position
-    doc.strokeColor(borderColor).lineWidth(1).moveTo(50, footerY).lineTo(545, footerY).stroke();
+    // Calculate how much space the terms took
+    const termsHeight = terms.length * 15; // Approximate height
+    y += termsHeight + 30;
+
+    // NEXT STEPS PAGE - Always on a new page for maximum impact
+    doc.addPage();
+    y = 80; // Start with more top margin for this page
+
+    // Page title
+    doc.fontSize(24).fillColor(darkText).text('NEXT STEPS', 0, y, { 
+      align: 'center', 
+      width: 595 
+    });
+    y += 50;
+
+    // Step-by-step process
+    const steps = [
+      {
+        number: '1',
+        title: 'Review This Proposal',
+        description: 'Take your time to review all details, materials, and pricing above.'
+      },
+      {
+        number: '2', 
+        title: 'Accept Your Proposal',
+        description: 'Click the button below or scan the QR code to accept this proposal.'
+      },
+      {
+        number: '3',
+        title: 'We\'ll Contact You',
+        description: 'We\'ll call you within 24 hours to schedule your project start date.'
+      }
+    ];
+
+    steps.forEach((step, index) => {
+      const stepY = y + (index * 80);
+      
+      // Step number circle
+      doc.circle(80, stepY + 15, 20).fillAndStroke('#e6f3ff', '#1e40af');
+      doc.fontSize(16).fillColor('#1e40af').text(step.number, 75, stepY + 8);
+      
+      // Step content
+      doc.fontSize(16).fillColor(darkText).text(step.title, 120, stepY);
+      doc.fontSize(11).fillColor(mediumText).text(step.description, 120, stepY + 25, {
+        width: 400,
+        lineGap: 2
+      });
+    });
+
+    y += 280; // Move past the steps
+
+    // BIG ACCEPT PROPOSAL BUTTON
+    const buttonY = y;
+    const buttonHeight = 60;
+    const buttonWidth = 400;
+    const buttonX = (595 - buttonWidth) / 2; // Center the button
+
+    // Button background with gradient effect (using fill)
+    doc.rect(buttonX, buttonY, buttonWidth, buttonHeight)
+       .fillAndStroke('#1e40af', '#1e3a8a');
+    
+    // Button text - BIG and BOLD
+    doc.fontSize(22).fillColor('white').text('ACCEPT PROPOSAL', 0, buttonY + 18, {
+      align: 'center',
+      width: 595
+    });
+
+    // Proposal acceptance URL (we'll generate this)
+    const proposalUrl = `${process.env.CLIENT_URL || 'https://your-domain.com'}/proposal/accept/${proposalData.id || 'PROPOSAL_ID'}`;
+    
+    y += buttonHeight + 30;
+
+    // URL below button for manual entry
+    doc.fontSize(10).fillColor(mediumText).text('Or visit:', 0, y, { align: 'center', width: 595 });
+    y += 15;
+    doc.fontSize(10).fillColor('#1e40af').text(proposalUrl, 0, y, { 
+      align: 'center', 
+      width: 595,
+      link: proposalUrl
+    });
+
+    y += 40;
+
+    // QR Code placeholder (we'll implement QR generation later)
+    doc.fontSize(12).fillColor(mediumText).text('Scan with your phone:', 0, y, { align: 'center', width: 595 });
+    y += 20;
+    
+    // QR Code box placeholder
+    const qrSize = 120;
+    const qrX = (595 - qrSize) / 2;
+    doc.rect(qrX, y, qrSize, qrSize).stroke(borderColor);
+    doc.fontSize(10).fillColor(lightText).text('QR CODE', qrX + 35, y + 55);
+    
+    y += qrSize + 30;
+
+    // Contact info for questions
+    doc.fontSize(12).fillColor(mediumText).text('Questions? Contact us:', 0, y, { align: 'center', width: 595 });
+    y += 20;
+    doc.fontSize(14).fillColor(darkText).text(`${company.phone} • ${company.email}`, 0, y, { 
+      align: 'center', 
+      width: 595 
+    });
+
+    // FOOTER with company info - always at bottom of last page
+    const currentPage = doc.page;
+    const pageHeight = currentPage.height;
+    const footerY = pageHeight - 60; // 60px from bottom
+    
+    // Only add footer line if we have space
+    if (y < footerY - 50) {
+      doc.strokeColor(borderColor).lineWidth(1).moveTo(50, footerY - 20).lineTo(545, footerY - 20).stroke();
+    }
     
     doc.fontSize(8).fillColor(lightText)
-       .text(`${company.name} | ${company.phone} | ${company.email}`, 60, footerY + 10)
-       .text(`${company.license} | ${company.insurance}`, 60, footerY + 22)
-       .text(company.address, 60, footerY + 34);
+       .text(`${company.name} | ${company.phone} | ${company.email}`, 60, footerY)
+       .text(`${company.license} | ${company.insurance}`, 60, footerY + 12)
+       .text(company.address, 60, footerY + 24);
     
-    doc.text('Thank you for choosing our services!', 400, footerY + 22);
+    doc.text('Thank you for choosing our services!', 400, footerY + 12);
   }
 };
 
