@@ -166,3 +166,37 @@ export const deleteProposal = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete proposal' });
   }
 };
+
+// Accept proposal (public endpoint)
+export const acceptProposal = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, email, preferredStartDate } = req.body;
+    
+    const proposal = await Proposal.findByPk(id);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+    
+    // Update proposal status and acceptance data
+    await proposal.update({
+      status: 'accepted',
+      acceptedAt: new Date(),
+      acceptanceData: {
+        name,
+        phone,
+        email,
+        preferredStartDate,
+        acceptedAt: new Date()
+      }
+    });
+    
+    res.json({ 
+      message: 'Proposal accepted successfully',
+      proposal: proposal 
+    });
+  } catch (error) {
+    console.error('Error accepting proposal:', error);
+    res.status(500).json({ error: 'Failed to accept proposal' });
+  }
+};

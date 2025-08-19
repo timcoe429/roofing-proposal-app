@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 // Pages
 import Dashboard from './pages/Dashboard';
 import ProposalEditor from './pages/ProposalEditor';
+import ProposalAcceptance from './pages/ProposalAcceptance';
 import Login from './pages/Login';
 
 // Styles
@@ -63,6 +64,10 @@ function App() {
                   <ProposalEditor />
                 </ProtectedRoute>
               } 
+            />
+            <Route 
+              path="/proposal/accept/:id" 
+              element={<ProposalAcceptance />}
             />
           </Routes>
           <Toaster 

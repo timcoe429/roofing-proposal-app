@@ -205,11 +205,7 @@ const pdfService = {
 
         // Materials rows
         pricing.materials.forEach(material => {
-          // Only check for page break if we're really running out of space (more conservative)
-          if (y > 750) {
-            doc.addPage();
-            y = 60;
-          }
+          // Remove page break - let content flow naturally
           
           doc.rect(50, y, 495, 18).stroke(borderColor);
           doc.fontSize(8).fillColor(darkText)
@@ -245,11 +241,7 @@ const pdfService = {
 
         // Labor rows
         pricing.labor.forEach(labor => {
-          // Only check for page break if we're really running out of space (more conservative)
-          if (y > 750) {
-            doc.addPage();
-            y = 60;
-          }
+          // Remove page break - let content flow naturally
           
           doc.rect(50, y, 495, 18).stroke(borderColor);
           doc.fontSize(8).fillColor(darkText)
@@ -300,11 +292,7 @@ const pdfService = {
 
     // NOTES SECTION (if present)
     if (proposalData.notes) {
-      // Only add page break if we really need space
-      if (y > 680) {
-        doc.addPage();
-        y = 60;
-      }
+      // Remove page break - let content flow naturally
       
       doc.fontSize(12).fillColor(darkText).text('ADDITIONAL NOTES', 60, y);
       y += 20;
@@ -316,11 +304,7 @@ const pdfService = {
       y += 70;
     }
 
-    // TERMS & CONDITIONS - only add page if really needed
-    if (y > 700) {
-      doc.addPage();
-      y = 60; // Start from top margin
-    }
+    // TERMS & CONDITIONS - remove page break
 
     doc.fontSize(11).fillColor(darkText).text('TERMS & CONDITIONS', 60, y);
     y += 20;
@@ -343,52 +327,22 @@ const pdfService = {
     const termsHeight = terms.length * 15; // Approximate height
     y += termsHeight + 30;
 
-    // NEXT STEPS PAGE - Always on a new page for maximum impact
-    doc.addPage();
-    y = 80; // Start with more top margin for this page
+    // NEXT STEPS SECTION - remove page break
 
     // Page title
-    doc.fontSize(24).fillColor(darkText).text('NEXT STEPS', 0, y, { 
+    doc.fontSize(18).fillColor(darkText).text('NEXT STEPS', 0, y, { 
       align: 'center', 
       width: 595 
     });
-    y += 50;
+    y += 30;
 
-    // Step-by-step process
-    const steps = [
-      {
-        number: '1',
-        title: 'Review This Proposal',
-        description: 'Take your time to review all details, materials, and pricing above.'
-      },
-      {
-        number: '2', 
-        title: 'Accept Your Proposal',
-        description: 'Click the button below or scan the QR code to accept this proposal.'
-      },
-      {
-        number: '3',
-        title: 'We\'ll Contact You',
-        description: 'We\'ll call you within 24 hours to schedule your project start date.'
-      }
-    ];
+    // Compact steps
+    doc.fontSize(12).fillColor(mediumText)
+       .text('1. Review this proposal carefully', 60, y)
+       .text('2. Accept using the link below', 60, y + 20)
+       .text('3. We\'ll call you within 24 hours', 60, y + 40);
 
-    steps.forEach((step, index) => {
-      const stepY = y + (index * 80);
-      
-      // Step number circle
-      doc.circle(80, stepY + 15, 20).fillAndStroke('#e6f3ff', '#1e40af');
-      doc.fontSize(16).fillColor('#1e40af').text(step.number, 75, stepY + 8);
-      
-      // Step content
-      doc.fontSize(16).fillColor(darkText).text(step.title, 120, stepY);
-      doc.fontSize(11).fillColor(mediumText).text(step.description, 120, stepY + 25, {
-        width: 400,
-        lineGap: 2
-      });
-    });
-
-    y += 280; // Move past the steps
+    y += 80;
 
     // BIG ACCEPT PROPOSAL BUTTON
     const buttonY = y;
@@ -421,36 +375,32 @@ const pdfService = {
       link: proposalUrl
     });
 
-    y += 40;
+    y += 20;
 
-    // Generate and embed real QR Code
+    // QR code and contact info
     doc.fontSize(12).fillColor(mediumText).text('Scan with your phone:', 0, y, { align: 'center', width: 595 });
     y += 20;
     
     try {
-      // Generate QR code as PNG buffer
+      // Generate QR code
       const qrBuffer = await QRCode.toBuffer(proposalUrl, {
         width: 120,
         margin: 1,
         color: {
-          dark: '#000000',  // Black QR code (standard)
-          light: '#ffffff'  // White background
+          dark: '#000000',
+          light: '#ffffff'
         }
       });
       
-      // Embed QR code in PDF
+      // Embed QR code
       const qrSize = 120;
       const qrX = (595 - qrSize) / 2;
       doc.image(qrBuffer, qrX, y, { width: qrSize, height: qrSize });
       
       y += qrSize + 30;
     } catch (qrError) {
-      // Fallback to placeholder if QR generation fails
-      const qrSize = 120;
-      const qrX = (595 - qrSize) / 2;
-      doc.rect(qrX, y, qrSize, qrSize).stroke(borderColor);
-      doc.fontSize(10).fillColor(lightText).text('QR CODE\nERROR', qrX + 35, y + 50);
-      y += qrSize + 30;
+      // Skip QR code if generation fails
+      y += 30;
     }
 
     // Contact info for questions

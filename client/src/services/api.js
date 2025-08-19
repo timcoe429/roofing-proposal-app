@@ -61,6 +61,7 @@ const api = {
   createProposal: (data) => apiClient.post('/proposals', data),
   updateProposal: (id, data) => apiClient.put(`/proposals/${id}`, data),
   deleteProposal: (id) => apiClient.delete(`/proposals/${id}`),
+  acceptProposal: (id, acceptanceData) => apiClient.post(`/proposals/${id}/accept`, acceptanceData),
 
   // Vision AI (GPT-4 Vision)
   processImages: (images, documentType) => 

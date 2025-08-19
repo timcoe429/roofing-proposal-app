@@ -1,0 +1,241 @@
+.acceptance-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.acceptance-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  width: 100%;
+  padding: 40px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  color: #2d3748;
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.header p {
+  color: #718096;
+  font-size: 16px;
+}
+
+.proposal-summary {
+  background: #f7fafc;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.proposal-summary h2 {
+  color: #2d3748;
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-item span:first-child {
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.total {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1e40af;
+}
+
+.acceptance-form h3 {
+  color: #2d3748;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  color: #4a5568;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #1e40af;
+}
+
+.accept-button {
+  width: 100%;
+  background: #1e40af;
+  color: white;
+  border: none;
+  padding: 16px 24px;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 20px;
+}
+
+.accept-button:hover {
+  background: #1e3a8a;
+}
+
+.accept-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.contact-info {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.contact-info p {
+  color: #718096;
+  margin-bottom: 15px;
+}
+
+.contact-methods {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.contact-methods a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f7fafc;
+  color: #4a5568;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.contact-methods a:hover {
+  background: #edf2f7;
+}
+
+.success-message {
+  text-align: center;
+}
+
+.success-icon {
+  color: #10b981;
+  margin-bottom: 20px;
+}
+
+.success-message h1 {
+  color: #2d3748;
+  font-size: 32px;
+  margin-bottom: 16px;
+}
+
+.success-message > p {
+  color: #718096;
+  font-size: 18px;
+  margin-bottom: 30px;
+}
+
+.next-steps {
+  background: #f0fff4;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 30px;
+}
+
+.next-steps h3 {
+  color: #065f46;
+  margin-bottom: 15px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  color: #047857;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #1e40af;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.error h2 {
+  color: #dc2626;
+  margin-bottom: 16px;
+}
+
+.error p {
+  color: #718096;
+}
+
+@media (max-width: 768px) {
+  .acceptance-card {
+    padding: 20px;
+  }
+  
+  .contact-methods {
+    flex-direction: column;
+    align-items: center;
+  }
+}

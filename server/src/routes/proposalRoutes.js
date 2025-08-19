@@ -5,7 +5,8 @@ import {
   getProposal, 
   createProposal, 
   updateProposal, 
-  deleteProposal 
+  deleteProposal,
+  acceptProposal 
 } from '../controllers/proposalController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -27,5 +28,6 @@ router.get('/:id', getProposal);
 router.post('/', createProposal);
 router.put('/:id', updateProposal);
 router.delete('/:id', deleteProposal);
+router.post('/:id/accept', acceptProposal);
 
 export default router;
