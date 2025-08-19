@@ -339,34 +339,8 @@ const pdfService = {
       y += 70;
     }
 
-    // TERMS & CONDITIONS - check space first
-    console.log(`Before terms Y: ${y}`);
-    if (y > 650) {
-      console.log(`=== TERMS PAGE BREAK AT Y: ${y} ===`);
-      doc.addPage();
-      y = 60;
-    }
-
-    doc.fontSize(11).fillColor(darkText).text('TERMS & CONDITIONS', 60, y);
-    y += 20;
-    console.log(`After terms header Y: ${y}`);
-
-    const terms = [
-      '• This proposal is valid for 30 days from the date above',
-      '• All work performed according to local building codes and manufacturer specifications', 
-      '• Materials and workmanship warranty as specified',
-      '• Final payment due upon completion and customer satisfaction'
-    ];
-
-    // Write all terms as a single text block to avoid page breaks
-    const termsText = terms.join('\n');
-    doc.fontSize(9).fillColor(lightText).text(termsText, 60, y, {
-      width: 485,
-      lineGap: 3
-    });
-
-    y += 80; // Fixed height for terms section
-    console.log(`After terms content Y: ${y}`);
+    // Skip terms section - will add T&C link to footer instead
+    console.log(`Skipping terms section, Y: ${y}`);
 
     // NEXT STEPS - Force to new page to control layout
     console.log(`=== FORCING NEXT STEPS PAGE BREAK ===`);
@@ -381,15 +355,50 @@ const pdfService = {
     });
     y += 50;
 
-    // Simple steps
-    doc.fontSize(14).fillColor(mediumText)
-       .text('1. Review this proposal', 60, y)
-       .text('2. Accept using link or QR code below', 60, y + 25)
-       .text('3. We\'ll call you within 24 hours', 60, y + 50);
+    // Step-by-step process with circles
+    const steps = [
+      {
+        number: '1',
+        title: 'Review This Proposal',
+        description: 'Take your time to review all details, materials, and pricing above.'
+      },
+      {
+        number: '2', 
+        title: 'Accept Your Proposal',
+        description: 'Click the button below or scan the QR code to accept this proposal.'
+      },
+      {
+        number: '3',
+        title: 'We\'ll Contact You',
+        description: 'We\'ll call you within 24 hours to schedule your project start date.'
+      }
+    ];
 
-    y += 100;
+    steps.forEach((step, index) => {
+      const stepY = y + (index * 60); // Reduced spacing
+      
+      // Step number circle
+      doc.circle(80, stepY + 15, 20).fillAndStroke('#e6f3ff', '#1e40af');
+      doc.fontSize(16).fillColor('#1e40af').text(step.number, 75, stepY + 8);
+      
+      // Step content
+      doc.fontSize(16).fillColor(darkText).text(step.title, 120, stepY);
+      doc.fontSize(11).fillColor(mediumText).text(step.description, 120, stepY + 20, {
+        width: 400,
+        lineGap: 2
+      });
+    });
 
-    // BIG ACCEPT PROPOSAL BUTTON
+    y += 200; // Move past the steps
+
+    // CLEAR CALL TO ACTION
+    doc.fontSize(16).fillColor(darkText).text('TO ACCEPT THIS PROPOSAL:', 0, y, { 
+      align: 'center', 
+      width: 595 
+    });
+    y += 30;
+
+    // BIG CLICKABLE ACCEPT LINK (styled like button)
     const buttonY = y;
     const buttonHeight = 60;
     const buttonWidth = 400;
@@ -399,21 +408,27 @@ const pdfService = {
     doc.rect(buttonX, buttonY, buttonWidth, buttonHeight)
        .fillAndStroke('#1e40af', '#1e3a8a');
     
-    // Button text
-    doc.fontSize(22).fillColor('white').text('ACCEPT PROPOSAL', 0, buttonY + 20, {
-      align: 'center',
-      width: 595
-    });
-
     // Proposal URL
     const baseUrl = 'https://roofproposal.app';
     const proposalUrl = `${baseUrl}/proposal/accept/${proposalData.id || 'PROPOSAL_ID'}`;
     
-    y += buttonHeight + 30;
+    // Clickable button text
+    doc.fontSize(22).fillColor('white').text('ACCEPT PROPOSAL', 0, buttonY + 20, {
+      align: 'center',
+      width: 595,
+      link: proposalUrl
+    });
+    
+    y += buttonHeight + 20;
 
-    // URL below button
-    doc.fontSize(10).fillColor(mediumText).text('Or visit:', 0, y, { align: 'center', width: 595 });
+    // Clear instruction
+    doc.fontSize(12).fillColor(mediumText).text('Click the button above, scan the QR code below, or visit:', 0, y, { 
+      align: 'center', 
+      width: 595 
+    });
     y += 15;
+    
+    // URL as backup
     doc.fontSize(10).fillColor('#1e40af').text(proposalUrl, 0, y, { 
       align: 'center', 
       width: 595,
@@ -453,9 +468,9 @@ const pdfService = {
       width: 595 
     });
 
-    // FOOTER with company info - write after content, not at page bottom
+    // FOOTER with company info and T&C link
     console.log(`Before footer Y: ${y}`);
-    y += 30; // Add some space before footer
+    y += 30;
     
     doc.strokeColor(borderColor).lineWidth(1).moveTo(50, y).lineTo(545, y).stroke();
     y += 15;
@@ -466,7 +481,18 @@ const pdfService = {
        .text(`${company.license} | ${company.insurance}`, 60, y + 12)
        .text(company.address, 60, y + 24);
     
-    doc.text('Thank you for choosing our services!', 400, y + 12);
+    // Add T&C link if available
+    if (company.termsConditionsUrl) {
+      doc.fontSize(8).fillColor('#1e40af')
+         .text(`Terms & Conditions: ${company.termsConditionsUrl}`, 60, y + 36, {
+           link: company.termsConditionsUrl
+         });
+    } else {
+      doc.fontSize(8).fillColor(lightText)
+         .text('Subject to our Terms & Conditions', 60, y + 36);
+    }
+    
+    doc.fontSize(8).fillColor(lightText).text('Thank you for choosing our services!', 400, y + 12);
     console.log(`=== PDF GENERATION COMPLETE ===`);
   }
 };
