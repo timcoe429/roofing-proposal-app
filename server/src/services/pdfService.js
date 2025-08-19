@@ -419,9 +419,8 @@ const pdfService = {
       width: 595
     });
 
-    // Proposal acceptance URL - use Railway domain or fallback
-    const baseUrl = process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : 
-                    process.env.CLIENT_URL || 'https://your-app.railway.app';
+    // Proposal acceptance URL - use your actual domain
+    const baseUrl = 'https://roofproposal.app';
     const proposalUrl = `${baseUrl}/proposal/accept/${proposalData.id || 'PROPOSAL_ID'}`;
     
     y += buttonHeight + 30;
@@ -447,7 +446,7 @@ const pdfService = {
         width: 120,
         margin: 1,
         color: {
-          dark: '#1e40af',  // Blue QR code
+          dark: '#000000',  // Black QR code (standard)
           light: '#ffffff'  // White background
         }
       });
