@@ -1,7 +1,9 @@
 import PDFDocument from 'pdfkit';
 import fetch from 'node-fetch';
+import QRCode from 'qrcode';
 
 console.log('PDFKit imported:', !!PDFDocument);
+console.log('QRCode imported:', !!QRCode);
 
 const pdfService = {
   async generateProposalPDF(proposalData, companyData, pdfOptions = {}) {
@@ -216,8 +218,8 @@ const pdfService = {
 
         // Materials rows
         pricing.materials.forEach(material => {
-          // Only check for page break if we're really running out of space
-          if (y > 720) {
+          // Only check for page break if we're really running out of space (more conservative)
+          if (y > 750) {
             doc.addPage();
             y = 60;
           }
@@ -256,8 +258,8 @@ const pdfService = {
 
         // Labor rows
         pricing.labor.forEach(labor => {
-          // Only check for page break if we're really running out of space
-          if (y > 720) {
+          // Only check for page break if we're really running out of space (more conservative)
+          if (y > 750) {
             doc.addPage();
             y = 60;
           }
@@ -327,8 +329,8 @@ const pdfService = {
       y += 70;
     }
 
-    // TERMS & CONDITIONS - Check if we need a new page first
-    if (y > 650) {
+    // TERMS & CONDITIONS - only add page if really needed
+    if (y > 700) {
       doc.addPage();
       y = 60; // Start from top margin
     }
@@ -411,14 +413,16 @@ const pdfService = {
     doc.rect(buttonX, buttonY, buttonWidth, buttonHeight)
        .fillAndStroke('#1e40af', '#1e3a8a');
     
-    // Button text - BIG and BOLD
-    doc.fontSize(22).fillColor('white').text('ACCEPT PROPOSAL', 0, buttonY + 18, {
+    // Button text - BIG and BOLD - properly centered vertically
+    doc.fontSize(22).fillColor('white').text('ACCEPT PROPOSAL', 0, buttonY + 20, {
       align: 'center',
       width: 595
     });
 
-    // Proposal acceptance URL (we'll generate this)
-    const proposalUrl = `${process.env.CLIENT_URL || 'https://your-domain.com'}/proposal/accept/${proposalData.id || 'PROPOSAL_ID'}`;
+    // Proposal acceptance URL - use Railway domain or fallback
+    const baseUrl = process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : 
+                    process.env.CLIENT_URL || 'https://your-app.railway.app';
+    const proposalUrl = `${baseUrl}/proposal/accept/${proposalData.id || 'PROPOSAL_ID'}`;
     
     y += buttonHeight + 30;
 
@@ -433,17 +437,36 @@ const pdfService = {
 
     y += 40;
 
-    // QR Code placeholder (we'll implement QR generation later)
+    // Generate and embed real QR Code
     doc.fontSize(12).fillColor(mediumText).text('Scan with your phone:', 0, y, { align: 'center', width: 595 });
     y += 20;
     
-    // QR Code box placeholder
-    const qrSize = 120;
-    const qrX = (595 - qrSize) / 2;
-    doc.rect(qrX, y, qrSize, qrSize).stroke(borderColor);
-    doc.fontSize(10).fillColor(lightText).text('QR CODE', qrX + 35, y + 55);
-    
-    y += qrSize + 30;
+    try {
+      // Generate QR code as PNG buffer
+      const qrBuffer = await QRCode.toBuffer(proposalUrl, {
+        width: 120,
+        margin: 1,
+        color: {
+          dark: '#1e40af',  // Blue QR code
+          light: '#ffffff'  // White background
+        }
+      });
+      
+      // Embed QR code in PDF
+      const qrSize = 120;
+      const qrX = (595 - qrSize) / 2;
+      doc.image(qrBuffer, qrX, y, { width: qrSize, height: qrSize });
+      
+      y += qrSize + 30;
+    } catch (qrError) {
+      console.error('QR code generation failed:', qrError);
+      // Fallback to placeholder if QR generation fails
+      const qrSize = 120;
+      const qrX = (595 - qrSize) / 2;
+      doc.rect(qrX, y, qrSize, qrSize).stroke(borderColor);
+      doc.fontSize(10).fillColor(lightText).text('QR CODE\nERROR', qrX + 35, y + 50);
+      y += qrSize + 30;
+    }
 
     // Contact info for questions
     doc.fontSize(12).fillColor(mediumText).text('Questions? Contact us:', 0, y, { align: 'center', width: 595 });
