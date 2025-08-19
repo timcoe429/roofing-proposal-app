@@ -205,7 +205,19 @@ const pdfService = {
 
         // Materials rows
         pricing.materials.forEach(material => {
-          // Remove page break - let content flow naturally
+          // Check if we need a new page (conservative check)
+          if (y > 720) {
+            doc.addPage();
+            y = 60;
+            // Redraw table header on new page
+            doc.rect(50, y, 495, 20).fillAndStroke('#f8f9fa', borderColor);
+            doc.fontSize(9).fillColor(darkText)
+               .text('Description', 60, y + 6)
+               .text('Qty', 250, y + 6)
+               .text('Unit Price', 320, y + 6)
+               .text('Total', 450, y + 6);
+            y += 20;
+          }
           
           doc.rect(50, y, 495, 18).stroke(borderColor);
           doc.fontSize(8).fillColor(darkText)
@@ -241,7 +253,19 @@ const pdfService = {
 
         // Labor rows
         pricing.labor.forEach(labor => {
-          // Remove page break - let content flow naturally
+          // Check if we need a new page (conservative check)
+          if (y > 720) {
+            doc.addPage();
+            y = 60;
+            // Redraw table header on new page
+            doc.rect(50, y, 495, 20).fillAndStroke('#f8f9fa', borderColor);
+            doc.fontSize(9).fillColor(darkText)
+               .text('Description', 60, y + 6)
+               .text('Qty', 250, y + 6)
+               .text('Unit Price', 320, y + 6)
+               .text('Total', 450, y + 6);
+            y += 20;
+          }
           
           doc.rect(50, y, 495, 18).stroke(borderColor);
           doc.fontSize(8).fillColor(darkText)
@@ -292,7 +316,11 @@ const pdfService = {
 
     // NOTES SECTION (if present)
     if (proposalData.notes) {
-      // Remove page break - let content flow naturally
+      // Check if we need a new page for notes
+      if (y > 650) {
+        doc.addPage();
+        y = 60;
+      }
       
       doc.fontSize(12).fillColor(darkText).text('ADDITIONAL NOTES', 60, y);
       y += 20;
@@ -304,7 +332,11 @@ const pdfService = {
       y += 70;
     }
 
-    // TERMS & CONDITIONS - remove page break
+    // TERMS & CONDITIONS - check space first
+    if (y > 650) {
+      doc.addPage();
+      y = 60;
+    }
 
     doc.fontSize(11).fillColor(darkText).text('TERMS & CONDITIONS', 60, y);
     y += 20;
@@ -323,50 +355,50 @@ const pdfService = {
       lineGap: 3
     });
 
-    // Calculate how much space the terms took
-    const termsHeight = terms.length * 15; // Approximate height
-    y += termsHeight + 30;
+    y += 80; // Fixed height for terms section
 
-    // NEXT STEPS SECTION - remove page break
+    // NEXT STEPS - Force to new page to control layout
+    doc.addPage();
+    y = 80;
 
     // Page title
-    doc.fontSize(18).fillColor(darkText).text('NEXT STEPS', 0, y, { 
+    doc.fontSize(24).fillColor(darkText).text('NEXT STEPS', 0, y, { 
       align: 'center', 
       width: 595 
     });
-    y += 30;
+    y += 50;
 
-    // Compact steps
-    doc.fontSize(12).fillColor(mediumText)
-       .text('1. Review this proposal carefully', 60, y)
-       .text('2. Accept using the link below', 60, y + 20)
-       .text('3. We\'ll call you within 24 hours', 60, y + 40);
+    // Simple steps
+    doc.fontSize(14).fillColor(mediumText)
+       .text('1. Review this proposal', 60, y)
+       .text('2. Accept using link or QR code below', 60, y + 25)
+       .text('3. We\'ll call you within 24 hours', 60, y + 50);
 
-    y += 80;
+    y += 100;
 
     // BIG ACCEPT PROPOSAL BUTTON
     const buttonY = y;
     const buttonHeight = 60;
     const buttonWidth = 400;
-    const buttonX = (595 - buttonWidth) / 2; // Center the button
+    const buttonX = (595 - buttonWidth) / 2;
 
-    // Button background with gradient effect (using fill)
+    // Button background
     doc.rect(buttonX, buttonY, buttonWidth, buttonHeight)
        .fillAndStroke('#1e40af', '#1e3a8a');
     
-    // Button text - BIG and BOLD - properly centered vertically
+    // Button text
     doc.fontSize(22).fillColor('white').text('ACCEPT PROPOSAL', 0, buttonY + 20, {
       align: 'center',
       width: 595
     });
 
-    // Proposal acceptance URL - use your actual domain
+    // Proposal URL
     const baseUrl = 'https://roofproposal.app';
     const proposalUrl = `${baseUrl}/proposal/accept/${proposalData.id || 'PROPOSAL_ID'}`;
     
     y += buttonHeight + 30;
 
-    // URL below button for manual entry
+    // URL below button
     doc.fontSize(10).fillColor(mediumText).text('Or visit:', 0, y, { align: 'center', width: 595 });
     y += 15;
     doc.fontSize(10).fillColor('#1e40af').text(proposalUrl, 0, y, { 
@@ -375,14 +407,13 @@ const pdfService = {
       link: proposalUrl
     });
 
-    y += 20;
+    y += 40;
 
-    // QR code and contact info
+    // QR code
     doc.fontSize(12).fillColor(mediumText).text('Scan with your phone:', 0, y, { align: 'center', width: 595 });
     y += 20;
     
     try {
-      // Generate QR code
       const qrBuffer = await QRCode.toBuffer(proposalUrl, {
         width: 120,
         margin: 1,
@@ -392,18 +423,16 @@ const pdfService = {
         }
       });
       
-      // Embed QR code
       const qrSize = 120;
       const qrX = (595 - qrSize) / 2;
       doc.image(qrBuffer, qrX, y, { width: qrSize, height: qrSize });
       
       y += qrSize + 30;
     } catch (qrError) {
-      // Skip QR code if generation fails
       y += 30;
     }
 
-    // Contact info for questions
+    // Contact info
     doc.fontSize(12).fillColor(mediumText).text('Questions? Contact us:', 0, y, { align: 'center', width: 595 });
     y += 20;
     doc.fontSize(14).fillColor(darkText).text(`${company.phone} • ${company.email}`, 0, y, { 
