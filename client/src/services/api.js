@@ -27,6 +27,13 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => {
     console.log('API Response:', response.config.method.toUpperCase(), response.config.url, response.data);
+    
+    // For blob responses, return the full response so we can access headers, status, etc.
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    
+    // For other responses, return just the data as before
     return response.data;
   },
   (error) => {
@@ -82,14 +89,17 @@ const api = {
         responseType: 'blob'
       });
       console.log('PDF response received:', response);
+      console.log('PDF response data type:', typeof response.data);
       console.log('PDF response data:', response.data);
       console.log('PDF response status:', response.status);
       console.log('PDF response headers:', response.headers);
       
-      if (!response.data) {
+      // The response.data should be the blob directly
+      if (!response.data || response.data.size === 0) {
         throw new Error('No PDF data received from server');
       }
       
+      console.log('Returning PDF blob with size:', response.data.size);
       return response.data;
     } catch (error) {
       console.error('PDF API error:', error);
