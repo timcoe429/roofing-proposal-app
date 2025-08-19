@@ -85,14 +85,29 @@ const api = {
   generatePdf: async (proposalId) => {
     try {
       console.log('Making PDF request for proposal ID:', proposalId);
-      const response = await apiClient.post(`/pdf/generate/${proposalId}`, {}, {
+      
+      // Get company data from localStorage
+      const companyData = (() => {
+        try {
+          const saved = localStorage.getItem('companyData');
+          return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+          console.warn('Could not parse company data from localStorage');
+          return null;
+        }
+      })();
+      
+      console.log('Sending company data:', companyData?.name || 'Using defaults');
+      
+      const response = await apiClient.post(`/pdf/generate/${proposalId}`, {
+        companyData
+      }, {
         responseType: 'blob'
       });
+      
       console.log('PDF response received:', response);
       console.log('PDF response data type:', typeof response.data);
-      console.log('PDF response data:', response.data);
       console.log('PDF response status:', response.status);
-      console.log('PDF response headers:', response.headers);
       
       // The response.data should be the blob directly
       if (!response.data || response.data.size === 0) {

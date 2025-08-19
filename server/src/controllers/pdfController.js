@@ -20,16 +20,18 @@ export const generatePDF = async (req, res) => {
     
     console.log('Proposal client name:', proposal.clientName);
 
-    // Get company data (you can expand this to fetch from database)
-    const companyData = {
-      name: 'Your Company Name',
-      address: 'Company Address',
-      phone: 'Company Phone',
-      email: 'Company Email',
-      website: 'Company Website',
-      license: 'License Number',
-      insurance: 'Insurance Policy'
+    // Get company data from request body or use defaults
+    const companyData = req.body.companyData || {
+      name: 'Professional Roofing Co.',
+      address: '123 Business Ave, City, State 12345',
+      phone: '(555) 123-4567',
+      email: 'info@roofingcompany.com',
+      website: 'www.roofingcompany.com',
+      license: 'License #123456',
+      insurance: 'Insured & Bonded'
     };
+    
+    console.log('Using company data:', companyData.name);
 
     // Generate PDF
     console.log('Generating PDF for proposal:', proposal.clientName);
