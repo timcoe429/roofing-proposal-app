@@ -1,58 +1,58 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign, MapPin, Shield } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign, MapPin, Shield, Plus, Package } from 'lucide-react';
 import api from '../../services/api';
 import { getLocationContext, getQuickActionsForLocation } from '../../services/locationService';
 import './AIAssistant.css';
 
 const BASE_QUICK_ACTIONS = [
   {
-    id: 'analyze_satellite',
-    icon: Zap,
-    title: 'Satellite Analysis',
-    description: 'Analyze roof from satellite/aerial images',
-    prompt: 'Help me analyze this roof using satellite or aerial imagery to estimate size and complexity.'
+    id: 'add_item',
+    icon: Plus,
+    title: 'Add Item',
+    description: 'Add materials, labor, or costs',
+    prompt: 'Add a new item to this proposal.'
   },
   {
-    id: 'analyze_photos',
-    icon: Upload,
-    title: 'Analyze Photos',
-    description: 'Upload roof photos for AI analysis',
-    prompt: 'Help me analyze roof photos to extract measurements and identify damage areas.'
-  },
-  {
-    id: 'calculate_materials',
-    icon: Calculator,
-    title: 'Calculate Materials',
-    description: 'Get material estimates based on measurements',
-    prompt: 'Calculate the materials needed for this roof replacement project.'
-  },
-  {
-    id: 'price_lookup',
+    id: 'adjust_margins',
     icon: DollarSign,
-    title: 'Price Lookup',
-    description: 'Find current material prices',
-    prompt: 'Look up current pricing for roofing materials in my area.'
+    title: 'Adjust Margins',
+    description: 'Change overhead/profit percentages',
+    prompt: 'Adjust the overhead and profit margins for this proposal.'
   },
   {
-    id: 'location_requirements',
-    icon: MapPin,
-    title: 'Local Requirements',
-    description: 'Check building codes and permits',
-    prompt: 'What are the local building codes and permit requirements for this roofing project?'
+    id: 'apply_discount',
+    icon: Calculator,
+    title: 'Apply Discount',
+    description: 'Add discount or price adjustment',
+    prompt: 'Apply a discount to this proposal.'
   },
   {
-    id: 'compliance_check',
+    id: 'duplicate_item',
+    icon: Package,
+    title: 'Duplicate Item',
+    description: 'Copy existing item with changes',
+    prompt: 'Duplicate an existing item in this proposal with modifications.'
+  },
+  {
+    id: 'bulk_adjust',
+    icon: Zap,
+    title: 'Bulk Adjust',
+    description: 'Adjust multiple items at once',
+    prompt: 'Make bulk adjustments to multiple items in this proposal.'
+  },
+  {
+    id: 'compare_options',
     icon: Shield,
-    title: 'Compliance Check',
-    description: 'Verify code compliance',
-    prompt: 'Help me ensure this proposal meets all local building codes and requirements.'
+    title: 'Compare Options',
+    description: 'Show different material/pricing options',
+    prompt: 'Show me different material or pricing options for this project.'
   },
   {
-    id: 'client_info',
-    icon: User,
-    title: 'Get Client Info',
-    description: 'Collect client contact details',
-    prompt: 'I need to collect client information for this proposal. Can you help me gather their name, phone, email, and property address?'
+    id: 'timeline_costs',
+    icon: MapPin,
+    title: 'Timeline & Costs',
+    description: 'Adjust timeline and labor costs',
+    prompt: 'Help me adjust the project timeline and associated labor costs.'
   }
 ];
 
@@ -147,21 +147,9 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Generate dynamic quick actions based on location
+  // Get quick actions (no more location-specific nonsense)
   const getQuickActions = () => {
-    let actions = [...BASE_QUICK_ACTIONS];
-    
-    // Add location-specific actions if we have location data
-    if (proposalData.propertyState) {
-      const locationActions = getQuickActionsForLocation(proposalData.propertyState);
-      actions = [...actions, ...locationActions.map(action => ({
-        ...action,
-        icon: MapPin,
-        description: `Location-specific for ${proposalData.propertyState}`
-      }))];
-    }
-    
-    return actions;
+    return BASE_QUICK_ACTIONS;
   };
 
   const scrollToBottom = () => {
