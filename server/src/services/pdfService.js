@@ -1,6 +1,8 @@
 import PDFDocument from 'pdfkit';
 import fetch from 'node-fetch';
 import QRCode from 'qrcode';
+import { calculations } from '../utils/calculations.js';
+import { formatters } from '../utils/formatters.js';
 
 const pdfService = {
   async generateProposalPDF(proposalData, companyData, pdfOptions = {}) {
@@ -60,15 +62,17 @@ const pdfService = {
 
     const isDetailed = pdfOptions.isDetailed !== false; // Default to detailed
 
-    const calculateTotal = () => {
-      if (proposalData.totalAmount) return parseFloat(proposalData.totalAmount);
-      
-      const materialsTotal = proposalData.materials?.reduce((sum, material) => sum + (material.total || 0), 0) || 0;
-      const laborTotal = (proposalData.laborHours || 0) * (proposalData.laborRate || 0);
-      const addOnsTotal = proposalData.addOns?.reduce((sum, addon) => sum + (addon.price || 0), 0) || 0;
-      const additionalTotal = proposalData.structuredPricing?.additionalCosts?.reduce((sum, cost) => sum + (cost.cost || 0), 0) || 0;
-      
-      return materialsTotal + laborTotal + addOnsTotal + additionalTotal;
+    // Use consistent calculation utilities
+    const getCostBreakdown = () => {
+      return calculations.getCostBreakdown(
+        proposalData.materials || [],
+        proposalData.laborHours || 0,
+        proposalData.laborRate || 0,
+        proposalData.addOns || [],
+        proposalData.overheadPercent || 15,
+        proposalData.profitPercent || 20,
+        proposalData.discountAmount || 0
+      );
     };
 
     const getStructuredPricing = () => {
@@ -81,7 +85,7 @@ const pdfService = {
     };
 
     const pricing = getStructuredPricing();
-    const total = calculateTotal();
+    const costBreakdown = getCostBreakdown();
     
     // Professional color scheme
     const darkText = '#2d3748';
@@ -230,17 +234,16 @@ const pdfService = {
           doc.fontSize(8).fillColor(darkText)
              .text(material.name || 'Material', 60, y + 5, { width: 180 })
              .text(`${material.quantity || 0} ${material.unit || ''}`, 250, y + 5)
-             .text(`$${(material.unitPrice || 0).toFixed(2)}`, 320, y + 5)
-             .text(`$${(material.total || 0).toFixed(2)}`, 450, y + 5);
+             .text(formatters.formatCurrency(material.unitPrice || 0), 320, y + 5)
+             .text(formatters.formatCurrency(material.total || 0), 450, y + 5);
           y += 18;
         });
         
         // Materials subtotal
-        const materialsTotal = pricing.materials.reduce((sum, item) => sum + (item.total || 0), 0);
         doc.rect(350, y, 195, 18).fillAndStroke('#f1f5f9', borderColor);
         doc.fontSize(9).fillColor(mediumText)
            .text('Materials Subtotal:', 360, y + 5)
-           .text(`$${materialsTotal.toFixed(2)}`, 450, y + 5);
+           .text(formatters.formatCurrency(costBreakdown.materialsTotal), 450, y + 5);
         y += 30;
       }
 
@@ -278,35 +281,27 @@ const pdfService = {
           doc.fontSize(8).fillColor(darkText)
              .text(labor.name || 'Labor', 60, y + 5, { width: 180 })
              .text(`${labor.quantity || 0} ${labor.unit || ''}`, 250, y + 5)
-             .text(`$${(labor.unitPrice || 0).toFixed(2)}`, 320, y + 5)
-             .text(`$${(labor.total || 0).toFixed(2)}`, 450, y + 5);
+             .text(formatters.formatCurrency(labor.unitPrice || 0), 320, y + 5)
+             .text(formatters.formatCurrency(labor.total || 0), 450, y + 5);
           y += 18;
         });
         
         // Labor subtotal
-        const laborTotal = pricing.labor.reduce((sum, item) => sum + (item.total || 0), 0);
         doc.rect(350, y, 195, 18).fillAndStroke('#f1f5f9', borderColor);
         doc.fontSize(9).fillColor(mediumText)
            .text('Labor Subtotal:', 360, y + 5)
-           .text(`$${laborTotal.toFixed(2)}`, 450, y + 5);
+           .text(formatters.formatCurrency(costBreakdown.laborTotal), 450, y + 5);
         y += 30;
       }
     } else {
-      // SIMPLE VIEW - Clean summary
-      const materialsTotal = pricing.materials.reduce((sum, item) => sum + (item.total || 0), 0);
-      const laborTotal = pricing.labor.reduce((sum, item) => sum + (item.total || 0), 0);
+      // SIMPLE VIEW - Clean summary matching frontend
+      doc.fontSize(11).fillColor(darkText).text('Materials & Supplies:', 60, y);
+      doc.text(formatters.formatCurrency(costBreakdown.materialsTotal), 450, y);
+      y += 25;
       
-      if (materialsTotal > 0) {
-        doc.fontSize(11).fillColor(darkText).text('Materials & Supplies:', 60, y);
-        doc.text(`$${materialsTotal.toFixed(2)}`, 450, y);
-        y += 25;
-      }
-      
-      if (laborTotal > 0) {
-        doc.fontSize(11).fillColor(darkText).text('Installation & Labor:', 60, y);
-        doc.text(`$${laborTotal.toFixed(2)}`, 450, y);
-        y += 25;
-      }
+      doc.fontSize(11).fillColor(darkText).text('Installation & Labor:', 60, y);
+      doc.text(formatters.formatCurrency(costBreakdown.laborTotal), 450, y);
+      y += 25;
       
       y += 10;
     }
@@ -314,7 +309,7 @@ const pdfService = {
     // TOTAL SECTION
     doc.rect(50, y, 495, 40).fillAndStroke('#e6f3ff', '#1e40af');
     doc.fontSize(16).fillColor('#1e40af')
-       .text(`PROJECT TOTAL: $${total.toFixed(2)}`, 0, y + 12, { 
+       .text(`PROJECT TOTAL: ${formatters.formatCurrency(costBreakdown.finalTotal)}`, 0, y + 12, { 
          align: 'center', 
          width: 595 
        });

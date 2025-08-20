@@ -1,4 +1,4 @@
-// Calculation utilities for proposals
+// Server-side calculation utilities for proposals
 export const calculations = {
   // Calculate materials total from materials array
   calculateMaterialsTotal: (materials = []) => {

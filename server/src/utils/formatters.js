@@ -1,4 +1,4 @@
-// Formatter utilities for proposals
+// Server-side formatter utilities for proposals
 export const formatters = {
   // Format currency with commas and dollar sign
   formatCurrency: (amount, includeCents = true) => {

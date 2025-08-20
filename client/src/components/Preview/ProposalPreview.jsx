@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
+import { calculations } from '../../utils/calculations';
+import { formatters } from '../../utils/formatters';
 import './ProposalPreview.css';
 
 export default function ProposalPreview({ 
@@ -8,20 +10,17 @@ export default function ProposalPreview({
   isDetailedMode = true, 
   onDetailedModeChange 
 }) {
-  const calculateTotal = () => {
-    // Use AI's calculated total if available, otherwise calculate from components
-    if (proposalData.totalAmount) {
-      return parseFloat(proposalData.totalAmount);
-    }
-    
-    const materialsTotal = proposalData.materials?.reduce((sum, material) => sum + (material.total || 0), 0) || 0;
-    const laborTotal = (proposalData.laborHours || 0) * (proposalData.laborRate || 0);
-    const addOnsTotal = proposalData.addOns?.reduce((sum, addon) => sum + (addon.price || 0), 0) || 0;
-    
-    // Add additional costs from structured pricing if available
-    const additionalTotal = proposalData.structuredPricing?.additionalCosts?.reduce((sum, cost) => sum + (cost.cost || 0), 0) || 0;
-    
-    return materialsTotal + laborTotal + addOnsTotal + additionalTotal;
+  // Get cost breakdown using consistent calculation utilities
+  const getCostBreakdown = () => {
+    return calculations.getCostBreakdown(
+      proposalData.materials || [],
+      proposalData.laborHours || 0,
+      proposalData.laborRate || 0,
+      proposalData.addOns || [],
+      proposalData.overheadPercent || 15,
+      proposalData.profitPercent || 20,
+      proposalData.discountAmount || 0
+    );
   };
 
   const getStructuredPricing = () => {
@@ -179,8 +178,8 @@ export default function ProposalPreview({
                             <tr key={material.id}>
                               <td>{material.name}</td>
                               <td>{material.quantity} {material.unit}</td>
-                              <td>${material.unitPrice?.toFixed(2)}</td>
-                              <td>${material.total?.toFixed(2)}</td>
+                              <td>{formatters.formatCurrency(material.unitPrice)}</td>
+                              <td>{formatters.formatCurrency(material.total)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -206,8 +205,8 @@ export default function ProposalPreview({
                             <tr key={labor.id}>
                               <td>{labor.name}</td>
                               <td>{labor.quantity} {labor.unit}</td>
-                              <td>${labor.unitPrice?.toFixed(2)}</td>
-                              <td>${labor.total?.toFixed(2)}</td>
+                              <td>{formatters.formatCurrency(labor.unitPrice)}</td>
+                              <td>{formatters.formatCurrency(labor.total)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -230,7 +229,7 @@ export default function ProposalPreview({
                           {pricing.additionalCosts.map(cost => (
                             <tr key={cost.id}>
                               <td>{cost.name}</td>
-                              <td>${cost.cost?.toFixed(2)}</td>
+                              <td>{formatters.formatCurrency(cost.cost)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -241,7 +240,7 @@ export default function ProposalPreview({
                   {/* Total */}
                   <div className="total-section">
                     <div className="total-row">
-                      <strong>TOTAL PROJECT COST: ${calculateTotal().toFixed(2)}</strong>
+                      <strong>TOTAL PROJECT COST: {formatters.formatCurrency(getCostBreakdown().finalTotal)}</strong>
                     </div>
                   </div>
                 </>
@@ -255,37 +254,30 @@ export default function ProposalPreview({
             <div className="simple-pricing">
               <div className="cost-line">
                 <span>Complete Roof Replacement</span>
-                <span>{proposalData.measurements?.totalSquares || 0} squares - {proposalData.materialType || 'Materials'}</span>
+                <span>{proposalData.measurements?.totalSquares || 0} squares - {proposalData.materialType || 'metal_roofing'}</span>
               </div>
               
               {(() => {
-                const pricing = getStructuredPricing();
-                const materialsTotal = pricing.materials.reduce((sum, item) => sum + (item.total || 0), 0);
-                const laborTotal = pricing.labor.reduce((sum, item) => sum + (item.total || 0), 0);
-                const additionalTotal = pricing.additionalCosts.reduce((sum, item) => sum + (item.cost || 0), 0);
+                const costBreakdown = getCostBreakdown();
                 
                 return (
                   <>
-                    {materialsTotal + laborTotal > 0 && (
-                      <div className="cost-line">
-                        <span>Materials & Installation:</span>
-                        <span>${(materialsTotal + laborTotal).toFixed(2)}</span>
-                      </div>
-                    )}
+                    <div className="cost-line">
+                      <span>Materials & Supplies:</span>
+                      <span>{formatters.formatCurrency(costBreakdown.materialsTotal)}</span>
+                    </div>
                     
-                    {additionalTotal > 0 && (
-                      <div className="cost-line">
-                        <span>Permits & Additional Costs:</span>
-                        <span>${additionalTotal.toFixed(2)}</span>
-                      </div>
-                    )}
+                    <div className="cost-line">
+                      <span>Installation & Labor:</span>
+                      <span>{formatters.formatCurrency(costBreakdown.laborTotal)}</span>
+                    </div>
                   </>
                 );
               })()}
               
               <div className="cost-line total-line">
                 <span><strong>TOTAL:</strong></span>
-                <span><strong>${calculateTotal().toFixed(2)}</strong></span>
+                <span><strong>{formatters.formatCurrency(getCostBreakdown().finalTotal)}</strong></span>
               </div>
             </div>
           </div>

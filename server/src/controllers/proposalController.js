@@ -1,6 +1,7 @@
 import Proposal from '../models/Proposal.js';
 import Company from '../models/Company.js';
 import User from '../models/User.js';
+import { calculations } from '../utils/calculations.js';
 
 // Get all proposals for a user
 export const getProposals = async (req, res) => {
@@ -82,10 +83,22 @@ export const createProposal = async (req, res) => {
       console.log('Found company:', company?.id, company?.name);
     }
 
+    // Calculate total amount with overhead and profit
+    const totalAmount = calculations.calculateTotal(
+      req.body.materials || [],
+      req.body.laborHours || 0,
+      req.body.laborRate || 0,
+      req.body.addOns || [],
+      req.body.overheadPercent || 15,
+      req.body.profitPercent || 20,
+      req.body.discountAmount || 0
+    );
+
     const proposalData = {
       ...req.body,
       ...(userId ? { userId } : {}),
-      ...(companyId ? { companyId } : {})
+      ...(companyId ? { companyId } : {}),
+      totalAmount
     };
     
     console.log('Final proposal data to create:', JSON.stringify(proposalData, null, 2));
@@ -130,7 +143,24 @@ export const updateProposal = async (req, res) => {
     }
     
     console.log('Found proposal, updating...');
-    await proposal.update(req.body);
+    
+    // Calculate total amount with overhead and profit
+    const totalAmount = calculations.calculateTotal(
+      req.body.materials || [],
+      req.body.laborHours || 0,
+      req.body.laborRate || 0,
+      req.body.addOns || [],
+      req.body.overheadPercent || 15,
+      req.body.profitPercent || 20,
+      req.body.discountAmount || 0
+    );
+
+    const updateData = {
+      ...req.body,
+      totalAmount
+    };
+    
+    await proposal.update(updateData);
     console.log('Proposal updated successfully');
     res.json(proposal);
   } catch (error) {

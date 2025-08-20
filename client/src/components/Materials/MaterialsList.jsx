@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Package, Plus, Trash2, DollarSign } from 'lucide-react';
+import { calculations } from '../../utils/calculations';
+import { formatters } from '../../utils/formatters';
 import './Materials.css';
 
 const MATERIAL_TYPES = [
@@ -22,7 +24,10 @@ export default function MaterialsList({
   addOns, 
   onMaterialsChange, 
   onLaborChange, 
-  onAddOnsChange 
+  onAddOnsChange,
+  overheadPercent = 15,
+  profitPercent = 20,
+  discountAmount = 0
 }) {
   const [showAddMaterial, setShowAddMaterial] = useState(false);
 
@@ -79,10 +84,16 @@ export default function MaterialsList({
     onAddOnsChange(addOns.filter(addon => addon.id !== id));
   };
 
-  const materialsTotal = materials.reduce((sum, material) => sum + material.total, 0);
-  const laborTotal = laborHours * laborRate;
-  const addOnsTotal = addOns.reduce((sum, addon) => sum + addon.price, 0);
-  const grandTotal = materialsTotal + laborTotal + addOnsTotal;
+  // Use the calculation utilities for consistent calculations
+  const costBreakdown = calculations.getCostBreakdown(
+    materials, 
+    laborHours, 
+    laborRate, 
+    addOns, 
+    overheadPercent, 
+    profitPercent, 
+    discountAmount
+  );
 
   return (
     <div className="materials-container">
@@ -161,7 +172,7 @@ export default function MaterialsList({
                   
                   <div className="material-total">
                     <span className="total-label">Total</span>
-                    <span className="total-amount">${material.total.toFixed(2)}</span>
+                    <span className="total-amount">{formatters.formatCurrency(material.total)}</span>
                   </div>
                   
                   <button 
@@ -206,7 +217,7 @@ export default function MaterialsList({
           
           <div className="labor-total">
             <span className="total-label">Labor Total</span>
-            <span className="total-amount">${laborTotal.toFixed(2)}</span>
+            <span className="total-amount">{formatters.formatCurrency(laborHours * laborRate)}</span>
           </div>
         </div>
       </div>
@@ -258,21 +269,49 @@ export default function MaterialsList({
 
       <div className="quote-summary">
         <h3>Quote Summary</h3>
+        
+        {/* Subtotal breakdown */}
         <div className="summary-line">
-          <span>Materials:</span>
-          <span>${materialsTotal.toFixed(2)}</span>
+          <span>Materials & Supplies:</span>
+          <span>{formatters.formatCurrency(costBreakdown.materialsTotal)}</span>
         </div>
         <div className="summary-line">
-          <span>Labor:</span>
-          <span>${laborTotal.toFixed(2)}</span>
+          <span>Installation & Labor:</span>
+          <span>{formatters.formatCurrency(costBreakdown.laborTotal)}</span>
+        </div>
+        {costBreakdown.addOnsTotal > 0 && (
+          <div className="summary-line">
+            <span>Additional Services:</span>
+            <span>{formatters.formatCurrency(costBreakdown.addOnsTotal)}</span>
+          </div>
+        )}
+        
+        <div className="summary-divider"></div>
+        
+        {/* Business costs */}
+        <div className="summary-line">
+          <span>Subtotal:</span>
+          <span>{formatters.formatCurrency(costBreakdown.subtotal)}</span>
         </div>
         <div className="summary-line">
-          <span>Additional Services:</span>
-          <span>${addOnsTotal.toFixed(2)}</span>
+          <span>Overhead ({formatters.formatPercentage(overheadPercent)}):</span>
+          <span>{formatters.formatCurrency(costBreakdown.overheadAmount)}</span>
         </div>
+        <div className="summary-line">
+          <span>Profit ({formatters.formatPercentage(profitPercent)}):</span>
+          <span>{formatters.formatCurrency(costBreakdown.profitAmount)}</span>
+        </div>
+        
+        {discountAmount > 0 && (
+          <div className="summary-line discount">
+            <span>Discount:</span>
+            <span>-{formatters.formatCurrency(discountAmount)}</span>
+          </div>
+        )}
+        
         <div className="summary-total">
           <span>Total:</span>
-          <span>${grandTotal.toFixed(2)}</span>
+          <span>{formatters.formatCurrency(costBreakdown.finalTotal)}</span>
         </div>
       </div>
     </div>
