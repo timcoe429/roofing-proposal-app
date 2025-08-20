@@ -3,6 +3,8 @@
   border-bottom: 1px solid #e2e8f0;
   overflow-x: auto;
   padding-top: 8px;
+  /* Prevent scrollbar from causing layout shifts */
+  scrollbar-gutter: stable;
 }
 
 .nav-container {
@@ -35,7 +37,7 @@
 .nav-tab:hover {
   background: #cbd5e1;
   color: #475569;
-  transform: translateY(-1px);
+  /* Removed translateY to prevent layout shifts */
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
@@ -43,7 +45,7 @@
   background: white;
   color: #2563eb;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  /* Removed translateY to prevent layout shifts */
   z-index: 10;
 }
 
