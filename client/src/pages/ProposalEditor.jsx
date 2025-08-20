@@ -83,6 +83,8 @@ const ProposalEditor = () => {
   };
 
   const [companyData, setCompanyData] = useState(getCompanyData);
+  const [lastSavedData, setLastSavedData] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Fetch existing proposal if editing
   const { data: proposalFromApi, isLoading, error, isError } = useQuery({
@@ -138,7 +140,10 @@ const ProposalEditor = () => {
         : api.updateProposal(id, data);
     },
     onSuccess: (response) => {
-      toast.success('Proposal saved successfully!');
+      // Update last saved data to track changes
+      setLastSavedData(JSON.stringify(proposalData));
+      setHasUnsavedChanges(false);
+      
       // Invalidate and refetch proposals list for dashboard
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       if (isNewProposal) {
@@ -195,6 +200,8 @@ const ProposalEditor = () => {
     try {
       const result = await saveMutation.mutateAsync(proposalData);
       console.log('Save successful, result:', result);
+      
+      // Only show toast for manual saves, not auto-saves
       if (!isAutoSave) {
         toast.success('Proposal saved!');
       }
@@ -202,13 +209,56 @@ const ProposalEditor = () => {
       console.error('Save failed with error:', error);
       console.error('Error response:', error.response);
       console.error('Error data:', error.response?.data);
+      
+      // Show errors for both manual and auto saves (but different messages)
       if (!isAutoSave) {
         toast.error(`Failed to save proposal: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+      } else {
+        console.warn('Auto-save failed (will retry):', error.message);
       }
     }
   }, [saveMutation, proposalData, isNewProposal, id]);
 
-  // Auto-save disabled per user request
+  // Track changes and trigger auto-save
+  useEffect(() => {
+    const currentData = JSON.stringify(proposalData);
+    
+    // Check if data has changed
+    if (lastSavedData && currentData !== lastSavedData) {
+      setHasUnsavedChanges(true);
+    }
+    
+    // Initialize lastSavedData on first load
+    if (!lastSavedData && proposalFromApi) {
+      setLastSavedData(JSON.stringify(proposalFromApi));
+    }
+  }, [proposalData, lastSavedData, proposalFromApi]);
+
+  // Silent auto-save with debouncing
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    
+    const autoSaveTimer = setTimeout(() => {
+      console.log('🔄 Auto-saving proposal...');
+      handleSave(true); // isAutoSave = true (no popup)
+    }, 10000); // 10 seconds after changes
+
+    return () => clearTimeout(autoSaveTimer);
+  }, [hasUnsavedChanges, handleSave]);
+
+  // Save before leaving page
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const handleGeneratePdf = async () => {
     if (!proposalData.clientName) {
@@ -293,10 +343,11 @@ const ProposalEditor = () => {
         <div className="main-content">
           <div className="content-header">
             <Header 
-              onSave={handleSave}
+              onSave={() => handleSave(false)}
               onGeneratePdf={handleGeneratePdf}
               isSaving={saveMutation.isLoading}
               isGeneratingPdf={generatePdfMutation.isLoading}
+              hasUnsavedChanges={hasUnsavedChanges}
             />
             <Navigation 
               activeTab={activeTab}

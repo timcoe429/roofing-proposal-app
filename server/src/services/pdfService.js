@@ -71,7 +71,8 @@ const pdfService = {
         proposalData.addOns || [],
         proposalData.overheadPercent || 15,
         proposalData.profitPercent || 20,
-        proposalData.discountAmount || 0
+        proposalData.discountAmount || 0,
+        true // Hide margins - bake them into materials/labor like real companies do
       );
     };
 

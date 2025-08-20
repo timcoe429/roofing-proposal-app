@@ -84,7 +84,7 @@ export default function MaterialsList({
     onAddOnsChange(addOns.filter(addon => addon.id !== id));
   };
 
-  // Use the calculation utilities for consistent calculations
+  // Use the calculation utilities for consistent calculations (show margins for internal use)
   const costBreakdown = calculations.getCostBreakdown(
     materials, 
     laborHours, 
@@ -92,7 +92,8 @@ export default function MaterialsList({
     addOns, 
     overheadPercent, 
     profitPercent, 
-    discountAmount
+    discountAmount,
+    false // Show margins in materials list for internal tracking
   );
 
   return (

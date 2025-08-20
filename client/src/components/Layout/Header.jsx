@@ -7,7 +7,8 @@ export default function Header({
   onSave, 
   onGeneratePdf, 
   isSaving = false, 
-  isGeneratingPdf = false 
+  isGeneratingPdf = false,
+  hasUnsavedChanges = false 
 }) {
   const navigate = useNavigate();
 
@@ -27,7 +28,10 @@ export default function Header({
         <div className="header-center">
           <div className="header-title">
             <h1>Proposal Editor</h1>
-            <p>Create professional roofing proposals</p>
+            <p>
+              Create professional roofing proposals
+              {hasUnsavedChanges && <span className="unsaved-indicator"> • Unsaved changes</span>}
+            </p>
           </div>
         </div>
         
