@@ -287,7 +287,12 @@ Client: ${proposalData.clientName}
 Project Type: Roof replacement/repair
 
 === CURRENT PROJECT DATA ===
-${JSON.stringify(proposalData, null, 2)}`;
+${JSON.stringify(proposalData, null, 2)}
+
+=== CURRENT PRICING SETTINGS ===
+Overhead Percentage: ${proposalData.overheadPercent || 15}%
+Profit Percentage: ${proposalData.profitPercent || 20}%
+Discount Amount: $${proposalData.discountAmount || 0}`;
 
       if (locationContext) {
         expertContext += `
@@ -330,10 +335,14 @@ Be conversational, ask clarifying questions, and explain your recommendations.
 
 IMPORTANT: 
 - Extract and populate proposal data automatically from conversations
+- PRESERVE existing proposal data - only ADD or MODIFY what's requested
+- When adding items (like crew housing), ADD them to existing materials/labor
+- When modifying items, UPDATE the specific item mentioned
 - Be concise and direct - avoid asking too many questions
 - When you have enough info, provide estimates immediately
 - Format estimates clearly with line items and totals
-- Include labor breakdown and material specifications`;
+- Include labor breakdown and material specifications
+- Always show the COMPLETE updated proposal after making changes`;
 
       let response;
       
@@ -456,7 +465,15 @@ ${expertContext}`;
   // Parse AI response with AI for detailed extraction
   const parseAIResponseWithAI = async (response) => {
     try {
-      const parsingPrompt = `Extract the materials, labor, and costs from this roofing estimate and return ONLY a JSON object with this exact structure:
+      const parsingPrompt = `You are helping update a roofing proposal. Extract ONLY the NEW or MODIFIED items mentioned in this response.
+
+CURRENT PROPOSAL DATA:
+${JSON.stringify(proposalData, null, 2)}
+
+AI RESPONSE TO PARSE:
+${response}
+
+Extract ONLY new/modified items and return a JSON object with this structure:
 
 {
   "materials": [
@@ -468,12 +485,17 @@ ${expertContext}`;
   "additionalCosts": [
     {"name": "Cost Name", "cost": 1000}
   ],
-  "totalAmount": 43227,
+  "overheadPercent": 15,
+  "profitPercent": 20,
+  "discountAmount": 0,
   "timeline": "5-7 working days"
 }
 
-Estimate text to parse:
-${response}
+IMPORTANT: 
+- Only include items that are NEW or being MODIFIED
+- Do not include existing items unless they're being changed
+- If adding to existing materials, only return the new items
+- If modifying quantities/prices, return the modified item
 
 Return ONLY the JSON object, no other text.`;
 
@@ -522,26 +544,43 @@ Return ONLY the JSON object, no other text.`;
         // Combine materials and labor for backward compatibility
         const allItems = [...(parsedData.materials || []), ...(parsedData.labor || [])];
         if (allItems.length > 0) {
-          updates.materials = allItems;
+          // PRESERVE existing materials - only add new ones
+          const existingMaterials = proposalData.materials || [];
+          updates.materials = [...existingMaterials, ...allItems];
         }
         
-        // Store structured data
+        // Store structured data - PRESERVE existing structured data
         if (parsedData.materials || parsedData.labor || parsedData.additionalCosts) {
+          const existingStructured = proposalData.structuredPricing || { materials: [], labor: [], additionalCosts: [] };
           updates.structuredPricing = {
-            materials: parsedData.materials || [],
-            labor: parsedData.labor || [],
-            additionalCosts: parsedData.additionalCosts || []
+            materials: [...(existingStructured.materials || []), ...(parsedData.materials || [])],
+            labor: [...(existingStructured.labor || []), ...(parsedData.labor || [])],
+            additionalCosts: [...(existingStructured.additionalCosts || []), ...(parsedData.additionalCosts || [])]
           };
         }
         
-        // Set total amount
-        if (parsedData.totalAmount) {
-          updates.totalAmount = parsedData.totalAmount;
-        }
+        // Set total amount - but let the calculation utilities handle this
+        // Don't override totalAmount as it should be calculated from materials/labor/overhead/profit
+        // if (parsedData.totalAmount) {
+        //   updates.totalAmount = parsedData.totalAmount;
+        // }
         
         // Set timeline
         if (parsedData.timeline) {
           updates.timeline = parsedData.timeline;
+        }
+        
+        // Set overhead/profit percentages if specified
+        if (parsedData.overheadPercent !== undefined) {
+          updates.overheadPercent = parsedData.overheadPercent;
+        }
+        
+        if (parsedData.profitPercent !== undefined) {
+          updates.profitPercent = parsedData.profitPercent;
+        }
+        
+        if (parsedData.discountAmount !== undefined) {
+          updates.discountAmount = parsedData.discountAmount;
         }
         
         console.log('✅ AI successfully parsed estimate data:', parsedData);
@@ -696,7 +735,7 @@ Return ONLY the JSON object, no other text.`;
       case 'update_materials':
         onUpdateProposal(prev => ({
           ...prev,
-          materials: action.materials
+          materials: [...(prev.materials || []), ...action.materials]
         }));
         break;
       case 'updateProposal':
