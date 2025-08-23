@@ -1,6 +1,6 @@
 .client-info-tab {
   padding: 24px;
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -61,6 +61,7 @@
 
 .tab-header h2 {
   margin: 0;
+  text-align: left;
   /* Use global h2 styling: 28px, weight 700, color #1a202c */
 }
 

@@ -16,6 +16,7 @@
 .preview-header h2 {
   /* Use global h2 styling: 28px, weight 700, color #1a202c */
   margin: 0 0 8px 0;
+  text-align: left;
 }
 
 .preview-header p {
