@@ -10,9 +10,15 @@ export default function ProposalPreview({
   isDetailedMode = true, 
   onDetailedModeChange 
 }) {
-  // Get cost breakdown using consistent calculation utilities
-  const getCostBreakdown = () => {
-    return calculations.getCostBreakdown(
+  // Get total from AI data or fallback to calculations
+  const getFinalTotal = () => {
+    // If AI has generated structured pricing with total, use that
+    if (proposalData.structuredPricing && proposalData.totalAmount) {
+      return proposalData.totalAmount;
+    }
+    
+    // Fallback: calculate from individual items
+    const breakdown = calculations.getCostBreakdown(
       proposalData.materials || [],
       proposalData.laborHours || 0,
       proposalData.laborRate || 0,
@@ -22,6 +28,7 @@ export default function ProposalPreview({
       proposalData.discountAmount || 0,
       true // Hide margins - bake them into materials/labor like real companies do
     );
+    return breakdown.finalTotal;
   };
 
   const getStructuredPricing = () => {
@@ -241,7 +248,7 @@ export default function ProposalPreview({
                   {/* Total */}
                   <div className="total-section">
                     <div className="total-row">
-                      <strong>TOTAL PROJECT COST: {formatters.formatCurrency(getCostBreakdown().finalTotal)}</strong>
+                      <strong>TOTAL PROJECT COST: {formatters.formatCurrency(getFinalTotal())}</strong>
                     </div>
                   </div>
                 </>
@@ -259,7 +266,38 @@ export default function ProposalPreview({
               </div>
               
               {(() => {
-                const costBreakdown = getCostBreakdown();
+                // Use AI structured pricing if available, otherwise calculate
+                if (proposalData.structuredPricing) {
+                  const structured = proposalData.structuredPricing;
+                  const materialsTotal = (structured.materials || []).reduce((sum, item) => sum + (item.total || 0), 0);
+                  const laborTotal = (structured.labor || []).reduce((sum, item) => sum + (item.total || 0), 0);
+                  
+                  return (
+                    <>
+                      <div className="cost-line">
+                        <span>Materials & Supplies:</span>
+                        <span>{formatters.formatCurrency(materialsTotal)}</span>
+                      </div>
+                      
+                      <div className="cost-line">
+                        <span>Installation & Labor:</span>
+                        <span>{formatters.formatCurrency(laborTotal)}</span>
+                      </div>
+                    </>
+                  );
+                }
+                
+                // Fallback calculation for old proposals without structured pricing
+                const costBreakdown = calculations.getCostBreakdown(
+                  proposalData.materials || [],
+                  proposalData.laborHours || 0,
+                  proposalData.laborRate || 0,
+                  proposalData.addOns || [],
+                  proposalData.overheadPercent || 15,
+                  proposalData.profitPercent || 20,
+                  proposalData.discountAmount || 0,
+                  true
+                );
                 
                 return (
                   <>
@@ -278,7 +316,7 @@ export default function ProposalPreview({
               
               <div className="cost-line total-line">
                 <span><strong>TOTAL:</strong></span>
-                <span><strong>{formatters.formatCurrency(getCostBreakdown().finalTotal)}</strong></span>
+                <span><strong>{formatters.formatCurrency(getFinalTotal())}</strong></span>
               </div>
             </div>
           </div>

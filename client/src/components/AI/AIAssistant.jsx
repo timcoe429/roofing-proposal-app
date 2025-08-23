@@ -547,11 +547,10 @@ Return ONLY the JSON object, no other text.`;
           };
         }
         
-        // Set total amount - but let the calculation utilities handle this
-        // Don't override totalAmount as it should be calculated from materials/labor/overhead/profit
-        // if (parsedData.totalAmount) {
-        //   updates.totalAmount = parsedData.totalAmount;
-        // }
+        // Set total amount from AI - this is the authoritative total
+        if (parsedData.totalAmount) {
+          updates.totalAmount = parsedData.totalAmount;
+        }
         
         // Set timeline
         if (parsedData.timeline) {
