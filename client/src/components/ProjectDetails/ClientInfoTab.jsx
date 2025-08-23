@@ -58,7 +58,6 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal, onSave }) => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="clientName">
-                <User size={16} />
                 Client Name *
               </label>
               <input
