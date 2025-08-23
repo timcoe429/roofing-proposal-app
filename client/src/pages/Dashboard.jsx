@@ -39,7 +39,7 @@ export default function Dashboard() {
 
   // Calculate stats from proposals
   const totalProposals = proposals.length;
-  const activeClients = new Set(proposals.map(p => p.clientEmail || p.clientName)).size;
+  const proposalsAccepted = proposals.filter(p => p.status === 'accepted').length;
   const thisMonthRevenue = proposals
     .filter(p => {
       const createdDate = new Date(p.createdAt);
@@ -160,8 +160,8 @@ export default function Dashboard() {
               <Users size={24} />
             </div>
             <div className="stat-content">
-              <h3>Active Clients</h3>
-              <p className="stat-number">{proposalsLoading ? '...' : activeClients}</p>
+              <h3>Proposals Accepted</h3>
+              <p className="stat-number">{proposalsLoading ? '...' : proposalsAccepted}</p>
             </div>
           </div>
 

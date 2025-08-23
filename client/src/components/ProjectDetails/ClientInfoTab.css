@@ -8,9 +8,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 32px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 /* Removed .header-left - now matches Preview structure exactly */
@@ -56,7 +56,7 @@
 }
 
 .tab-header h2 {
-  margin: 0;
+  margin: 0 0 8px 0;
   text-align: left;
   /* Use global h2 styling: 28px, weight 700, color #1a202c */
 }
