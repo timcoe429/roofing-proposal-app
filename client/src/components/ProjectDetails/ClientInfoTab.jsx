@@ -25,7 +25,7 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal, onSave }) => {
   return (
     <div className="client-info-tab">
       <div className="tab-header">
-        <div className="header-left">
+        <div>
           <h2>Project Details</h2>
           <p>Complete all project information before using AI assistant</p>
         </div>
