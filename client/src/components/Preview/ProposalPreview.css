@@ -14,16 +14,14 @@
 }
 
 .preview-header h2 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1a202c;
+  /* Use global h2 styling: 28px, weight 700, color #1a202c */
   margin: 0 0 8px 0;
 }
 
 .preview-header p {
   color: #4a5568;
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem; /* 16px - standard body text */
 }
 
 .preview-actions {

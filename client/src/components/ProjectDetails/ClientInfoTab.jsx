@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Save, Check } from 'lucide-react';
+import { Mail, Phone, MapPin, Save, Check } from 'lucide-react';
 import './ClientInfoTab.css';
 
 const ClientInfoTab = ({ proposalData, onUpdateProposal, onSave }) => {
@@ -26,11 +26,8 @@ const ClientInfoTab = ({ proposalData, onUpdateProposal, onSave }) => {
     <div className="client-info-tab">
       <div className="tab-header">
         <div className="header-left">
-          <User size={24} />
-          <div>
-            <h2>Project Details</h2>
-            <p>Complete all project information before using AI assistant</p>
-          </div>
+          <h2>Project Details</h2>
+          <p>Complete all project information before using AI assistant</p>
         </div>
         
         <div className="header-right">

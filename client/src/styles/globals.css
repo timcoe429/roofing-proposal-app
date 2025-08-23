@@ -26,17 +26,26 @@ body {
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
   margin-bottom: 0.5rem;
+  color: #1a202c;
 }
 
-h1 { font-size: 2.5rem; }
-h2 { font-size: 2rem; }
-h3 { font-size: 1.75rem; }
-h4 { font-size: 1.5rem; }
-h5 { font-size: 1.25rem; }
-h6 { font-size: 1rem; }
+/* Standard heading sizes - consistent across all components */
+h1 { font-size: 2rem; }    /* 32px - Main page titles */
+h2 { font-size: 1.75rem; } /* 28px - Section headers */
+h3 { font-size: 1.25rem; } /* 20px - Subsection headers */
+h4 { font-size: 1.125rem; }/* 18px - Minor headings */
+h5 { font-size: 1rem; }    /* 16px - Small headings */
+h6 { font-size: 0.875rem; }/* 14px - Captions */
+
+/* Standard text sizes */
+.text-base { font-size: 1rem; }      /* 16px - body text */
+.text-sm { font-size: 0.875rem; }    /* 14px - small text */
+.text-xs { font-size: 0.75rem; }     /* 12px - captions */
+.text-lg { font-size: 1.125rem; }    /* 18px - large text */
+.text-xl { font-size: 1.25rem; }     /* 20px - extra large text */
 
 p {
   margin-bottom: 1rem;
@@ -300,10 +309,7 @@ a:hover {
 .text-right { text-align: right; }
 .text-left { text-align: left; }
 
-.text-sm { font-size: 0.875rem; }
-.text-xs { font-size: 0.75rem; }
-.text-lg { font-size: 1.125rem; }
-.text-xl { font-size: 1.25rem; }
+/* Typography utilities already defined above */
 
 .font-bold { font-weight: 700; }
 .font-semibold { font-weight: 600; }

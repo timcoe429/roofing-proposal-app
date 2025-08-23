@@ -15,8 +15,8 @@
 
 .header-left {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .header-right {
@@ -61,16 +61,13 @@
 
 .tab-header h2 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1a202c;
+  /* Use global h2 styling: 28px, weight 700, color #1a202c */
 }
 
 .tab-header p {
   margin: 0;
-  color: #64748b;
-  font-size: 14px;
-  margin-left: auto;
+  color: #4a5568;
+  font-size: 1rem; /* 16px - standard body text */
 }
 
 .client-form {
@@ -89,9 +86,9 @@
 
 .form-section h3 {
   margin: 0 0 20px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #374151;
+  /* Use global h3 styling: 20px, weight 700, color #1a202c */
+  color: #374151; /* Override for form sections to be slightly muted */
+  font-weight: 600; /* Slightly lighter for form sections */
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 12px;
 }
