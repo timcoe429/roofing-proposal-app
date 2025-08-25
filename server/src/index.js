@@ -137,10 +137,10 @@ const startServer = async () => {
     // await runMigrations();
     // console.log('INFO: Database migrations completed');
     
-    app.listen(PORT, '0.0.0.0', () => {
+    app.listen(PORT, 'localhost', () => {
       console.log(`INFO: Server running on port ${PORT}`);
       console.log(`INFO: Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`INFO: Server bound to 0.0.0.0:${PORT}`);
+      console.log(`INFO: Server bound to localhost:${PORT}`);
     });
   } catch (error) {
     console.error('ERROR: Failed to start server:', error);
