@@ -5,10 +5,15 @@ yarn.lock
 
 # Environment variables
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+**/.env
+**/.env.*
+server/.env
+client/.env
 
 # Production build
 client/build/
