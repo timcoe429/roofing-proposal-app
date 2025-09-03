@@ -4,7 +4,8 @@ import {
   getMaterials, 
   createMaterial, 
   updateMaterial, 
-  deleteMaterial 
+  deleteMaterial,
+  getActivePricingForAI
 } from '../controllers/materialController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -22,6 +23,7 @@ router.use((req, res, next) => {
 
 // Material routes (temporarily unprotected for testing)
 router.get('/', getMaterials);
+router.get('/ai-pricing', getActivePricingForAI);
 router.post('/', createMaterial);
 router.put('/:id', updateMaterial);
 router.delete('/:id', deleteMaterial);

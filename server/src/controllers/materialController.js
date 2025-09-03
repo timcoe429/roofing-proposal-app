@@ -138,3 +138,89 @@ export const deleteMaterial = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete material' });
   }
 };
+
+// Get active pricing sheets for AI to use
+export const getActivePricingForAI = async (req, res) => {
+  try {
+    console.log('GET /api/materials/ai-pricing - Getting active pricing sheets for AI');
+    
+    // For development - get first company if no user
+    let companyId;
+    if (req.user?.companyId) {
+      companyId = req.user.companyId;
+    } else {
+      console.log('No user/company in request, looking up first company...');
+      const company = await Company.findOne();
+      companyId = company?.id;
+    }
+    
+    // Get active pricing sheets (materials with category 'pricing_sheet')
+    const pricingSheets = await Material.findAll({
+      where: { 
+        companyId: companyId,
+        category: 'pricing_sheet',
+        isActive: true
+      },
+      order: [['updatedAt', 'DESC']]
+    });
+    
+    console.log(`Found ${pricingSheets.length} active pricing sheets`);
+    
+    // Fetch actual pricing data from Google Sheets
+    const pricingData = [];
+    
+    for (const sheet of pricingSheets) {
+      try {
+        if (sheet.specifications?.type === 'url' && sheet.specifications?.files?.[0]?.name) {
+          const sheetUrl = sheet.specifications.files[0].name;
+          console.log(`📊 Fetching pricing data from: ${sheet.name}`);
+          
+          const sheetData = await fetchGoogleSheetData(sheetUrl);
+          
+          // Parse the CSV data into structured pricing
+          const rows = sheetData.csvData.split('\n').filter(row => row.trim());
+          const headers = rows[0].split(',').map(h => h.trim());
+          
+          const materials = [];
+          for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].split(',').map(c => c.trim());
+            if (cells.length >= 6 && cells[1] && cells[3] && cells[4]) {
+              materials.push({
+                category: cells[0] || 'General',
+                name: cells[1],
+                unit: cells[2] || 'Per Square',
+                materialCost: parseFloat(cells[3]) || 0,
+                laborCost: parseFloat(cells[4]) || 0,
+                totalPrice: parseFloat(cells[5]) || 0,
+                minOrder: cells[6] || '',
+                notes: cells[7] || ''
+              });
+            }
+          }
+          
+          pricingData.push({
+            sheetName: sheet.name,
+            materials: materials,
+            totalItems: materials.length
+          });
+          
+          console.log(`✅ Processed ${materials.length} materials from ${sheet.name}`);
+        }
+      } catch (error) {
+        console.error(`Error processing pricing sheet ${sheet.name}:`, error);
+      }
+    }
+    
+    res.json({
+      success: true,
+      companyId: companyId,
+      pricingSheets: pricingData,
+      totalSheets: pricingData.length,
+      message: `Found ${pricingData.length} active pricing sheets with real material costs`
+    });
+    
+  } catch (error) {
+    console.error('Error getting AI pricing data:', error);
+    res.status(500).json({ error: 'Failed to get pricing data for AI' });
+  }
+};

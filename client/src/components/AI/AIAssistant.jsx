@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign, MapPin, Shield, Plus, Package } from 'lucide-react';
 import api from '../../services/api';
 import { getLocationContext, getQuickActionsForLocation } from '../../services/locationService';
+import { calculations } from '../../utils/calculations';
 import './AIAssistant.css';
 
 const BASE_QUICK_ACTIONS = [
@@ -437,7 +438,12 @@ ${expertContext}`;
       actions.push({ type: 'navigate', tab: 'pricing' });
     }
     
-    if (response.toLowerCase().includes('preview') || response.toLowerCase().includes('proposal')) {
+    if (response.toLowerCase().includes('preview') || 
+        response.toLowerCase().includes('proposal') ||
+        response.toLowerCase().includes('total project') ||
+        response.toLowerCase().includes('complete estimate') ||
+        response.toLowerCase().includes('final price') ||
+        response.toLowerCase().includes('customer price')) {
       actions.push({ type: 'navigate', tab: 'preview' });
     }
 
@@ -476,14 +482,21 @@ Extract ONLY new/modified items and return a JSON object with this structure:
   "overheadPercent": 15,
   "profitPercent": 20,
   "discountAmount": 0,
+  "totalAmount": 22770,
   "timeline": "5-7 working days"
 }
 
-IMPORTANT: 
-- Only include items that are NEW or being MODIFIED
-- Do not include existing items unless they're being changed
-- If adding to existing materials, only return the new items
-- If modifying quantities/prices, return the modified item
+CRITICAL EXTRACTION RULES:
+- ALWAYS include overheadPercent: 15 and profitPercent: 20
+- ALWAYS extract totalAmount if any final pricing is mentioned
+- Extract ALL materials, labor, permits, disposal costs mentioned
+- Include timeline, warranty, and any project details
+- Extract brand recommendations and specifications
+- Materials and labor should be base costs BEFORE overhead/profit
+
+AUTO-NAVIGATION TRIGGERS:
+- If complete estimate provided, this will auto-navigate to preview tab
+- Extract ALL data to populate a complete proposal
 
 Return ONLY the JSON object, no other text.`;
 
@@ -568,6 +581,34 @@ Return ONLY the JSON object, no other text.`;
         
         if (parsedData.discountAmount !== undefined) {
           updates.discountAmount = parsedData.discountAmount;
+        }
+        
+        // Auto-calculate total using calculation utilities if we have materials/labor
+        if (updates.materials || parsedData.materials || parsedData.labor) {
+          const materialsForCalc = updates.materials || proposalData.materials || [];
+          const laborHours = proposalData.laborHours || 0;
+          const laborRate = proposalData.laborRate || 75;
+          const addOns = proposalData.addOns || [];
+          const overheadPercent = updates.overheadPercent || proposalData.overheadPercent || 15;
+          const profitPercent = updates.profitPercent || proposalData.profitPercent || 20;
+          const discountAmount = updates.discountAmount || proposalData.discountAmount || 0;
+          
+          // Calculate final total using the calculation utilities
+          const calculatedTotal = calculations.calculateTotal(
+            materialsForCalc,
+            laborHours,
+            laborRate,
+            addOns,
+            overheadPercent,
+            profitPercent,
+            discountAmount
+          );
+          
+          // Only update total if AI didn't provide one or if calculated total is significantly different
+          if (!parsedData.totalAmount || Math.abs(calculatedTotal - (parsedData.totalAmount || 0)) > 100) {
+            updates.totalAmount = calculatedTotal;
+            console.log('🔢 Auto-calculated total using calculation utilities:', calculatedTotal);
+          }
         }
         
         console.log('✅ AI successfully parsed estimate data:', parsedData);

@@ -127,6 +127,7 @@ const api = {
   createMaterial: (data) => apiClient.post('/materials', data),
   updateMaterial: (id, data) => apiClient.put(`/materials/${id}`, data),
   deleteMaterial: (id) => apiClient.delete(`/materials/${id}`),
+  getActivePricingForAI: () => apiClient.get('/materials/ai-pricing'),
 };
 
 export default api;
