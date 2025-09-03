@@ -613,22 +613,105 @@ Return ONLY the JSON object, no other text.`;
       updates.clientEmail = emailMatch[1].trim();
     }
     
-    // Extract measurements
-    const squaresMatch = response.match(/(\d+(?:\.\d+)?)\s*squares?/i);
-    if (squaresMatch) {
-      updates.measurements = {
-        ...proposalData.measurements,
-        totalSquares: parseFloat(squaresMatch[1])
-      };
+    // Extract measurements - ENHANCED VERSION
+    const measurements = { ...proposalData.measurements };
+    
+    // Extract roof area (can be in sq. ft. or squares)
+    const roofAreaMatch = response.match(/(?:Total\s+)?(?:roof\s+)?area[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:sq\.?\s*ft\.?|square\s*feet)/i);
+    if (roofAreaMatch) {
+      const sqFt = parseFloat(roofAreaMatch[1].replace(/,/g, ''));
+      measurements.roofArea = sqFt;
+      measurements.totalSquares = sqFt / 100; // Convert to roofing squares
+    } else {
+      const squaresMatch = response.match(/(\d+(?:\.\d+)?)\s*squares?/i);
+      if (squaresMatch) {
+        measurements.totalSquares = parseFloat(squaresMatch[1]);
+        measurements.roofArea = measurements.totalSquares * 100;
+      }
     }
     
-    // Pitch can appear as "6/12 pitch" or "Pitch: 6/12"
-    const pitchMatch = response.match(/(\d+\/\d+)\s*pitch/i) || response.match(/pitch:\s*(\d+\/\d+)/i);
+    // Extract pitch (6/12, 8:12, etc.)
+    const pitchMatch = response.match(/(?:roof\s+)?pitch[:\s]+(\d+[/:]\d+)/i) || 
+                       response.match(/(\d+[/:]\d+)\s*pitch/i);
     if (pitchMatch) {
-      updates.measurements = {
-        ...(updates.measurements || proposalData.measurements),
-        pitch: pitchMatch[1]
-      };
+      measurements.pitch = pitchMatch[1].replace(':', '/');
+    }
+    
+    // Extract number of facets/slopes
+    const facetsMatch = response.match(/(?:facets?|slopes?)[:\s]+(\d+)/i) ||
+                       response.match(/(\d+)\s+(?:facets?|slopes?)/i);
+    if (facetsMatch) {
+      measurements.facets = parseInt(facetsMatch[1]);
+    }
+    
+    // Extract ridge line
+    const ridgeMatch = response.match(/(?:ridge\s*(?:line)?|longest\s+ridge)[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:ft\.?|feet)/i);
+    if (ridgeMatch) {
+      measurements.ridgeLength = parseFloat(ridgeMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract valleys
+    const valleyCountMatch = response.match(/(?:number\s+of\s+)?valleys?[:\s]+(\d+)/i) ||
+                            response.match(/(\d+)\s+valleys?/i);
+    if (valleyCountMatch) {
+      measurements.valleys = parseInt(valleyCountMatch[1]);
+    }
+    
+    const valleyLengthMatch = response.match(/valley.*?(?:total\s+)?length[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:ft\.?|feet)/i);
+    if (valleyLengthMatch) {
+      measurements.valleyLength = parseFloat(valleyLengthMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract hips
+    const hipsMatch = response.match(/(?:number\s+of\s+)?hips?[:\s]+(\d+)/i) ||
+                     response.match(/(\d+)\s+hips?/i);
+    if (hipsMatch) {
+      measurements.hips = parseInt(hipsMatch[1]);
+    }
+    
+    // Extract eave length
+    const eaveMatch = response.match(/eave\s*(?:length)?[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:ft\.?|feet)/i);
+    if (eaveMatch) {
+      measurements.eaveLength = parseFloat(eaveMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract rake/gable edges
+    const rakeMatch = response.match(/(?:rake|gable)\s*(?:edges?)?[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:ft\.?|feet)/i);
+    if (rakeMatch) {
+      measurements.rakeLength = parseFloat(rakeMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract materials
+    const currentMaterialMatch = response.match(/current\s+(?:material|roofing)[:\s]+([^\n,]+)/i);
+    if (currentMaterialMatch) {
+      measurements.currentMaterial = currentMaterialMatch[1].trim();
+    }
+    
+    const desiredMaterialMatch = response.match(/(?:desired|replacement|new)\s+(?:material|roofing)[:\s]+([^\n,]+)/i);
+    if (desiredMaterialMatch) {
+      measurements.desiredMaterial = desiredMaterialMatch[1].trim();
+    }
+    
+    // Extract waste factor
+    const wasteMatch = response.match(/waste\s*(?:factor|percentage)?[:\s]+(\d+(?:\.\d+)?)\s*%?/i);
+    if (wasteMatch) {
+      measurements.wasteFactor = parseFloat(wasteMatch[1]);
+    }
+    
+    // Extract tear-off info
+    const tearOffMatch = response.match(/tear[\s-]?off\s*(?:required)?[:\s]+(yes|no|true|false)/i);
+    if (tearOffMatch) {
+      measurements.tearOffRequired = tearOffMatch[1].toLowerCase() === 'yes' || tearOffMatch[1].toLowerCase() === 'true';
+    }
+    
+    const layersMatch = response.match(/(?:existing\s+)?layers?[:\s]+(\d+)/i);
+    if (layersMatch) {
+      measurements.existingLayers = parseInt(layersMatch[1]);
+    }
+    
+    // Only update measurements if we found any new data
+    if (Object.keys(measurements).length > Object.keys(proposalData.measurements || {}).length) {
+      updates.measurements = measurements;
     }
     
     // Basic extraction - extract total amount with simple pattern
@@ -659,8 +742,62 @@ Return ONLY the JSON object, no other text.`;
     }
     
     if (message.includes('material') || message.includes('calculate')) {
+      const totalSquares = data.measurements?.totalSquares || (data.measurements?.roofArea ? data.measurements.roofArea / 100 : 0);
+      const pitch = data.measurements?.pitch || 'Not specified';
+      const currentMaterial = data.measurements?.currentMaterial || 'Not specified';
+      const desiredMaterial = data.measurements?.desiredMaterial || 'Architectural asphalt shingles';
+      const wasteFactor = (data.measurements?.wasteFactor || 10) / 100;
+      
+      // Calculate materials with waste factor
+      const shinglesNeeded = Math.ceil(totalSquares * (1 + wasteFactor));
+      const underlaymentNeeded = Math.ceil(totalSquares * (1 + wasteFactor * 0.5)); // Less waste for underlayment
+      const ridgeCapNeeded = data.measurements?.ridgeLength || Math.ceil(totalSquares * 3);
+      const valleyMaterial = data.measurements?.valleyLength || 0;
+      const eaveProtection = data.measurements?.eaveLength || 0;
+      
+      let materialsContent = `I'll calculate the materials for your project!\n\n**Current Project:**\n`;
+      materialsContent += `- Roof Area: ${totalSquares.toFixed(1)} squares (${(totalSquares * 100).toFixed(0)} sq. ft.)\n`;
+      materialsContent += `- Pitch: ${pitch}\n`;
+      materialsContent += `- Current Material: ${currentMaterial}\n`;
+      materialsContent += `- Desired Material: ${desiredMaterial}\n`;
+      
+      if (data.measurements?.tearOffRequired) {
+        materialsContent += `- Tear-off Required: Yes (${data.measurements?.existingLayers || 1} layer${(data.measurements?.existingLayers || 1) > 1 ? 's' : ''})\n`;
+      }
+      
+      materialsContent += `\n**Calculated Materials (with ${(wasteFactor * 100).toFixed(0)}% waste factor):**\n`;
+      materialsContent += `- ${desiredMaterial}: ${shinglesNeeded} squares\n`;
+      materialsContent += `- Synthetic Underlayment: ${underlaymentNeeded} squares\n`;
+      materialsContent += `- Ridge Cap Shingles: ${ridgeCapNeeded} linear feet\n`;
+      
+      if (valleyMaterial > 0) {
+        materialsContent += `- Valley Material (Ice & Water Shield): ${valleyMaterial} linear feet\n`;
+      }
+      if (eaveProtection > 0) {
+        materialsContent += `- Eave Ice & Water Shield: ${eaveProtection} linear feet\n`;
+      }
+      if (data.measurements?.valleys > 0) {
+        materialsContent += `- Valley Flashing: ${data.measurements.valleys} valleys\n`;
+      }
+      if (data.measurements?.hips > 0) {
+        materialsContent += `- Hip Starter Shingles: ${data.measurements.hips} hips\n`;
+      }
+      
+      materialsContent += `\n**Additional Materials:**\n`;
+      materialsContent += `- Drip Edge: ${(data.measurements?.eaveLength || 0) + (data.measurements?.rakeLength || 0)} linear feet\n`;
+      materialsContent += `- Roofing Nails: ~${Math.ceil(shinglesNeeded * 2.5)} lbs\n`;
+      materialsContent += `- Pipe Boot Flashings: ${data.measurements?.plumbingStacks || 3} units\n`;
+      
+      if (data.measurements?.tearOffRequired) {
+        const dumpsterSize = totalSquares < 20 ? '10-yard' : totalSquares < 35 ? '20-yard' : '30-yard';
+        materialsContent += `\n**Disposal:**\n`;
+        materialsContent += `- Dumpster: 1x ${dumpsterSize}\n`;
+      }
+      
+      materialsContent += `\nWould you like me to:\n1. Apply your pricing sheet?\n2. Add these to the materials list?\n3. Calculate labor costs?`;
+      
       return {
-        content: `I'll calculate the materials for your project!\n\n**Current Project:**\n- Roof Area: ${data.measurements?.totalSquares || 0} squares\n- Pitch: ${data.measurements?.pitch || 'Not specified'}\n- Current Material: ${data.measurements?.currentMaterial || 'Not specified'}\n\n**Recommended Materials:**\n- Asphalt Shingles: ${Math.ceil((data.measurements?.totalSquares || 0) * 1.1)} squares\n- Underlayment: ${data.measurements?.totalSquares || 0} squares\n- Ridge Cap: ~${Math.ceil((data.measurements?.totalSquares || 0) * 3)} linear feet\n\nWould you like me to:\n1. Apply your pricing sheet?\n2. Add these to the materials list?\n3. Calculate labor costs?`,
+        content: materialsContent,
         actions: [
           { type: 'navigate', tab: 'materials' },
           { type: 'update_materials', materials: generateMaterialsList(data) }
