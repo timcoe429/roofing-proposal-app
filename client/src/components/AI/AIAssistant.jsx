@@ -310,28 +310,8 @@ ${locationContext.citySpecific.recommendedMaterials?.map(mat => `- ${mat}`).join
       const pricingContext = getPricingContext();
       expertContext += pricingContext;
 
-      expertContext += `
-
-=== YOUR ROLE ===
-You are an expert roofing contractor and estimator. Use the pricing data above to:
-1. Recommend appropriate materials based on location and codes
-2. Calculate quantities and costs accurately
-3. Explain building code requirements
-4. Provide professional roofing advice
-5. Build detailed proposals conversationally
-
-Be conversational, ask clarifying questions, and explain your recommendations.
-
-IMPORTANT: 
-- Extract and populate proposal data automatically from conversations
-- PRESERVE existing proposal data - only ADD or MODIFY what's requested
-- When adding items (like crew housing), ADD them to existing materials/labor
-- When modifying items, UPDATE the specific item mentioned
-- Be concise and direct - avoid asking too many questions
-- When you have enough info, provide estimates immediately
-- Format estimates clearly with line items and totals
-- Include labor breakdown and material specifications
-- Always show the COMPLETE updated proposal after making changes`;
+      // Let backend handle system prompts - just provide context data
+      expertContext += `\n\nCURRENT PROPOSAL DATA: ${JSON.stringify(proposalData, null, 2)}`;
 
       let response;
       
