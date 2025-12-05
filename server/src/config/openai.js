@@ -10,7 +10,7 @@ export const claudeConfig = {
     apiKey: process.env.ANTHROPIC_API_KEY,
     model: 'claude-3-5-sonnet-20241022',
     maxTokens: 4096,
-    temperature: 0.1
+    temperature: 0.7
 };
 
 export const aiConfig = {
