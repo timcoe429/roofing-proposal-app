@@ -314,3 +314,55 @@ export const changePassword = async (req, res) => {
     });
   }
 };
+
+// Refresh token
+export const refreshToken = async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Token required' });
+    }
+
+    try {
+      // Try to decode the token (even if expired)
+      const decoded = jwt.decode(token);
+      
+      if (!decoded || !decoded.userId) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+
+      // Verify user still exists
+      const user = await User.findByPk(decoded.userId);
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+
+      // Generate new token
+      const newToken = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '7d' }
+      );
+
+      logger.info(`Token refreshed for user: ${user.email}`);
+      
+      res.json({
+        success: true,
+        token: newToken
+      });
+
+    } catch (error) {
+      // If token is completely invalid (not just expired), return error
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+  } catch (error) {
+    logger.error('Error refreshing token:', error);
+    res.status(500).json({ 
+      error: 'Failed to refresh token',
+      details: error.message 
+    });
+  }
+};

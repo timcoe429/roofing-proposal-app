@@ -9,13 +9,79 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add auth token
-apiClient.interceptors.request.use(
-  (config) => {
+// Helper function to check if token is expired or expiring soon
+const isTokenExpiringSoon = (token) => {
+  if (!token) return true;
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const expirationTime = payload.exp * 1000; // Convert to milliseconds
+    const currentTime = Date.now();
+    const timeUntilExpiry = expirationTime - currentTime;
+    
+    // Refresh if expired or expires within 1 day (24 hours)
+    return timeUntilExpiry < 24 * 60 * 60 * 1000;
+  } catch (error) {
+    console.error('Error parsing token:', error);
+    return true; // If we can't parse it, consider it expired
+  }
+};
+
+// Helper function to refresh token
+const refreshToken = async () => {
+  try {
     const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No token to refresh');
+    }
+
+    const response = await axios.post(
+      `${process.env.REACT_APP_API_URL || '/api'}/auth/refresh`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      return response.data.token;
+    }
+    
+    throw new Error('No token in refresh response');
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    throw error;
+  }
+};
+
+// Request interceptor to add auth token and refresh if needed
+apiClient.interceptors.request.use(
+  async (config) => {
+    let token = localStorage.getItem('token');
+    
+    // Check if token is expiring soon and refresh it
+    if (token && isTokenExpiringSoon(token)) {
+      try {
+        console.log('Token expiring soon, refreshing...');
+        token = await refreshToken();
+      } catch (error) {
+        // If refresh fails, redirect to login
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
   },
   (error) => {
@@ -36,12 +102,84 @@ apiClient.interceptors.response.use(
     // For other responses, return just the data as before
     return response.data;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Handle blob error responses - they might be JSON errors
+    if (error.config?.responseType === 'blob' && error.response?.data) {
+      try {
+        // Try to parse the blob as JSON (it might be an error message)
+        const text = await error.response.data.text();
+        const jsonError = JSON.parse(text);
+        console.error('API Error (blob):', error.config?.method?.toUpperCase(), error.config?.url, error.response?.status, jsonError);
+        
+        // If it's a 403 (expired token), try to refresh
+        if (error.response?.status === 403 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          try {
+            const newToken = await refreshToken();
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return apiClient(originalRequest);
+          } catch (refreshError) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
+            return Promise.reject(refreshError);
+          }
+        }
+        
+        // If it's a 401, redirect to login
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }
+        
+        return Promise.reject({
+          ...error,
+          response: {
+            ...error.response,
+            data: jsonError
+          }
+        });
+      } catch (parseError) {
+        // If parsing fails, it's actually a blob error
+        console.error('API Error (blob parse failed):', error.config?.method?.toUpperCase(), error.config?.url, error.response?.status);
+      }
+    }
+    
     console.error('API Error:', error.config?.method?.toUpperCase(), error.config?.url, error.response?.status, error.response?.data);
+    
+    // Handle 403 (expired token) - try to refresh
+    if (error.response?.status === 403 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const newToken = await refreshToken();
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    // Handle 401 (unauthorized)
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
+    
     return Promise.reject(error);
   }
 );
@@ -54,6 +192,7 @@ const api = {
   getCurrentUser: () => apiClient.get('/auth/me'),
   updateProfile: (data) => apiClient.put('/auth/profile', data),
   changePassword: (data) => apiClient.put('/auth/change-password', data),
+  refreshToken: () => apiClient.post('/auth/refresh'),
 
   // Proposals
   getProposals: () => apiClient.get('/proposals'),
