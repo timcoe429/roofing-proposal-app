@@ -2,34 +2,33 @@
 
 ## 🚀 Quick Start for Railway
 
-### 1. Environment Variables on Railway
+### 1. Required Environment Variables
 
-Go to your Railway project dashboard and add these environment variables:
+**Location:** Railway Dashboard → Your Application Service → Variables Tab
 
+Add these environment variables to your **Application Service** (not the Postgres service):
+
+| Variable | Required | Description | Where to Get It |
+|----------|----------|-------------|-----------------|
+| `NODE_ENV` | ✅ | Environment mode | Set to `production` |
+| `JWT_SECRET` | ✅ | Authentication secret | Generate a strong random string |
+| `ANTHROPIC_API_KEY` | ✅ | Claude AI API key | [Anthropic Console](https://console.anthropic.com/) |
+| `OPENAI_API_KEY` | ✅ | GPT-4 Vision API key | [OpenAI Platform](https://platform.openai.com/) |
+| `GOOGLE_SHEETS_API_KEY` | ✅ | Google Sheets integration | [Google Cloud Console](https://console.cloud.google.com/) |
+| `DATABASE_URL` | ✅ | Database connection | Reference from Postgres service (see below) |
+
+**Quick Copy-Paste Format:**
 ```bash
-# Server Configuration
+# Required Environment Variables (Application Service)
 NODE_ENV=production
-PORT=3001
-
-# Database Configuration (Railway PostgreSQL)
-DB_HOST=your_railway_postgres_host
-DB_PORT=5432
-DB_NAME=railway
-DB_USER=postgres
-DB_PASSWORD=your_railway_postgres_password
-
-# JWT Secret
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-
-# OpenAI Configuration (for GPT-4 Vision)
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Anthropic Configuration (for Claude AI)
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-
-# Client URL (for CORS)
-CLIENT_URL=https://your-app-domain.railway.app
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+GOOGLE_SHEETS_API_KEY=...
+DATABASE_URL=${{Postgres.DATABASE_URL}}
 ```
+
+**Note:** For `DATABASE_URL`, use Railway's variable reference: `${{Postgres.DATABASE_URL}}` to automatically link to your Postgres service.
 
 ### 2. Get API Keys
 

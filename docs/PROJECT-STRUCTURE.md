@@ -188,17 +188,21 @@ roofing-proposal-app/
 
 ### Railway Environment Variables
 
-#### Service Variables (Application)
-- `NODE_ENV` - Environment (development/production)
-- `JWT_SECRET` - Authentication secret key
-- `OPENAI_API_KEY` - GPT-4 Vision API key
-- `ANTHROPIC_API_KEY` - Claude AI API key
-- `GOOGLE_SHEETS_API_KEY` - Google Sheets integration
-- `DATABASE_URL` - Primary database connection string
+#### Application Service Variables (Required)
+**Set these in:** Railway Dashboard → Application Service → Variables Tab
 
-#### Database Variables (Railway PostgreSQL)
-Railway automatically provides these for the PostgreSQL service:
-- `DATABASE_URL` - Primary connection string
+| Variable | Purpose | Notes |
+|----------|---------|-------|
+| `NODE_ENV` | Environment mode | Set to `production` |
+| `JWT_SECRET` | Authentication secret key | Generate a strong random string |
+| `OPENAI_API_KEY` | GPT-4 Vision API key | For image analysis |
+| `ANTHROPIC_API_KEY` | Claude AI API key | For chat assistant |
+| `GOOGLE_SHEETS_API_KEY` | Google Sheets integration | For pricing sheet sync |
+| `DATABASE_URL` | Database connection string | Use `${{Postgres.DATABASE_URL}}` to reference Postgres service |
+
+#### Database Service Variables (Auto-Provided by Railway)
+Railway automatically provides these for the **Postgres Service** (no manual configuration needed):
+- `DATABASE_URL` - Primary connection string (reference this in Application service)
 - `DATABASE_PUBLIC_URL` - Public-facing connection URL
 - `PGDATA` - PostgreSQL data directory
 - `PGDATABASE` - Database name

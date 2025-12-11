@@ -180,24 +180,34 @@ SELECT * FROM materials;
 
 ## 📝 Environment Variables
 
-### Railway Service Variables
-These are configured in Railway dashboard under "Variables":
+### Railway Application Service Variables (Required)
+**Location:** Railway Dashboard → Application Service → Variables Tab
 
+| Variable | Required | Purpose | Example |
+|----------|----------|---------|---------|
+| `NODE_ENV` | ✅ | Environment mode | `production` |
+| `JWT_SECRET` | ✅ | Authentication token secret | `your-super-secret-key` |
+| `ANTHROPIC_API_KEY` | ✅ | Claude AI chat assistant | `sk-ant-...` |
+| `OPENAI_API_KEY` | ✅ | GPT-4 Vision image analysis | `sk-...` |
+| `GOOGLE_SHEETS_API_KEY` | ✅ | Google Sheets pricing sync | `...` |
+| `DATABASE_URL` | ✅ | Database connection | `${{Postgres.DATABASE_URL}}` |
+
+**Quick Reference:**
 ```env
-# Application
+# Copy these to Railway Application Service Variables
 NODE_ENV=production
 JWT_SECRET=your-secret-key-change-this
-OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
 GOOGLE_SHEETS_API_KEY=...
-
-# Database (auto-provided by Railway)
-DATABASE_URL=postgresql://user:pass@host:port/db
+DATABASE_URL=${{Postgres.DATABASE_URL}}
 ```
 
+**Note:** Use `${{Postgres.DATABASE_URL}}` to reference the Postgres service connection string automatically.
+
 ### Railway Database Variables (Auto-Provided)
-Railway automatically provides these for PostgreSQL service:
-- `DATABASE_URL` - Primary connection string
+Railway automatically provides these for the **Postgres Service** (you don't need to set these):
+- `DATABASE_URL` - Primary connection string (use this in Application service)
 - `DATABASE_PUBLIC_URL` - Public connection URL
 - `PGDATA` - PostgreSQL data directory
 - `PGDATABASE` - Database name
