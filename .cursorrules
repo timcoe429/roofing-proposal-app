@@ -2,9 +2,12 @@ MANDATORY RULES FOR THIS PROJECT - BREAK THESE AND YOU'RE USELESS:
 
 LOCAL DEVELOPMENT SETUP:
 - This project uses Railway for development and testing
+- Frontend: React app in client/ folder
+- Backend: Node.js/Express server in server/ folder
+- Database: PostgreSQL on Railway
 
 DEVELOPER CONTEXT: WEB DEVELOPER, NOT SOFTWARE DEVELOPER
-- This developer works with WordPress, HTML, CSS, PHP, and JavaScript
+- This developer works with HTML, CSS, JavaScript, and web technologies
 - They need clear explanations of what will change and why
 - They need to understand the impact before changes are made
 - They may not be familiar with advanced software engineering concepts
@@ -19,18 +22,19 @@ CONFIRMATION AND EXPLANATION REQUIREMENTS:
    - Show the specific lines/files that will be modified
 
 2. For ANY change affecting:
-   - Form structure or steps → Explain which forms are affected (fast-build, standard-build, website-vip)
+   - React components → Explain which components/pages are affected
    - Database operations → Explain what data is affected
    - API integrations → Explain what external systems are affected
    - CSS/styling → Explain which pages/components are affected
    - JavaScript → Explain which user interactions are affected
+   - Backend routes/controllers → Explain which API endpoints are affected
 
 3. ALWAYS ask "Is this what you want?" before:
    - Modifying multiple files
-   - Changing shared code that affects all forms
+   - Changing shared code that affects multiple components
    - Altering database structure
    - Modifying API endpoints or integrations
-   - Changing form submission flow
+   - Changing data flow or state management
 
 ONLY CHANGE WHAT IS ASKED:
 - If user asks to change X, ONLY change X
@@ -39,40 +43,39 @@ ONLY CHANGE WHAT IS ASKED:
 - Do NOT add features unless explicitly requested
 - If you see potential issues, EXPLAIN them but DON'T fix unless asked
 
-HTML/PHP EDITING RULES:
-1. BEFORE ANY HTML/PHP EDIT: You MUST use read_file to see at least 50 lines of context FIRST
+REACT/JSX EDITING RULES:
+1. BEFORE ANY REACT/JSX EDIT: You MUST use read_file to see at least 50 lines of context FIRST
 2. NEVER include opening tags without their closing tags in the same code block
-3. COUNT EVERY div/tag before and after changes - they MUST balance
-4. If replacing content inside divs, NEVER include the wrapper divs in the replacement
-5. ALWAYS trace and document the complete tag structure before making changes
-6. When editing forms, VERIFY the entire step structure remains intact
-7. Show the user the tag structure before and after your change
+3. COUNT EVERY JSX element before and after changes - they MUST balance
+4. If replacing content inside components, NEVER include the wrapper components in the replacement
+5. ALWAYS trace and document the complete component structure before making changes
+6. When editing components, VERIFY the entire component structure remains intact
+7. Show the user the component structure before and after your change
 
 FORBIDDEN ACTIONS:
-- Partial div replacements where opening and closing tags get separated
+- Partial component replacements where opening and closing tags get separated
 - Making changes without seeing the full file section first
-- Including <div> in dynamic content without its </div>
+- Including JSX elements in dynamic content without proper closing
 - Assuming structure without verifying with read_file
 - Quick edits without context
-- Adding structural HTML to database content
 - Making "helpful" changes the user didn't ask for
 - Refactoring code "while you're at it"
 
 REQUIRED PROCESS FOR CODE CHANGES:
 1. Read the file section (minimum 50 lines of context)
-2. Document which divs/tags open and close where
+2. Document which components/elements open and close where
 3. Explain what will change and what stays the same
 4. Show the user the before/after structure
-5. Verify all tags balance after the change
+5. Verify all JSX elements balance after the change
 6. Only then make the edit
 
 PROJECT DOCUMENTATION (READ THESE FIRST):
-- PROJECT-STRUCTURE.md: Core plugins, file locations, integration points
+- PROJECT-STRUCTURE.md: File organization and component breakdown
 - QUICK-REFERENCE.md: Common tasks, file finder, API reference, debug commands
 - DEVELOPMENT-NOTES.md: Code patterns, testing checklist, common issues
-- FORM-ARCHITECTURE.md: Unified form architecture and how forms work
-- SHARED-STEPS-REFACTORING.md: How shared steps work across form types
-- README.md: Plugin overview and installation
+- ARCHITECTURE.md: System design and data flow
+- README.md: Project overview and installation
+- SETUP.md: Deployment and configuration
 
 EFFICIENCY RULES:
 1. BEFORE coding: Check the relevant documentation file above
@@ -80,40 +83,28 @@ EFFICIENCY RULES:
 3. Follow code patterns from DEVELOPMENT-NOTES.md
 4. Use the provided SQL queries for debugging
 5. Reference the API endpoints and functions from QUICK-REFERENCE.md
-6. If unsure about architecture, READ FORM-ARCHITECTURE.md first
+6. If unsure about architecture, READ ARCHITECTURE.md first
 
-WORDPRESS-SPECIFIC CONCERNS:
-- Always use WordPress functions (wp_send_json_success, sanitize_text_field, etc.)
-- Never use raw PHP functions when WordPress alternatives exist
-- Check for nonce verification in form handlers
-- Understand WordPress hooks and filters before modifying
-- Be aware of WordPress Multisite if applicable
-- Consider plugin conflicts when suggesting changes
-
-FORM ARCHITECTURE AWARENESS:
-- Forms use unified system: form-config.php controls differences
-- Most steps are SHARED across all form types
-- Changes to shared steps affect ALL forms (fast-build, standard-build, website-vip)
-- Form-specific steps only exist when unique (e.g., fast-build step-5-service-areas.php)
-- JavaScript is unified: docket-form-unified.js handles all forms
-- CSS is unified: docket-forms-unified.css styles all forms
-- BEFORE changing shared code: Explain which forms will be affected
+REACT/NODE.JS-SPECIFIC CONCERNS:
+- Always use React best practices (hooks, proper state management)
+- Use Express middleware properly (auth, error handling)
+- Check for authentication/authorization in API routes
+- Understand React component lifecycle and hooks
+- Be aware of state management patterns
+- Consider performance implications (re-renders, API calls)
 
 SPECIFIC TO THIS PROJECT:
-- Form steps must maintain their complete structure
-- Dynamic content from database should NEVER include structural wrapper divs
-- All form navigation and form fields must remain within their proper containers
-- The WordPress Experience section belongs ONLY in Fast Build Step 1
-- API Key stored in includes/cloner-settings.php
-- Templates: template1-4 in allowed_templates array
-- Database tables: wp_docket_form_submissions, wp_docket_client_sites
-- Form types: fast-build, standard-build, website-vip
-- Shared steps location: includes/forms/shared/steps/
-- Form-specific steps: includes/forms/{form-type}/steps/
+- Frontend: React components in client/src/
+- Backend: Express routes/controllers in server/src/
+- Database: PostgreSQL on Railway (managed)
+- AI Integration: OpenAI GPT-4 Vision and Anthropic Claude
+- Authentication: JWT tokens stored in localStorage
+- API: RESTful endpoints under /api/
+- Database tables: users, companies, proposals, materials, migrations
 
 COMMUNICATION STYLE:
 - Use clear, simple language (web developer, not software engineer)
-- Explain WordPress concepts if needed
+- Explain React/Node.js concepts if needed
 - Show examples when explaining
 - Break down complex changes into steps
 - Use "we" and "you" to make it conversational
@@ -122,10 +113,10 @@ COMMUNICATION STYLE:
 WHEN TO ASK VS WHEN TO ACT:
 ASK FIRST (require confirmation):
 - Changes affecting multiple files
-- Changes to shared code (affects all forms)
+- Changes to shared components or utilities
 - Database structure changes
 - API endpoint changes
-- Form submission flow changes
+- State management changes
 - Adding new features
 - Refactoring existing code
 
@@ -137,10 +128,10 @@ ACT DIRECTLY (but still explain):
 - Documentation updates
 
 EXAMPLES OF GOOD EXPLANATIONS:
-✅ "I'm going to update the success message in form-config.php. This will change the message shown after form submission for all three form types (fast-build, standard-build, website-vip). The change is in the 'success_message' field. Is this what you want?"
+✅ "I'm going to update the ProposalEditor component to add a new field. This will change the client info form and affect how proposal data is saved. The change is in client/src/pages/ProposalEditor.jsx. Is this what you want?"
 
-✅ "I need to add a new field to step-7-rentals.php. Since this is a shared step file, it will appear on all three form types. The field will be added after the dumpster color selection. Here's the structure I'll add: [show code]. Does this look correct?"
+✅ "I need to add a new API endpoint for materials. This will require creating a new route in server/src/routes/materialRoutes.js and a controller function in server/src/controllers/materialController.js. The endpoint will be POST /api/materials. Does this look correct?"
 
-❌ "I'll update the form handler and also optimize the database queries while I'm at it."
+❌ "I'll update the component and also optimize the database queries while I'm at it."
 ❌ "Making the change now."
 ❌ "I'll improve the code structure."
