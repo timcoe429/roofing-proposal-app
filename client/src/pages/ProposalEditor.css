@@ -16,7 +16,7 @@
 .workspace-content.split-pane {
   flex: 1;
   display: grid;
-  grid-template-columns: 60% 40%;
+  grid-template-columns: 33.33% 66.67%;
   min-height: 0;
   height: calc(100vh - 60px); /* Adjust based on header height */
   overflow: hidden;
@@ -28,6 +28,7 @@
   border-right: 1px solid #e5e7eb;
   overflow: hidden;
   background: #fff;
+  width: 100%; /* Ensure it fills the grid column */
 }
 
 .preview-panel {

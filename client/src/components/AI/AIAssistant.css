@@ -1,12 +1,10 @@
 .ai-assistant {
-  width: 400px;
-  height: 100vh;
+  height: 100%;
+  width: 100%;
   background: white;
   color: #1a202c;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e2e8f0;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
 }
 
 .chat-container {
