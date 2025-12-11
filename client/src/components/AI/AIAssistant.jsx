@@ -906,7 +906,12 @@ Return ONLY the JSON object, no other text.`;
   const executeAction = (action) => {
     switch (action.type) {
       case 'navigate':
-        onTabChange(action.tab);
+        // Tabs were removed in redesign, but keep this for backwards compatibility
+        if (onTabChange && typeof onTabChange === 'function') {
+          onTabChange(action.tab);
+        } else {
+          console.log('Navigation requested to:', action.tab, '(tabs removed in redesign)');
+        }
         break;
       case 'update_materials':
         onUpdateProposal(prev => ({
