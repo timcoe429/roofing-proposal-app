@@ -286,17 +286,34 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       // If images are included, use GPT Vision first, then Claude for analysis
       if (pastedImages.length > 0) {
         try {
+          console.log('📷 Processing images with GPT Vision:', pastedImages.length);
+          
           // Convert images to base64 for GPT Vision
           const imageBase64Array = pastedImages.map(img => img.dataUrl);
           
           // Use GPT Vision to analyze the images
           const visionResponse = await api.processImages(imageBase64Array, 'roofing_analysis');
           
+          console.log('✅ Vision analysis received:', visionResponse?.analysis ? 'Yes' : 'No');
+          
           // Add vision analysis to the message
           userMessageText = `${message}\n\n[Image analysis: ${visionResponse.analysis || visionResponse}]`;
 
+          console.log('📤 Sending to AI API (with images):', {
+            message: userMessageText.substring(0, 100) + '...',
+            messageLength: userMessageText.length,
+            hasProposalContext: !!proposalContext,
+            conversationHistoryLength: conversationHistory.length
+          });
+
           // Send to Claude with structured context
           response = await api.chatWithAI(userMessageText, conversationHistory, proposalContext);
+          
+          console.log('📥 AI API Response received (with images):', {
+            hasResponse: !!response,
+            responseType: typeof response,
+            responseKeys: response ? Object.keys(response) : null
+          });
         } catch (visionError) {
           console.error('Vision analysis failed:', visionError);
           // Fallback to text-only if vision fails
@@ -304,15 +321,36 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         }
       } else {
         // Text-only message with structured context
+        console.log('📤 Sending to AI API:', {
+          message: userMessageText.substring(0, 100) + (userMessageText.length > 100 ? '...' : ''),
+          messageLength: userMessageText.length,
+          hasProposalContext: !!proposalContext,
+          conversationHistoryLength: conversationHistory.length,
+          proposalContextKeys: proposalContext ? Object.keys(proposalContext) : null
+        });
+        
         response = await api.chatWithAI(userMessageText, conversationHistory, proposalContext);
+        
+        console.log('📥 AI API Response received:', {
+          hasResponse: !!response,
+          responseType: typeof response,
+          responseKeys: response ? Object.keys(response) : null,
+          responseText: response?.response ? response.response.substring(0, 100) + '...' : 'No response text',
+          fullResponse: response
+        });
       }
+      
+      // Handle response format - API returns { success: true, response: <string> }
+      const aiResponseText = response?.response || (typeof response === 'string' ? response : 'I apologize, but I had trouble processing that. Could you try rephrasing?');
+      
+      console.log('✅ AI Response text extracted:', aiResponseText ? aiResponseText.substring(0, 100) + '...' : 'No text');
       
       const assistantMessage = {
         id: Date.now() + 1,
         type: 'assistant',
-        content: response.response,
+        content: aiResponseText,
         timestamp: new Date(),
-        actions: extractActions(response.response, proposalData)
+        actions: extractActions(aiResponseText, proposalData)
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -325,7 +363,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       // Parse detailed data with AI (asynchronous enhancement)
       console.log('🚀 Starting intelligent AI parsing...');
       try {
-        const detailedData = await parseAIResponseWithAI(response.response);
+        const detailedData = await parseAIResponseWithAI(aiResponseText);
         if (Object.keys(detailedData).length > 0) {
           console.log('✅ Applying detailed AI parsing results:', detailedData);
           
@@ -365,23 +403,27 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       }
 
     } catch (error) {
-      console.error('Error getting AI response:', error);
+      console.error('❌ Error getting AI response:', error);
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response status:', error.response?.status);
+      console.error('Request config:', error.config);
       
-      // Fallback to intelligent response
-      const fallbackResponse = generateFallbackResponse(message, proposalData);
-      const assistantMessage = {
+      // Show actual error to user with more details
+      const errorDetails = error.response?.data?.details || error.response?.data?.error || error.message || 'Unknown error';
+      const errorMessage = {
         id: Date.now() + 1,
         type: 'assistant',
-        content: fallbackResponse.content,
+        content: `I'm sorry, I encountered an error: ${errorDetails}\n\nCould you try asking again? If the problem persists, please check that the AI service is properly configured.`,
         timestamp: new Date(),
-        actions: fallbackResponse.actions
+        isError: true
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
-
-      if (fallbackResponse.actions) {
-        fallbackResponse.actions.forEach(action => executeAction(action));
-      }
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }

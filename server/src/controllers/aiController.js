@@ -26,10 +26,17 @@ export const chatWithAI = async (req, res) => {
     });
 
   } catch (error) {
-    logger.error('Error in AI chat:', error);
+    logger.error('❌ Error in AI chat controller:');
+    logger.error('Error type:', error.constructor.name);
+    logger.error('Error message:', error.message);
+    logger.error('Error stack:', error.stack);
+    logger.error('Request body:', JSON.stringify(req.body, null, 2));
+    logger.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    
     res.status(500).json({ 
       error: 'Failed to process chat message',
-      details: error.message 
+      details: error.message,
+      type: error.constructor.name
     });
   }
 };

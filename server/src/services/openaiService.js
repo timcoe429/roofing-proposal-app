@@ -215,6 +215,13 @@ Provide a COMPLETE, customer-ready proposal they can approve immediately.`;
 
 // Chat with Claude for general roofing questions
 export const chatWithClaude = async (message, conversationHistory = [], proposalContext = null) => {
+  logger.info('🤖 chatWithClaude called');
+  logger.info('Message length:', message?.length);
+  logger.info('Conversation history length:', conversationHistory?.length);
+  logger.info('Has proposal context:', !!proposalContext);
+  logger.info('Has Claude client:', !!claude);
+  logger.info('Has API key:', !!process.env.ANTHROPIC_API_KEY);
+  
   // Check for missing info if proposal context is provided
   let missingInfoCheck = null;
   if (proposalContext) {
@@ -371,9 +378,23 @@ ${pricingContext ? `\n**Available Pricing Data:**\n${pricingContext}\n\nUse thes
       messages: messages
     });
 
-    return response.content[0].text;
+    const responseText = response.content[0].text;
+    logger.info('✅ Claude response received, length:', responseText?.length);
+    return responseText;
   } catch (error) {
-    logger.error('Error in Claude chat:', error);
+    logger.error('💥 Error in Claude chat service:');
+    logger.error('Error type:', error.constructor.name);
+    logger.error('Error message:', error.message);
+    logger.error('Error code:', error.code);
+    logger.error('Error status:', error.status);
+    logger.error('Error status_code:', error.status_code);
+    logger.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    logger.error('Messages sent count:', messages.length);
+    logger.error('System prompt length:', systemPrompt.length);
+    logger.error('Has Claude client:', !!claude);
+    logger.error('Has API key:', !!process.env.ANTHROPIC_API_KEY);
+    logger.error('API key length:', process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.length : 0);
+    
     throw error;
   }
 };
