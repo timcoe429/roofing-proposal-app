@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { aiConfig } from '../config/openai.js';
 import logger from '../utils/logger.js';
+import { checkProposalCompleteness } from '../utils/infoChecker.js';
 
 // Initialize AI clients
 let openai = null;
@@ -213,7 +214,25 @@ Provide a COMPLETE, customer-ready proposal they can approve immediately.`;
 };
 
 // Chat with Claude for general roofing questions
-export const chatWithClaude = async (message, conversationHistory = []) => {
+export const chatWithClaude = async (message, conversationHistory = [], proposalContext = null) => {
+  // Check for missing info if proposal context is provided
+  let missingInfoCheck = null;
+  if (proposalContext) {
+    missingInfoCheck = checkProposalCompleteness(proposalContext);
+    
+    // If user is asking to generate a quote but missing required info, modify the message
+    const isQuoteRequest = message.toLowerCase().includes('quote') || 
+                          message.toLowerCase().includes('estimate') ||
+                          message.toLowerCase().includes('generate') ||
+                          message.toLowerCase().includes('create proposal');
+    
+    if (isQuoteRequest && !missingInfoCheck.canGenerate && missingInfoCheck.questions) {
+      // Prepend the missing info questions to the message
+      message = `${missingInfoCheck.questions}\n\n${message}`;
+      console.log('⚠️ Missing required info detected, asking questions before generating quote');
+    }
+  }
+
   // Fetch real pricing data from the company's uploaded pricing sheets
   let pricingContext = '';
   try {
@@ -248,46 +267,115 @@ export const chatWithClaude = async (message, conversationHistory = []) => {
     console.error('❌ Failed to fetch pricing data for AI:', error.message);
   }
 
-  const systemPrompt = `You're a helpful roofing expert assistant helping create proposals. Be conversational and natural - like ChatGPT - but stay focused on roofing estimates and proposals.
+  // Build system prompt with info about missing fields if applicable
+  let infoGuidance = '';
+  if (missingInfoCheck && !missingInfoCheck.canGenerate) {
+    infoGuidance = `\n\n**IMPORTANT - Missing Information:**\nThe user is trying to generate a quote, but some required information is missing. Ask for the missing details before generating the quote. The missing info questions have been added to the user's message.`;
+  }
 
-=== CONVERSATION STYLE ===
-- Talk naturally and friendly, like you're chatting with a colleague
-- Use "I" and "you" naturally - it's okay to be conversational
-- Ask clarifying questions when you need more info
-- Be helpful and engaging, not robotic or overly formal
-- It's fine to say things like "I can help with that" or "Let me calculate that for you"
+  const systemPrompt = `You're a helpful roofing expert assistant helping create estimates and proposals. Talk naturally and conversationally, just like ChatGPT - be friendly, engaging, and helpful.
 
-=== TOPIC BOUNDARIES (STAY FOCUSED) ===
-- ONLY discuss roofing, roofing estimates, proposals, materials, labor, and project details
-- If asked about unrelated topics (cooking, sports, general chat), politely redirect: "I'm focused on helping with roofing proposals. How can I help with your estimate?"
-- Keep conversations relevant to creating and refining roofing proposals
-- You can discuss roofing techniques, materials, costs, timelines, warranties - all roofing-related
+**Your Role:**
+- Help create accurate roofing estimates and proposals
+- Use the company's pricing sheet data (provided below) for all material costs
+- Calculate materials, labor, overhead, and profit accurately
+- Ask questions when you need more information
+- Update proposal data when the user requests changes
+${infoGuidance}
 
-=== PRICING ACCURACY (CRITICAL - NO HALLUCINATIONS) ===
-- ALWAYS use EXACT prices from the company's pricing sheets (provided below)
-- If a material isn't in the pricing sheets, say: "I don't see [material] in your pricing sheets. Could you add it, or should I use a placeholder?"
-- NEVER make up prices - if pricing isn't available, ask rather than guess
-- When calculating totals:
-  * Materials + Labor = Subtotal
-  * Add overhead (15% of subtotal)
-  * Add profit (20% of subtotal + overhead)
-  * Include permits/disposal in base costs
+**Quote Generation Guidelines:**
+When generating quotes, follow these steps:
 
-=== WHAT YOU CAN HELP WITH ===
-- Calculate materials, labor, and costs for roofing projects
-- Suggest materials and approaches based on the project
-- Answer roofing questions (within scope)
-- Update proposal data when asked
-- Help with measurements and estimates
-- Discuss roofing best practices and recommendations
+1. **Calculate Quantities:**
+   - Use roof measurements (squares, square feet, pitch) to calculate material quantities
+   - Apply waste factors: Typically 10-15% for shingles, 5-10% for underlayment
+   - Calculate linear feet for flashing, drip edge, ridge cap based on measurements
+   - Factor in roof complexity (valleys, hips, penetrations) for additional materials
 
-${pricingContext ? `\n=== COMPANY PRICING DATA ===\n${pricingContext}\n\nCRITICAL: Only use prices from above. If something isn't listed, ask rather than guessing.` : '\n=== PRICING ===\nNo pricing sheets loaded yet. Ask for pricing before providing cost estimates.'}`;
+2. **Use Pricing Sheet Data:**
+   - ALWAYS use EXACT prices from the company's pricing sheets when available
+   - Match materials by name - if exact match isn't found, ask the user
+   - Use material cost + labor cost from pricing sheet for total price per unit
+   - If a material isn't in the pricing sheets, ask the user what price to use - don't guess
 
-  const context = conversationHistory.length > 0 
-    ? `Previous conversation:\n${conversationHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}`
-    : '';
+3. **Calculate Labor:**
+   - Base labor on roof complexity and square footage
+   - Use labor rates from pricing sheets when available
+   - Factor in tear-off time if multiple layers
+   - Include setup, cleanup, and disposal time
 
-  return await processWithClaude(message, context, systemPrompt);
+4. **Apply Margins:**
+   - Calculate subtotal: Materials + Labor + Add-ons
+   - Add overhead: Subtotal × (overhead % / 100)
+   - Add profit: (Subtotal + Overhead) × (profit % / 100)
+   - Apply discount if any: Final total - discount amount
+
+5. **Format Output:**
+   When updating the proposal, return structured data in this format:
+   {
+     "materials": [
+       {"name": "Material Name", "quantity": 30, "unit": "squares", "unitPrice": 150, "total": 4500, "category": "material"},
+       {"name": "Labor Description", "quantity": 40, "unit": "hours", "unitPrice": 75, "total": 3000, "category": "labor"}
+     ],
+     "overheadPercent": 15,
+     "profitPercent": 20,
+     "totalAmount": 8625
+   }
+
+**Pricing Rules (Critical):**
+- ALWAYS use EXACT prices from the company's pricing sheets when available
+- If a material isn't in the pricing sheets, ask the user what price to use - don't guess
+- Double-check all math - accuracy is critical
+- Validate: quantity × unitPrice = total for each line item
+
+**Conversation Style:**
+- Be natural and conversational - talk like you're helping a colleague
+- Use "I" and "you" naturally
+- Ask clarifying questions when needed
+- Be helpful and engaging
+
+${pricingContext ? `\n**Available Pricing Data:**\n${pricingContext}\n\nUse these exact prices from the company's pricing sheets. If something isn't listed, ask the user for the price.` : '\n**Note:** No pricing sheets are loaded yet. Ask the user to upload their pricing sheet before providing cost estimates.'}`;
+
+  // Build messages array for Claude API
+  const messages = [];
+  
+  // Add conversation history (already in correct format: {role, content})
+  if (conversationHistory.length > 0) {
+    messages.push(...conversationHistory);
+  }
+  
+  // Add current message with context if provided
+  let currentMessage = message;
+  if (proposalContext) {
+    // Add structured context to the message
+    const contextText = `\n\n**Current Proposal Context:**\n${JSON.stringify(proposalContext, null, 2)}`;
+    currentMessage = message + contextText;
+  }
+  
+  messages.push({
+    role: 'user',
+    content: currentMessage
+  });
+
+  // Use processWithClaude but with messages array
+  if (!claude) {
+    throw new Error('Claude service not configured - ANTHROPIC_API_KEY missing');
+  }
+
+  try {
+    const response = await claude.messages.create({
+      model: aiConfig.defaultChatModel,
+      max_tokens: aiConfig.claude.maxTokens,
+      temperature: aiConfig.claude.temperature,
+      system: systemPrompt,
+      messages: messages
+    });
+
+    return response.content[0].text;
+  } catch (error) {
+    logger.error('Error in Claude chat:', error);
+    throw error;
+  }
 };
 
 export default {

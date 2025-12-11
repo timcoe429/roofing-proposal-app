@@ -5,12 +5,10 @@ import toast from 'react-hot-toast';
 
 // Components
 import Header from '../components/Layout/Header';
-import Navigation from '../components/Layout/Navigation';
 
 import AIAssistant from '../components/AI/AIAssistant';
-// PricingManager moved to Dashboard
-import ProposalPreview from '../components/Preview/ProposalPreview';
-import ClientInfoTab from '../components/ProjectDetails/ClientInfoTab';
+import LivePreviewPanel from '../components/Preview/LivePreviewPanel';
+import { exportProposalToCSV } from '../utils/csvExporter';
 
 // Services
 import api from '../services/api';
@@ -24,8 +22,6 @@ const ProposalEditor = () => {
   const queryClient = useQueryClient();
   const isNewProposal = !id;
   
-  const [activeTab, setActiveTab] = useState('client');
-  const [isDetailedMode, setIsDetailedMode] = useState(true);
   const [proposalData, setProposalData] = useState({
     clientName: '',
     clientEmail: '',
@@ -61,28 +57,6 @@ const ProposalEditor = () => {
     uploadedFiles: []
   });
 
-  // Load company data from localStorage
-  const getCompanyData = () => {
-    const saved = localStorage.getItem('companyData');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return {
-      name: 'Your Company Name',
-      address: 'Company Address',
-      phone: 'Company Phone',
-      email: 'Company Email',
-      website: 'Company Website',
-      license: 'License Number',
-      insurance: 'Insurance Policy',
-      logo: null,
-      primaryColor: '#2563eb',
-      termsConditionsUrl: '',
-      privacyPolicyUrl: ''
-    };
-  };
-
-  const [companyData, setCompanyData] = useState(getCompanyData);
   const [lastSavedData, setLastSavedData] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -156,41 +130,6 @@ const ProposalEditor = () => {
     }
   });
 
-  // Generate PDF mutation
-  const generatePdfMutation = useMutation({
-    mutationFn: () => {
-      return api.generatePdf(id, { isDetailed: isDetailedMode });
-    },
-    onSuccess: (pdfBlob) => {
-      if (!pdfBlob) {
-        toast.error('No PDF data received');
-        return;
-      }
-      
-      toast.success('PDF generated and downloaded!');
-      
-      // Create blob URL and trigger download
-      const blob = new Blob([pdfBlob], { type: 'application/pdf' });
-      
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `proposal-${proposalData.clientName || 'client'}-${Date.now()}.pdf`;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-    },
-    onError: (error) => {
-      toast.error('Failed to generate PDF');
-      console.error('PDF generation error:', error.message);
-    }
-  });
 
   const handleSave = useCallback(async (isAutoSave = false) => {
     console.log('handleSave called with proposalData:', proposalData);
@@ -260,47 +199,6 @@ const ProposalEditor = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  const handleGeneratePdf = async () => {
-    if (!proposalData.clientName) {
-      toast.error('Please add client information first');
-      return;
-    }
-    
-    // If it's a new proposal, save it first
-    if (isNewProposal) {
-      try {
-        const savedProposal = await saveMutation.mutateAsync(proposalData);
-        // Use the saved proposal ID for PDF generation
-        api.generatePdf(savedProposal.id, { isDetailed: isDetailedMode }).then(pdfBlob => {
-          toast.success('PDF generated and downloaded!');
-          
-          const blob = new Blob([pdfBlob], { type: 'application/pdf' });
-          
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `proposal-${proposalData.clientName || 'client'}-${Date.now()}.pdf`;
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          
-          // Cleanup
-          setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-          }, 100);
-        }).catch(error => {
-          toast.error('Failed to generate PDF');
-          console.error('PDF generation error:', error.message);
-        });
-      } catch (error) {
-        toast.error('Please save the proposal first');
-        return;
-      }
-    } else {
-      generatePdfMutation.mutate();
-    }
-  };
 
   const updateProposalData = (section, data) => {
     setProposalData(prev => ({
@@ -327,53 +225,41 @@ const ProposalEditor = () => {
     );
   }
 
+  const handleExportCSV = () => {
+    try {
+      exportProposalToCSV(proposalData);
+      toast.success('CSV exported successfully!');
+    } catch (error) {
+      console.error('CSV export error:', error);
+      toast.error('Failed to export CSV');
+    }
+  };
+
   return (
     <div className="proposal-workspace">
-      <div className="workspace-content">
-        {/* AI Chat Sidebar - Always Visible */}
-        <div className="ai-sidebar">
+      <div className="workspace-header">
+        <Header 
+          onSave={() => handleSave(false)}
+          isSaving={saveMutation.isLoading}
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
+      </div>
+      
+      <div className="workspace-content split-pane">
+        {/* Chat Panel - 60% */}
+        <div className="chat-panel">
           <AIAssistant 
             proposalData={proposalData}
             onUpdateProposal={setProposalData}
-            onTabChange={setActiveTab}
           />
         </div>
         
-        {/* Main Content Area */}
-        <div className="main-content">
-          <div className="content-header">
-            <Header 
-              onSave={() => handleSave(false)}
-              onGeneratePdf={handleGeneratePdf}
-              isSaving={saveMutation.isLoading}
-              isGeneratingPdf={generatePdfMutation.isLoading}
-              hasUnsavedChanges={hasUnsavedChanges}
-            />
-            <Navigation 
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              proposalData={proposalData}
-            />
-          </div>
-          
-          <div className="content-body">
-            {activeTab === 'preview' && (
-              <ProposalPreview
-                proposalData={proposalData}
-                companyData={companyData}
-                isDetailedMode={isDetailedMode}
-                onDetailedModeChange={setIsDetailedMode}
-              />
-            )}
-            
-            {activeTab === 'client' && (
-              <ClientInfoTab
-                proposalData={proposalData}
-                onUpdateProposal={setProposalData}
-                onSave={handleSave}
-              />
-            )}
-          </div>
+        {/* Preview Panel - 40% */}
+        <div className="preview-panel">
+          <LivePreviewPanel 
+            proposalData={proposalData}
+            onExportCSV={handleExportCSV}
+          />
         </div>
       </div>
     </div>

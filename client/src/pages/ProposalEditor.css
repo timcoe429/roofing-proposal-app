@@ -6,38 +6,35 @@
   overflow: hidden;
 }
 
-.workspace-content {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-  height: 100vh;
-}
-
-.ai-sidebar {
-  flex-shrink: 0;
-}
-
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.main-content.full-width {
-  width: 100%;
-}
-
-.content-header {
+.workspace-header {
   background: white;
   border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
+  z-index: 100;
 }
 
-.content-body {
+.workspace-content.split-pane {
   flex: 1;
-  overflow-y: auto;
-  padding: 20px;
+  display: grid;
+  grid-template-columns: 60% 40%;
+  min-height: 0;
+  height: calc(100vh - 60px); /* Adjust based on header height */
+  overflow: hidden;
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e5e7eb;
+  overflow: hidden;
+  background: #fff;
+}
+
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
 }
 
 .chat-layout {

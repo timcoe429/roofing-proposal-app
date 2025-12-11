@@ -3,6 +3,7 @@ import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign, MapP
 import api from '../../services/api';
 import { getLocationContext, getQuickActionsForLocation } from '../../services/locationService';
 import { calculations } from '../../utils/calculations';
+import { getValidationReport, compareAICalculation } from '../../utils/mathValidator';
 import './AIAssistant.css';
 
 const BASE_QUICK_ACTIONS = [
@@ -207,32 +208,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const handleSendMessage = async (message = inputValue) => {
     if (!message.trim() && pastedImages.length === 0) return;
 
-    // Check if project details are complete
-    const isProjectComplete = proposalData.clientName && 
-                             proposalData.propertyAddress && 
-                             proposalData.projectType && 
-                             proposalData.materialType;
-
-    if (!isProjectComplete) {
-      const incompleteMessage = {
-        id: Date.now(),
-        type: 'assistant',
-        content: "👋 Hi! I'd love to help, but I need some basic project information first.\n\nPlease complete the **Project Details** tab (it should show a red indicator) with:\n• Client name and property address\n• Project type (replacement, repair, etc.)\n• Material type preference\n\nOnce that's filled out, I'll have all the context I need to provide accurate estimates and recommendations! 🎯",
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, {
-        id: Date.now() - 1,
-        type: 'user',
-        content: message,
-        timestamp: new Date()
-      }, incompleteMessage]);
-      
-      setInputValue('');
-      setPastedImages([]);
-      return;
-    }
-
     const userMessage = {
       id: Date.now(),
       type: 'user',
@@ -257,63 +232,56 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     }
 
     try {
-      // Get conversation history for context
+      // Get conversation history for context - include both user and assistant messages
       const conversationHistory = messages
-        .filter(msg => msg.type === 'user')
-        .map(msg => ({ role: 'user', content: msg.content }))
-        .slice(-5); // Last 5 user messages for context
+        .filter(msg => msg.type === 'user' || msg.type === 'assistant')
+        .map(msg => ({ 
+          role: msg.type === 'user' ? 'user' : 'assistant', 
+          content: msg.content 
+        }))
+        .slice(-10); // Last 10 messages (5 exchanges) for context
 
-      // Get full location context with building codes
-      const fullAddress = `${proposalData.propertyAddress}, ${proposalData.propertyCity}, ${proposalData.propertyState} ${proposalData.propertyZip}`;
-      const locationContext = getLocationContext(fullAddress);
+      // Build structured proposal context
+      const fullAddress = `${proposalData.propertyAddress || ''}, ${proposalData.propertyCity || ''}, ${proposalData.propertyState || ''} ${proposalData.propertyZip || ''}`.trim();
+      const locationContext = fullAddress ? getLocationContext(fullAddress) : null;
       
-      // Build comprehensive context for roofing expert AI
-      let expertContext = `
-
-=== ROOFING PROJECT CONTEXT ===
-Property Address: ${fullAddress}
-Client: ${proposalData.clientName}
-Project Type: Roof replacement/repair
-
-=== CURRENT PROJECT DATA ===
-${JSON.stringify(proposalData, null, 2)}
-
-=== CURRENT PRICING SETTINGS ===
-Overhead Percentage: ${proposalData.overheadPercent || 15}%
-Profit Percentage: ${proposalData.profitPercent || 20}%
-Discount Amount: $${proposalData.discountAmount || 0}`;
-
-      if (locationContext) {
-        expertContext += `
-
-=== LOCATION & BUILDING CODES ===
-State: ${locationContext.state}
-City: ${locationContext.city || 'Not specified'}
-Building Codes: ${locationContext.buildingCodes}
-Climate Zone: ${locationContext.climateZone}
-
-Common Requirements:
-${locationContext.commonRequirements.map(req => `- ${req}`).join('\n')}`;
-
-        if (locationContext.citySpecific) {
-          expertContext += `
-
-City-Specific Requirements:
-${locationContext.citySpecific.specialRequirements?.map(req => `- ${req}`).join('\n') || 'None specified'}
-
-Recommended Materials:
-${locationContext.citySpecific.recommendedMaterials?.map(mat => `- ${mat}`).join('\n') || 'Standard materials'}`;
-        }
-      }
-
-      // Add pricing data
-      const pricingContext = getPricingContext();
-      expertContext += pricingContext;
-
-      // Let backend handle system prompts - just provide context data
-      expertContext += `\n\nCURRENT PROPOSAL DATA: ${JSON.stringify(proposalData, null, 2)}`;
+      const proposalContext = {
+        client: {
+          name: proposalData.clientName || null,
+          email: proposalData.clientEmail || null,
+          phone: proposalData.clientPhone || null,
+          address: proposalData.clientAddress || null
+        },
+        property: {
+          address: proposalData.propertyAddress || null,
+          city: proposalData.propertyCity || null,
+          state: proposalData.propertyState || null,
+          zip: proposalData.propertyZip || null,
+          fullAddress: fullAddress || null,
+          type: proposalData.propertyType || null
+        },
+        project: {
+          type: proposalData.projectType || null,
+          materialType: proposalData.materialType || null,
+          urgency: proposalData.urgency || null,
+          timeline: proposalData.timeline || null,
+          warranty: proposalData.warranty || null,
+          notes: proposalData.notes || null
+        },
+        measurements: proposalData.measurements || {},
+        materials: proposalData.materials || [],
+        pricing: {
+          overheadPercent: proposalData.overheadPercent || 15,
+          profitPercent: proposalData.profitPercent || 20,
+          discountAmount: proposalData.discountAmount || 0,
+          laborHours: proposalData.laborHours || 0,
+          laborRate: proposalData.laborRate || 75
+        },
+        location: locationContext || null
+      };
 
       let response;
+      let userMessageText = message;
       
       // If images are included, use GPT Vision first, then Claude for analysis
       if (pastedImages.length > 0) {
@@ -324,24 +292,19 @@ ${locationContext.citySpecific.recommendedMaterials?.map(mat => `- ${mat}`).join
           // Use GPT Vision to analyze the images
           const visionResponse = await api.processImages(imageBase64Array, 'roofing_analysis');
           
-          // Combine vision analysis with user message and expert context
-          const combinedMessage = `${message}
+          // Add vision analysis to the message
+          userMessageText = `${message}\n\n[Image analysis: ${visionResponse.analysis || visionResponse}]`;
 
-=== IMAGE ANALYSIS FROM GPT VISION ===
-${visionResponse.analysis || visionResponse}
-
-${expertContext}`;
-
-          // Send combined analysis to Claude
-          response = await api.chatWithAI(combinedMessage, conversationHistory);
+          // Send to Claude with structured context
+          response = await api.chatWithAI(userMessageText, conversationHistory, proposalContext);
         } catch (visionError) {
           console.error('Vision analysis failed:', visionError);
           // Fallback to text-only if vision fails
-          response = await api.chatWithAI(message + expertContext + '\n\n(Note: Image analysis failed, proceeding with text only)', conversationHistory);
+          response = await api.chatWithAI(userMessageText + '\n\n(Note: Image analysis failed, proceeding with text only)', conversationHistory, proposalContext);
         }
       } else {
-        // Text-only message
-        response = await api.chatWithAI(message + expertContext, conversationHistory);
+        // Text-only message with structured context
+        response = await api.chatWithAI(userMessageText, conversationHistory, proposalContext);
       }
       
       const assistantMessage = {
@@ -365,6 +328,32 @@ ${expertContext}`;
         const detailedData = await parseAIResponseWithAI(response.response);
         if (Object.keys(detailedData).length > 0) {
           console.log('✅ Applying detailed AI parsing results:', detailedData);
+          
+          // Update proposal with new data
+          const updatedProposal = {
+            ...proposalData,
+            ...detailedData
+          };
+          
+          // Validate calculations after update
+          const validation = getValidationReport(updatedProposal);
+          
+          if (!validation.isValid || validation.hasWarnings) {
+            console.warn('⚠️ Validation issues found:', validation);
+            
+            // Add validation message to chat if there are significant issues
+            if (validation.errors.length > 0) {
+              const validationMessage = {
+                id: Date.now() + 2,
+                type: 'assistant',
+                content: `⚠️ **Math Validation Alert:**\n\nI found ${validation.errors.length} calculation error(s):\n${validation.errors.map(e => `- ${e.message || e.type}`).join('\n')}\n\nPlease review the calculations. I'll recalculate if needed.`,
+                timestamp: new Date(),
+                isValidationWarning: true
+              };
+              setMessages(prev => [...prev, validationMessage]);
+            }
+          }
+          
           onUpdateProposal(prev => ({
             ...prev,
             ...detailedData

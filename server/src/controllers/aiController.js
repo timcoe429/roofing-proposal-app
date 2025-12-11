@@ -9,7 +9,7 @@ import {
 // Chat with Claude AI
 export const chatWithAI = async (req, res) => {
   try {
-    const { message, conversationHistory = [] } = req.body;
+    const { message, conversationHistory = [], proposalContext = null } = req.body;
     
     if (!message || !message.trim()) {
       return res.status(400).json({ error: 'Message is required' });
@@ -17,7 +17,7 @@ export const chatWithAI = async (req, res) => {
 
     logger.info('Processing chat message with Claude AI');
 
-    const response = await chatWithClaude(message, conversationHistory);
+    const response = await chatWithClaude(message, conversationHistory, proposalContext);
     
     res.json({
       success: true,
