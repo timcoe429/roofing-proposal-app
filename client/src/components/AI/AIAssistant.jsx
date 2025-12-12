@@ -564,6 +564,39 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     return null;
   };
 
+  // Helper function to detect materials to remove from AI response
+  const detectRemovals = (response, existingMaterials) => {
+    const removals = [];
+    const removalKeywords = /\b(remove|delete|removed|deleted|take out|drop|exclude|eliminate|get rid of)\b/i;
+    
+    if (!removalKeywords.test(response)) {
+      return removals; // No removal keywords found
+    }
+    
+    // Extract material names mentioned with removal keywords
+    const sentences = response.split(/[.!?]\s+/);
+    for (const sentence of sentences) {
+      if (removalKeywords.test(sentence)) {
+        // Try to find material names in this sentence
+        for (const material of existingMaterials) {
+          if (material.name) {
+            const materialWords = material.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+            const sentenceLower = sentence.toLowerCase();
+            
+            // Check if most key words from material name appear in the removal sentence
+            const matchingWords = materialWords.filter(mw => sentenceLower.includes(mw));
+            if (matchingWords.length >= Math.max(2, Math.ceil(materialWords.length * 0.6))) {
+              removals.push(material.name);
+              console.log(`🗑️ Detected removal: ${material.name}`);
+            }
+          }
+        }
+      }
+    }
+    
+    return removals;
+  };
+
   // Parse AI response with AI for detailed extraction
   const parseAIResponseWithAI = async (response) => {
     try {
@@ -653,13 +686,41 @@ Return ONLY the JSON object, no other text.`;
         
         const updates = {};
         
-        // Process materials and labor - UPDATE existing ones, ADD new ones
+        // Process materials and labor - UPDATE existing ones, ADD new ones, REMOVE ones
         const existingMaterials = proposalData.materials || [];
         const existingStructured = proposalData.structuredPricing || { materials: [], labor: [], additionalCosts: [] };
         
-        // Process materials - check for updates vs additions
-        const updatedMaterials = [...existingMaterials];
-        const updatedStructuredMaterials = [...(existingStructured.materials || [])];
+        // FIRST: Detect removals from the AI response text
+        const removals = detectRemovals(response, existingMaterials);
+        
+        // Start with existing materials, then filter out removals
+        let updatedMaterials = existingMaterials.filter(m => {
+          if (!m.name) return true;
+          const shouldRemove = removals.some(removalName => {
+            const match = matchMaterialByName(removalName, [m]);
+            return match !== null;
+          });
+          if (shouldRemove) {
+            console.log(`🗑️ Removing material: ${m.name}`);
+            return false;
+          }
+          return true;
+        });
+        
+        let updatedStructuredMaterials = (existingStructured.materials || []).filter(m => {
+          if (!m.name) return true;
+          const shouldRemove = removals.some(removalName => {
+            const match = matchMaterialByName(removalName, [m]);
+            return match !== null;
+          });
+          if (shouldRemove) {
+            console.log(`🗑️ Removing structured material: ${m.name}`);
+            return false;
+          }
+          return true;
+        });
+        
+        // THEN: Process updates and additions (existing logic continues...)
         
         if (parsedData.materials && parsedData.materials.length > 0) {
           parsedData.materials.forEach(newMaterial => {

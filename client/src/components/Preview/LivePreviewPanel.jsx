@@ -26,6 +26,7 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
       if (error.type === 'total_mismatch') {
         const storedTotal = error.stored || 0;
         const calculatedTotal = error.calculated || 0;
+        const difference = error.difference || Math.abs(storedTotal - calculatedTotal);
         
         // If stored total is suspiciously low (< $1000) and calculated is much higher,
         // this is likely stale data during an update, not a real error
@@ -36,6 +37,15 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
         // Also filter if stored total is less than 10% of calculated (indicates stale data)
         if (calculatedTotal > 0 && storedTotal < calculatedTotal * 0.1) {
           return false; // Filter out this error
+        }
+        
+        // NEW: If difference is large (> 20% of calculated) but materials exist,
+        // this is likely stale totalAmount that hasn't been recalculated yet
+        if (calculatedTotal > 0 && difference > calculatedTotal * 0.2) {
+          const hasMaterials = (proposalData.materials || []).length > 0;
+          if (hasMaterials) {
+            return false; // Filter out - likely stale totalAmount
+          }
         }
       }
       return true; // Keep all other errors
