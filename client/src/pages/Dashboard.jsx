@@ -6,16 +6,37 @@ import toast from 'react-hot-toast';
 import CompanySettings from '../components/Branding/CompanySettings';
 import ApiTester from '../components/Test/ApiTester';
 import CompanyPricing from '../components/Pricing/CompanyPricing';
+import UserManagement from '../components/Admin/UserManagement';
 import api from '../services/api';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : {};
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showApiTester, setShowApiTester] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
+
+  // Fetch current user to get role and companyId
+  const { data: currentUserData } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: api.getCurrentUser,
+    onSuccess: (response) => {
+      if (response?.user) {
+        const updatedUser = { ...user, ...response.user };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    },
+    refetchOnWindowFocus: false
+  });
+
+  const isAdmin = user?.role === 'admin';
 
   // Fetch proposals
   const { data: proposals = [], isLoading: proposalsLoading, error: proposalsError } = useQuery({
@@ -126,7 +147,12 @@ export default function Dashboard() {
             <p>{companyData.name || 'Your Company'}</p>
           </div>
           <div className="header-actions">
-
+            {isAdmin && (
+              <button onClick={() => setShowUserManagement(true)} className="users-btn">
+                <Users size={18} />
+                User Management
+              </button>
+            )}
             <button onClick={() => setShowPricing(true)} className="pricing-btn">
               <DollarSign size={18} />
               Pricing Sheets
@@ -276,6 +302,17 @@ export default function Dashboard() {
                   companyData={companyData}
                   onCompanyDataChange={handleCompanyDataChange}
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User Management Modal */}
+        {showUserManagement && (
+          <div className="settings-modal-overlay" onClick={() => setShowUserManagement(false)}>
+            <div className="settings-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1200px' }}>
+              <div className="settings-modal-content" style={{ padding: 0 }}>
+                <UserManagement onClose={() => setShowUserManagement(false)} />
               </div>
             </div>
           </div>

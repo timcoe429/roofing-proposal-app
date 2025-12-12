@@ -15,10 +15,41 @@ const User = sequelize.define('User', {
   password: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  firstName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    field: 'firstName'
+  },
+  lastName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    field: 'lastName'
+  },
+  role: {
+    type: DataTypes.STRING,
+    defaultValue: 'contractor',
+    allowNull: false
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    field: 'isActive'
+  },
+  companyId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'companyId',
+    references: {
+      model: 'companies',
+      key: 'id'
+    }
   }
 }, {
   tableName: 'users',
-  timestamps: false
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 });
 
 export default User;

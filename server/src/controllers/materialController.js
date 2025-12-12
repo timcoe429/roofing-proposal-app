@@ -62,12 +62,17 @@ export const getMaterials = async (req, res) => {
   try {
     console.log('GET /api/materials - User:', req.user);
     
-    // For development - get first company if no user
-    let companyId;
-    if (req.user?.companyId) {
-      companyId = req.user.companyId;
-    } else {
-      console.log('No user/company in request, looking up first company...');
+    // Get companyId from user's companyId field
+    let companyId = req.user?.companyId;
+    
+    if (!companyId) {
+      // Fallback: get user's companyId from database
+      const user = await User.findByPk(req.user?.userId);
+      companyId = user?.companyId;
+    }
+    
+    if (!companyId) {
+      console.log('No companyId found for user, looking up first company...');
       const company = await Company.findOne();
       companyId = company?.id;
       console.log('Found company:', company?.id, company?.name);
@@ -93,12 +98,17 @@ export const createMaterial = async (req, res) => {
     console.log('POST /api/materials - Request body:', JSON.stringify(req.body, null, 2));
     console.log('User from request:', req.user);
     
-    // For development - get first company if no user
-    let companyId;
-    if (req.user?.companyId) {
-      companyId = req.user.companyId;
-    } else {
-      console.log('No user/company in request, looking up first company...');
+    // Get companyId from user's companyId field
+    let companyId = req.user?.companyId;
+    
+    if (!companyId) {
+      // Fallback: get user's companyId from database
+      const user = await User.findByPk(req.user?.userId);
+      companyId = user?.companyId;
+    }
+    
+    if (!companyId) {
+      console.log('No companyId found for user, looking up first company...');
       const company = await Company.findOne();
       companyId = company?.id;
       console.log('Found company:', company?.id, company?.name);

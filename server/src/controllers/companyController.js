@@ -6,16 +6,22 @@ export const getCompanySettings = async (req, res) => {
   try {
     console.log('GET /api/company/settings - User:', req.user);
     
-    // For development - get first company if no user
-    let userId = req.user?.id;
-    if (!userId) {
-      console.log('No user in request, looking up first user...');
-      const user = await User.findOne();
-      userId = user?.id;
-      console.log('Found user:', user?.id, user?.email);
+    // Get companyId from user's companyId field
+    let companyId = req.user?.companyId;
+    
+    if (!companyId) {
+      // Fallback: get user's companyId from database
+      const user = await User.findByPk(req.user?.userId);
+      companyId = user?.companyId;
     }
     
-    const company = await Company.findOne({ where: { userId } });
+    if (!companyId) {
+      console.log('No companyId found, looking up first company...');
+      const company = await Company.findOne();
+      companyId = company?.id;
+    }
+    
+    const company = await Company.findByPk(companyId);
     
     if (!company) {
       console.log('No company found, returning defaults');
@@ -48,22 +54,33 @@ export const updateCompanySettings = async (req, res) => {
     console.log('PUT /api/company/settings - Request body:', JSON.stringify(req.body, null, 2));
     console.log('PUT /api/company/settings - User:', req.user);
     
-    // For development - get first user if no user
-    let userId = req.user?.id;
-    if (!userId) {
-      console.log('No user in request, looking up first user...');
-      const user = await User.findOne();
-      userId = user?.id;
-      console.log('Found user:', user?.id, user?.email);
+    // Get companyId from user's companyId field
+    let companyId = req.user?.companyId;
+    
+    if (!companyId) {
+      // Fallback: get user's companyId from database
+      const user = await User.findByPk(req.user?.userId);
+      companyId = user?.companyId;
+    }
+    
+    if (!companyId) {
+      console.log('No companyId found, looking up first company...');
+      const company = await Company.findOne();
+      companyId = company?.id;
     }
     
     const [company, created] = await Company.findOrCreate({
-      where: { userId },
+      where: { id: companyId },
       defaults: {
-        userId,
+        userId: req.user?.userId,
         ...req.body
       }
     });
+    
+    // If company exists, update it
+    if (!created && companyId) {
+      await company.update(req.body);
+    }
     
     if (!created) {
       await company.update(req.body);

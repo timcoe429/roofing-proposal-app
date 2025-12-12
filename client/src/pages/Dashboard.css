@@ -37,6 +37,24 @@
   gap: 12px;
 }
 
+.users-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #7c3aed;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.users-btn:hover {
+  background: #6d28d9;
+}
+
 .settings-btn {
   display: flex;
   align-items: center;

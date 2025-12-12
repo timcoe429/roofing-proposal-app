@@ -14,9 +14,23 @@ export const createTables = async () => {
         "lastName" VARCHAR(255) NOT NULL,
         role VARCHAR(50) DEFAULT 'contractor',
         "isActive" BOOLEAN DEFAULT true,
+        "companyId" INTEGER REFERENCES companies(id),
         "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
+    `);
+    
+    // Add companyId column to existing users table if it doesn't exist
+    await sequelize.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS "companyId" INTEGER REFERENCES companies(id);
+    `);
+    
+    // Ensure role and isActive columns exist
+    await sequelize.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'contractor',
+      ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;
     `);
     
     console.log('Users table created successfully');

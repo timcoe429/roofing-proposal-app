@@ -67,7 +67,7 @@ export const createProposal = async (req, res) => {
     console.log('User from request:', req.user);
     
     // Resolve user/company when auth is disabled
-    let userId = req.user?.id;
+    let userId = req.user?.userId;
     let companyId = req.user?.companyId || req.body.companyId;
 
     if (!userId) {

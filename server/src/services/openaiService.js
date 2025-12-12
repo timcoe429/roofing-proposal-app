@@ -261,10 +261,21 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
     
     // Determine company ID (same logic as /api/materials/ai-pricing)
     let companyId = null;
+    
+    // Try to get companyId from proposalContext first
     if (proposalContext?.companyId) {
       companyId = proposalContext.companyId;
       logger.info(`🔍 [PRICING DEBUG] Using companyId from proposalContext: ${companyId}`);
-    } else {
+    } 
+    // If proposalContext has userId, get companyId from user's companyId field
+    else if (proposalContext?.userId) {
+      const User = (await import('../models/User.js')).default;
+      const user = await User.findByPk(proposalContext.userId);
+      companyId = user?.companyId || null;
+      logger.info(`🔍 [PRICING DEBUG] Using companyId from user record: ${companyId}`);
+    }
+    // Fallback: get first company
+    else {
       logger.info('🔍 [PRICING DEBUG] No companyId in proposalContext, looking up first company...');
       const company = await Company.findOne({ order: [['createdAt', 'ASC']] });
       companyId = company?.id || null;

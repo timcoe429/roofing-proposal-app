@@ -13,6 +13,7 @@ import visionRoutes from './routes/visionRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
 import companyRoutes from './routes/companyRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import testRoutes from './routes/testRoutes.js';
 import materialRoutes from './routes/materialRoutes.js';
@@ -68,6 +69,7 @@ app.use((req, res, next) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/proposals', proposalRoutes);
 app.use('/api/vision', visionRoutes);
 app.use('/api/pdf', pdfRoutes);

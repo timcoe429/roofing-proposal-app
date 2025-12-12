@@ -117,6 +117,13 @@ export const login = async (req, res) => {
       });
     }
 
+    // Check if user is active
+    if (user.isActive === false) {
+      return res.status(403).json({ 
+        error: 'Account is deactivated. Please contact an administrator.' 
+      });
+    }
+
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
@@ -127,7 +134,12 @@ export const login = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { 
+        userId: user.id, 
+        email: user.email,
+        role: user.role || 'contractor',
+        companyId: user.companyId || null
+      },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
@@ -135,7 +147,12 @@ export const login = async (req, res) => {
     // Return user data (without password) and token
     const userResponse = {
       id: user.id,
-      email: user.email
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role || 'contractor',
+      companyId: user.companyId,
+      isActive: user.isActive !== false
     };
 
     logger.info(`User logged in: ${email}`);
@@ -169,9 +186,22 @@ export const getCurrentUser = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Return user with role and companyId
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role || 'contractor',
+      isActive: user.isActive !== false,
+      companyId: user.companyId,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+
     res.json({
       success: true,
-      user
+      user: userResponse
     });
 
   } catch (error) {
@@ -341,7 +371,12 @@ export const refreshToken = async (req, res) => {
 
       // Generate new token
       const newToken = jwt.sign(
-        { userId: user.id, email: user.email },
+        { 
+          userId: user.id, 
+          email: user.email,
+          role: user.role || 'contractor',
+          companyId: user.companyId || null
+        },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '7d' }
       );

@@ -6,12 +6,9 @@ import api from '../services/api';
 import './Login.css';
 
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    name: '',
-    company: ''
+    password: ''
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -21,28 +18,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      let response;
-      if (isLogin) {
-        response = await api.login(formData);
-      } else {
-        // Split name into firstName and lastName for registration
-        const nameParts = formData.name.split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-        
-        response = await api.register({
-          email: formData.email,
-          password: formData.password,
-          firstName,
-          lastName,
-          companyName: formData.company
-        });
-      }
+      const response = await api.login(formData);
       
       if (response.token) {
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
-        toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
+        toast.success('Welcome back!');
         navigate('/');
       }
     } catch (error) {
@@ -70,49 +51,7 @@ export default function Login() {
           <p>AI-powered roofing proposals made simple</p>
         </div>
 
-        <div className="auth-toggle">
-          <button 
-            className={isLogin ? 'active' : ''} 
-            onClick={() => setIsLogin(true)}
-          >
-            Login
-          </button>
-          <button 
-            className={!isLogin ? 'active' : ''} 
-            onClick={() => setIsLogin(false)}
-          >
-            Sign Up
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="login-form">
-          {!isLogin && (
-            <>
-              <div className="form-group">
-                <User className="form-icon" />
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Full Name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <Building className="form-icon" />
-                <input
-                  type="text"
-                  name="company"
-                  placeholder="Company Name"
-                  value={formData.company}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </>
-          )}
-          
           <div className="form-group">
             <User className="form-icon" />
             <input
@@ -139,7 +78,7 @@ export default function Login() {
 
           <button type="submit" className="login-button" disabled={loading}>
             <LogIn className="button-icon" />
-            {loading ? 'Please wait...' : (isLogin ? 'Login' : 'Create Account')}
+            {loading ? 'Please wait...' : 'Login'}
           </button>
         </form>
 

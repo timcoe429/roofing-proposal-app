@@ -13,7 +13,8 @@ import { authenticateToken } from '../middleware/auth.js';
 const router = express.Router();
 
 // Public routes (no authentication required)
-router.post('/register', register);
+// Registration disabled - admin must create users via /api/admin/users
+// router.post('/register', register); // DISABLED - Admin-only user creation
 router.post('/login', login);
 router.post('/refresh', refreshToken);
 

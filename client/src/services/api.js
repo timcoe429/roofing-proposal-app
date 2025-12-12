@@ -190,6 +190,13 @@ const api = {
   login: (credentials) => apiClient.post('/auth/login', credentials),
   register: (userData) => apiClient.post('/auth/register', userData),
   getCurrentUser: () => apiClient.get('/auth/me'),
+  
+  // Admin endpoints
+  getAllUsers: () => apiClient.get('/admin/users'),
+  createUser: (userData) => apiClient.post('/admin/users', userData),
+  updateUser: (id, userData) => apiClient.put(`/admin/users/${id}`, userData),
+  deactivateUser: (id) => apiClient.delete(`/admin/users/${id}`),
+  resetUserPassword: (id, password) => apiClient.post(`/admin/users/${id}/reset-password`, { password }),
   updateProfile: (data) => apiClient.put('/auth/profile', data),
   changePassword: (data) => apiClient.put('/auth/change-password', data),
   refreshToken: () => apiClient.post('/auth/refresh'),
