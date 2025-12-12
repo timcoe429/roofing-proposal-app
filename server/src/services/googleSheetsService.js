@@ -35,12 +35,37 @@ export async function fetchGoogleSheetData(sheetUrl) {
     logger.info(`📊 Fetching data from Google Sheet ID: ${spreadsheetId}`);
     logger.info(`🔗 Original URL: ${sheetUrl}`);
 
-    // Fetch all data from the first sheet
-    const response = await sheets.spreadsheets.values.get({
-      auth: process.env.GOOGLE_SHEETS_API_KEY,
-      spreadsheetId: spreadsheetId,
-      range: 'A:Z', // Get all columns
-    });
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    const requestWithRetry = async (attempts = 3) => {
+      let lastError;
+      for (let i = 1; i <= attempts; i++) {
+        try {
+          // Fetch all data from the first sheet
+          return await sheets.spreadsheets.values.get({
+            auth: process.env.GOOGLE_SHEETS_API_KEY,
+            spreadsheetId: spreadsheetId,
+            range: 'A:Z', // Get all columns
+          });
+        } catch (err) {
+          lastError = err;
+          const code = err?.code || err?.response?.status;
+
+          // Don't retry permanent errors
+          if (code === 400 || code === 403 || code === 404) {
+            throw err;
+          }
+
+          // Retry transient errors (429 / 5xx / network-ish)
+          const delay = 400 * (2 ** (i - 1)) + Math.floor(Math.random() * 150);
+          logger.warn(`⚠️ Google Sheets fetch attempt ${i} failed (code: ${code || 'unknown'}). Retrying in ${delay}ms...`);
+          await sleep(delay);
+        }
+      }
+      throw lastError;
+    };
+
+    const response = await requestWithRetry(3);
 
     logger.info('📡 Google Sheets API response received');
     logger.info('Response status:', response.status);

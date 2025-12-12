@@ -10,10 +10,10 @@ npm install
 cd client && npm install
 cd ../server && npm install
 
-# Run in development
-npm run dev
-
-# Deploy to Railway
+# Production workflow (Railway)
+# This project is production-first: we test changes by deploying to Railway.
+git add .
+git commit -m "your message"
 git push origin main
 ```
 
@@ -85,8 +85,8 @@ roofing-proposal-app/
 ## 🔧 Development
 
 ```bash
-# Start development servers
-npm run dev
+# Note: This repo is run and tested on Railway (production-first).
+# Local scripts may exist, but our workflow is: push → Railway deploy → test in production.
 
 # Run client only
 npm run client:dev

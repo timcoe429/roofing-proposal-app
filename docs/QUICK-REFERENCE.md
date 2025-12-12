@@ -78,8 +78,9 @@ PUT    /api/company/pricing       // Update pricing
 
 ### Development
 ```bash
-# Start everything (client + server)
-npm run dev
+# Production-first workflow (Railway)
+# We don't rely on a separate local environment for testing.
+# Push to main → Railway auto-deploys → test in production.
 
 # Frontend only
 cd client && npm start

@@ -168,6 +168,7 @@ export const getActivePricingForAI = async (req, res) => {
     
     // Fetch actual pricing data from Google Sheets
     const pricingData = [];
+    const errors = [];
     
     for (const sheet of pricingSheets) {
       try {
@@ -207,6 +208,10 @@ export const getActivePricingForAI = async (req, res) => {
           console.log(`✅ Processed ${materials.length} materials from ${sheet.name}`);
         }
       } catch (error) {
+        errors.push({
+          sheetName: sheet?.name || 'Unknown',
+          message: error.message
+        });
         console.error(`Error processing pricing sheet ${sheet.name}:`, error);
       }
     }
@@ -216,6 +221,7 @@ export const getActivePricingForAI = async (req, res) => {
       companyId: companyId,
       pricingSheets: pricingData,
       totalSheets: pricingData.length,
+      errors,
       message: `Found ${pricingData.length} active pricing sheets with real material costs`
     });
     

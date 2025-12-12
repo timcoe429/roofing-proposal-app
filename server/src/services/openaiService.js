@@ -244,12 +244,34 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
   let pricingContext = '';
   try {
     const axios = (await import('axios')).default;
-    const baseURL = process.env.NODE_ENV === 'production' 
-      ? process.env.API_URL || 'http://localhost:3001'
-      : 'http://localhost:3001';
+    // Production (Railway): avoid hardcoding ports. Use loopback + PORT so the server can call itself reliably.
+    // You can override with INTERNAL_API_URL if needed.
+    const port = process.env.PORT || 3001;
+    const baseURL =
+      process.env.INTERNAL_API_URL ||
+      (process.env.NODE_ENV === 'production'
+        ? `http://127.0.0.1:${port}`
+        : 'http://127.0.0.1:3001');
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    const fetchPricingWithRetry = async (attempts = 3) => {
+      let lastErr;
+      for (let i = 1; i <= attempts; i++) {
+        try {
+          return await axios.get(`${baseURL}/api/materials/ai-pricing`, { timeout: 8000 });
+        } catch (err) {
+          lastErr = err;
+          // Exponential backoff with small jitter: 250ms, 750ms, 1750ms...
+          const delay = 250 * (2 ** (i - 1)) + Math.floor(Math.random() * 100);
+          await sleep(delay);
+        }
+      }
+      throw lastErr;
+    };
     
     console.log('🔍 Fetching real pricing data for AI...');
-    const pricingResponse = await axios.get(`${baseURL}/api/materials/ai-pricing`);
+    const pricingResponse = await fetchPricingWithRetry(3);
     
     if (pricingResponse.data.success && pricingResponse.data.pricingSheets.length > 0) {
       console.log(`✅ Found ${pricingResponse.data.pricingSheets.length} pricing sheets with real data`);

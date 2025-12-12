@@ -128,7 +128,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
 ## ✅ Testing Checklist
 
 ### Before Pushing Code
-- [ ] Test in development environment
+- [ ] Test in **production on Railway** (deploy, then verify in the live app)
 - [ ] Check console for errors
 - [ ] Verify API endpoints work
 - [ ] Test on different screen sizes
