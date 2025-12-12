@@ -910,10 +910,15 @@ Return ONLY the JSON object, no other text.`;
   const extractProposalData = (response) => {
     const updates = {};
     
-    // Extract client information
-    const addressMatch = response.match(/(?:Address|Property Address|Located at|Location).*?(\d+[^,\n]+(?:,\s*[^,\n]+)*)/i);
+    // Extract client information - more specific regex to avoid matching measurements like "6/12 pitch"
+    // Only match actual addresses (street numbers followed by street names with street type indicators)
+    const addressMatch = response.match(/(?:Address|Property Address|Located at|Location)[:\s]+(\d+\s+[A-Za-z0-9\s]+(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Place|Pl|Way|Circle|Cir|Apt|Apartment|Unit|Suite|#)[^,\n]*(?:,\s*[^,\n]+)*)/i);
     if (addressMatch) {
-      updates.propertyAddress = addressMatch[1].trim();
+      const address = addressMatch[1].trim();
+      // Only update if it looks like a real address (has street number followed by letters)
+      if (address.match(/\d+\s+[A-Za-z]/)) {
+        updates.propertyAddress = address;
+      }
     }
     
     // Extract client name - more flexible patterns

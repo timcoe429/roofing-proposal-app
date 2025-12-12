@@ -1,13 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import './Header.css';
 
 export default function Header({ 
   onSave, 
-  onGeneratePdf, 
   isSaving = false, 
-  isGeneratingPdf = false,
   hasUnsavedChanges = false 
 }) {
   const navigate = useNavigate();
@@ -47,19 +45,6 @@ export default function Header({
               <Save size={18} />
             )}
             {isSaving ? 'Saving...' : 'Save Draft'}
-          </button>
-          
-          <button 
-            onClick={onGeneratePdf}
-            disabled={isGeneratingPdf}
-            className="pdf-button"
-          >
-            {isGeneratingPdf ? (
-              <Loader2 size={18} className="spinning" />
-            ) : (
-              <FileText size={18} />
-            )}
-            {isGeneratingPdf ? 'Generating...' : 'Generate PDF'}
           </button>
         </div>
       </div>

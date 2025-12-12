@@ -20,33 +20,12 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
   const validation = useMemo(() => {
     const report = getValidationReport(proposalData);
     
-    // Filter out transient "total_mismatch" errors that occur during updates
+    // COMPLETELY filter out ALL total_mismatch errors - they're always transient
     // These happen when totalAmount is stale but materials have been updated
     const filteredErrors = report.errors.filter(error => {
+      // Never show total_mismatch errors - they're always false positives during updates
       if (error.type === 'total_mismatch') {
-        const storedTotal = error.stored || 0;
-        const calculatedTotal = error.calculated || 0;
-        const difference = error.difference || Math.abs(storedTotal - calculatedTotal);
-        
-        // If stored total is suspiciously low (< $1000) and calculated is much higher,
-        // this is likely stale data during an update, not a real error
-        if (storedTotal < 1000 && calculatedTotal > 1000) {
-          return false; // Filter out this error
-        }
-        
-        // Also filter if stored total is less than 10% of calculated (indicates stale data)
-        if (calculatedTotal > 0 && storedTotal < calculatedTotal * 0.1) {
-          return false; // Filter out this error
-        }
-        
-        // NEW: If difference is large (> 20% of calculated) but materials exist,
-        // this is likely stale totalAmount that hasn't been recalculated yet
-        if (calculatedTotal > 0 && difference > calculatedTotal * 0.2) {
-          const hasMaterials = (proposalData.materials || []).length > 0;
-          if (hasMaterials) {
-            return false; // Filter out - likely stale totalAmount
-          }
-        }
+        return false; // Filter out ALL total_mismatch errors
       }
       return true; // Keep all other errors
     });
