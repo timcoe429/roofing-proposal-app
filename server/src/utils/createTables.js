@@ -33,6 +33,37 @@ export const createTables = async () => {
       ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;
     `);
     
+    // Ensure createdAt and updatedAt columns exist
+    await sequelize.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+    `);
+    
+    // Drop old trigger if it exists (it might reference updated_at instead of updatedAt)
+    await sequelize.query(`
+      DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+    `);
+    
+    // Create or replace the trigger function to use camelCase column name
+    await sequelize.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW."updatedAt" = NOW();
+        RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+    `);
+    
+    // Create trigger for users table using camelCase column name
+    await sequelize.query(`
+      CREATE TRIGGER update_users_updated_at 
+      BEFORE UPDATE ON users
+      FOR EACH ROW 
+      EXECUTE FUNCTION update_updated_at_column();
+    `);
+    
     console.log('Users table created successfully');
     
     // Create companies table after users table exists
