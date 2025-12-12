@@ -37,6 +37,13 @@ export default function Dashboard() {
   });
 
   const isAdmin = user?.role === 'admin';
+  
+  // Debug: Log user role to console
+  useEffect(() => {
+    console.log('Current user:', user);
+    console.log('User role:', user?.role);
+    console.log('Is admin:', isAdmin);
+  }, [user, isAdmin]);
 
   // Fetch proposals
   const { data: proposals = [], isLoading: proposalsLoading, error: proposalsError } = useQuery({
@@ -60,7 +67,6 @@ export default function Dashboard() {
 
   // Calculate stats from proposals
   const totalProposals = proposals.length;
-  const proposalsAccepted = proposals.filter(p => p.status === 'accepted').length;
   const thisMonthRevenue = proposals
     .filter(p => {
       const createdDate = new Date(p.createdAt);
@@ -143,7 +149,7 @@ export default function Dashboard() {
       <header className="dashboard-header">
         <div className="header-content">
           <div className="header-left">
-            <h1>Welcome back, {user.name || 'User'}!</h1>
+            <h1>Welcome back, {user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email || 'User'}!</h1>
             <p>{companyData.name || 'Your Company'}</p>
           </div>
           <div className="header-actions">
@@ -157,10 +163,12 @@ export default function Dashboard() {
               <DollarSign size={18} />
               Pricing Sheets
             </button>
-            <button onClick={() => setShowSettings(true)} className="settings-btn">
-              <Settings size={18} />
-              Company Settings
-            </button>
+            {isAdmin && (
+              <button onClick={() => setShowSettings(true)} className="settings-btn">
+                <Settings size={18} />
+                Company Settings
+              </button>
+            )}
             <button onClick={handleLogout} className="logout-btn">
               <LogOut size={18} />
               Logout
@@ -178,16 +186,6 @@ export default function Dashboard() {
             <div className="stat-content">
               <h3>Total Proposals</h3>
               <p className="stat-number">{proposalsLoading ? '...' : totalProposals}</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon clients">
-              <Users size={24} />
-            </div>
-            <div className="stat-content">
-              <h3>Proposals Accepted</h3>
-              <p className="stat-number">{proposalsLoading ? '...' : proposalsAccepted}</p>
             </div>
           </div>
 
