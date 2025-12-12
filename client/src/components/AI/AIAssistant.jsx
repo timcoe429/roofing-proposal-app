@@ -525,6 +525,45 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     return actions;
   };
 
+  // Helper function to match materials by name (fuzzy matching)
+  const matchMaterialByName = (newName, existingMaterials) => {
+    if (!existingMaterials || existingMaterials.length === 0) return null;
+    
+    const normalizedNewName = newName.toLowerCase().trim();
+    
+    // First try exact match (case-insensitive)
+    let match = existingMaterials.find(m => 
+      m.name && m.name.toLowerCase().trim() === normalizedNewName
+    );
+    if (match) return match;
+    
+    // Try fuzzy matching - check if new name contains key words from existing materials
+    // or vice versa (handles variations like "Grace Ice and Water Shield" vs "Ice & Water Shield")
+    const newWords = normalizedNewName.split(/\s+/).filter(w => w.length > 2);
+    
+    for (const existing of existingMaterials) {
+      if (!existing.name) continue;
+      const existingName = existing.name.toLowerCase().trim();
+      const existingWords = existingName.split(/\s+/).filter(w => w.length > 2);
+      
+      // Check if most key words match (at least 60% match)
+      const matchingWords = newWords.filter(nw => 
+        existingWords.some(ew => ew.includes(nw) || nw.includes(ew))
+      );
+      
+      if (matchingWords.length >= Math.max(2, Math.ceil(newWords.length * 0.6))) {
+        return existing;
+      }
+      
+      // Also check if one name contains the other (handles abbreviations)
+      if (normalizedNewName.includes(existingName) || existingName.includes(normalizedNewName)) {
+        return existing;
+      }
+    }
+    
+    return null;
+  };
+
   // Parse AI response with AI for detailed extraction
   const parseAIResponseWithAI = async (response) => {
     try {
@@ -556,12 +595,15 @@ Extract ONLY new/modified items and return a JSON object with this structure:
 }
 
 CRITICAL EXTRACTION RULES:
+- If the user asks to CHANGE or UPDATE an existing material's price, include that material with the NEW price
+- If the user asks to CHANGE quantity, include the material with the NEW quantity
 - ALWAYS include overheadPercent: 15 and profitPercent: 20
 - ALWAYS extract totalAmount if any final pricing is mentioned
 - Extract ALL materials, labor, permits, disposal costs mentioned
 - Include timeline, warranty, and any project details
 - Extract brand recommendations and specifications
 - Materials and labor should be base costs BEFORE overhead/profit
+- When updating prices, preserve the existing quantity unless explicitly changed
 
 AUTO-NAVIGATION TRIGGERS:
 - If complete estimate provided, this will auto-navigate to preview tab
@@ -611,21 +653,123 @@ Return ONLY the JSON object, no other text.`;
         
         const updates = {};
         
-        // Combine materials and labor for backward compatibility
-        const allItems = [...(parsedData.materials || []), ...(parsedData.labor || [])];
-        if (allItems.length > 0) {
-          // PRESERVE existing materials - only add new ones
-          const existingMaterials = proposalData.materials || [];
-          updates.materials = [...existingMaterials, ...allItems];
+        // Process materials and labor - UPDATE existing ones, ADD new ones
+        const existingMaterials = proposalData.materials || [];
+        const existingStructured = proposalData.structuredPricing || { materials: [], labor: [], additionalCosts: [] };
+        
+        // Process materials - check for updates vs additions
+        const updatedMaterials = [...existingMaterials];
+        const updatedStructuredMaterials = [...(existingStructured.materials || [])];
+        
+        if (parsedData.materials && parsedData.materials.length > 0) {
+          parsedData.materials.forEach(newMaterial => {
+            // Try to find existing material by name
+            const existingMatch = matchMaterialByName(newMaterial.name, existingMaterials);
+            const existingStructuredMatch = matchMaterialByName(newMaterial.name, existingStructured.materials || []);
+            
+            if (existingMatch) {
+              // UPDATE existing material
+              console.log(`🔄 Updating existing material: ${newMaterial.name}`);
+              const index = updatedMaterials.findIndex(m => m.id === existingMatch.id);
+              if (index >= 0) {
+                // Preserve quantity if not explicitly changed, preserve other fields
+                const updatedMaterial = {
+                  ...existingMatch,
+                  ...newMaterial,
+                  id: existingMatch.id, // Keep original ID
+                  quantity: newMaterial.quantity !== undefined ? newMaterial.quantity : existingMatch.quantity,
+                  // Recalculate total if unitPrice or quantity changed
+                  total: (newMaterial.unitPrice !== undefined ? newMaterial.unitPrice : existingMatch.unitPrice) * 
+                         (newMaterial.quantity !== undefined ? newMaterial.quantity : existingMatch.quantity)
+                };
+                updatedMaterials[index] = updatedMaterial;
+              }
+            } else {
+              // ADD new material
+              console.log(`➕ Adding new material: ${newMaterial.name}`);
+              updatedMaterials.push(newMaterial);
+            }
+            
+            // Same for structured pricing
+            if (existingStructuredMatch) {
+              const structuredIndex = updatedStructuredMaterials.findIndex(m => m.id === existingStructuredMatch.id);
+              if (structuredIndex >= 0) {
+                const updatedStructuredMaterial = {
+                  ...existingStructuredMatch,
+                  ...newMaterial,
+                  id: existingStructuredMatch.id,
+                  quantity: newMaterial.quantity !== undefined ? newMaterial.quantity : existingStructuredMatch.quantity,
+                  total: (newMaterial.unitPrice !== undefined ? newMaterial.unitPrice : existingStructuredMatch.unitPrice) * 
+                         (newMaterial.quantity !== undefined ? newMaterial.quantity : existingStructuredMatch.quantity)
+                };
+                updatedStructuredMaterials[structuredIndex] = updatedStructuredMaterial;
+              }
+            } else {
+              updatedStructuredMaterials.push(newMaterial);
+            }
+          });
         }
         
-        // Store structured data - PRESERVE existing structured data
+        // Process labor - same logic
+        const updatedStructuredLabor = [...(existingStructured.labor || [])];
+        if (parsedData.labor && parsedData.labor.length > 0) {
+          parsedData.labor.forEach(newLabor => {
+            const existingMatch = matchMaterialByName(newLabor.name, existingStructured.labor || []);
+            if (existingMatch) {
+              console.log(`🔄 Updating existing labor: ${newLabor.name}`);
+              const index = updatedStructuredLabor.findIndex(l => l.id === existingMatch.id);
+              if (index >= 0) {
+                const updatedLabor = {
+                  ...existingMatch,
+                  ...newLabor,
+                  id: existingMatch.id,
+                  quantity: newLabor.quantity !== undefined ? newLabor.quantity : existingMatch.quantity,
+                  total: (newLabor.unitPrice !== undefined ? newLabor.unitPrice : existingMatch.unitPrice) * 
+                         (newLabor.quantity !== undefined ? newLabor.quantity : existingMatch.quantity)
+                };
+                updatedStructuredLabor[index] = updatedLabor;
+              }
+            } else {
+              console.log(`➕ Adding new labor: ${newLabor.name}`);
+              updatedStructuredLabor.push(newLabor);
+              // Also add to materials array for backward compatibility
+              updatedMaterials.push(newLabor);
+            }
+          });
+        }
+        
+        // Process additional costs
+        const updatedAdditionalCosts = [...(existingStructured.additionalCosts || [])];
+        if (parsedData.additionalCosts && parsedData.additionalCosts.length > 0) {
+          parsedData.additionalCosts.forEach(newCost => {
+            const existingMatch = matchMaterialByName(newCost.name, existingStructured.additionalCosts || []);
+            if (existingMatch) {
+              console.log(`🔄 Updating existing additional cost: ${newCost.name}`);
+              const index = updatedAdditionalCosts.findIndex(c => c.id === existingMatch.id);
+              if (index >= 0) {
+                updatedAdditionalCosts[index] = {
+                  ...existingMatch,
+                  ...newCost,
+                  id: existingMatch.id
+                };
+              }
+            } else {
+              console.log(`➕ Adding new additional cost: ${newCost.name}`);
+              updatedAdditionalCosts.push(newCost);
+            }
+          });
+        }
+        
+        // Set the updated arrays
+        if (updatedMaterials.length > 0 || parsedData.materials || parsedData.labor) {
+          updates.materials = updatedMaterials;
+        }
+        
         if (parsedData.materials || parsedData.labor || parsedData.additionalCosts) {
-          const existingStructured = proposalData.structuredPricing || { materials: [], labor: [], additionalCosts: [] };
           updates.structuredPricing = {
-            materials: [...(existingStructured.materials || []), ...(parsedData.materials || [])],
-            labor: [...(existingStructured.labor || []), ...(parsedData.labor || [])],
-            additionalCosts: [...(existingStructured.additionalCosts || []), ...(parsedData.additionalCosts || [])]
+            materials: updatedStructuredMaterials,
+            labor: updatedStructuredLabor,
+            additionalCosts: updatedAdditionalCosts
           };
         }
         
@@ -681,6 +825,12 @@ Return ONLY the JSON object, no other text.`;
         }
         
         console.log('✅ AI successfully parsed estimate data:', parsedData);
+        console.log('📊 Material update summary:', {
+          existingMaterialsCount: existingMaterials.length,
+          newMaterialsCount: parsedData.materials?.length || 0,
+          finalMaterialsCount: updates.materials?.length || existingMaterials.length,
+          structuredMaterialsCount: updates.structuredPricing?.materials?.length || existingStructured.materials?.length || 0
+        });
         return updates;
         
       } catch (parseError) {

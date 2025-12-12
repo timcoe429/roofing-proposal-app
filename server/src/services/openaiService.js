@@ -489,6 +489,14 @@ When generating quotes, follow these steps:
      "profitPercent": 20,
      "totalAmount": 8625
    }
+   
+   **IMPORTANT - When Updating Existing Items:**
+   - If the user asks to CHANGE the price of an existing material (e.g., "change Grace Ice and Water Shield to $260"), 
+     include that material in the materials array with the NEW price
+   - If the user asks to CHANGE the quantity, include the material with the NEW quantity
+   - The system will automatically match materials by name and update the existing entry
+   - Always include the material name EXACTLY as it appears in the current proposal (check proposalContext.materials)
+   - Recalculate the total: total = quantity × unitPrice
 
 **Pricing Rules (Critical):**
 - ALWAYS use EXACT prices from the company's pricing sheets when available
@@ -529,6 +537,19 @@ ${pricingContext ? `\n**Available Pricing Data:**\n${pricingContext}\n\nUse thes
   if (!claude) {
     throw new Error('Claude service not configured - ANTHROPIC_API_KEY missing');
   }
+
+  // Debug: Log what we're sending to Claude
+  logger.info(`🔍 [CLAUDE DEBUG] About to send to Claude:`);
+  logger.info(`   Pricing Status: ${pricingStatus}`);
+  logger.info(`   System prompt length: ${systemPrompt.length} chars`);
+  logger.info(`   System prompt starts with: ${systemPrompt.substring(0, 200)}...`);
+  logger.info(`   Pricing context included: ${pricingContext ? 'YES (' + pricingContext.length + ' chars)' : 'NO'}`);
+  logger.info(`   Messages count: ${messages.length}`);
+  console.log(`\n🤖 [CLAUDE DEBUG] Sending to Claude:`);
+  console.log(`   Pricing Status: ${pricingStatus}`);
+  console.log(`   Has pricing context: ${pricingContext ? 'YES' : 'NO'}`);
+  console.log(`   System prompt CRITICAL section: ${systemPrompt.includes('PRICING IS LOADED') ? '✅ LOADED' : systemPrompt.includes('PRICING IS NOT LOADED') ? '⚠️ NOT LOADED' : '❓ UNKNOWN'}`);
+  console.log(`\n`);
 
   try {
     const response = await claude.messages.create({
