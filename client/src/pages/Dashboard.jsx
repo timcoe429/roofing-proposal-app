@@ -67,15 +67,7 @@ export default function Dashboard() {
 
   // Calculate stats from proposals
   const totalProposals = proposals.length;
-  const thisMonthRevenue = proposals
-    .filter(p => {
-      const createdDate = new Date(p.createdAt);
-      const now = new Date();
-      return createdDate.getMonth() === now.getMonth() && 
-             createdDate.getFullYear() === now.getFullYear() &&
-             p.status === 'accepted';
-    })
-    .reduce((sum, p) => sum + (parseFloat(p.totalAmount) || 0), 0);
+  const totalProposalsValue = proposals.reduce((sum, p) => sum + (parseFloat(p.totalAmount) || 0), 0);
   
   // Load company data from localStorage or use defaults
   const getInitialCompanyData = () => {
@@ -194,8 +186,8 @@ export default function Dashboard() {
               <TrendingUp size={24} />
             </div>
             <div className="stat-content">
-              <h3>This Month</h3>
-              <p className="stat-number">{proposalsLoading ? '...' : formatCurrency(thisMonthRevenue)}</p>
+              <h3>Total Proposals in Queue</h3>
+              <p className="stat-number">{proposalsLoading ? '...' : formatCurrency(totalProposalsValue)}</p>
             </div>
           </div>
         </div>
