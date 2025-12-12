@@ -89,6 +89,12 @@ export const createTables = async () => {
         "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `);
+
+    // Add new columns to existing databases safely (Railway production)
+    await sequelize.query(`
+      ALTER TABLE proposals
+      ADD COLUMN IF NOT EXISTS "aiChatHistory" JSONB DEFAULT '[]'::jsonb;
+    `);
     
     console.log('Proposals table created successfully');
     

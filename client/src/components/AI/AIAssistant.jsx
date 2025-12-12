@@ -59,6 +59,27 @@ const BASE_QUICK_ACTIONS = [
 ];
 
 export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange }) {
+  const initializedForProposalIdRef = useRef(null);
+
+  const persistChatHistoryToProposal = (nextMessages) => {
+    if (!onUpdateProposal) return;
+
+    const sanitized = (nextMessages || [])
+      .filter(m => m && (m.type === 'user' || m.type === 'assistant') && typeof m.content === 'string')
+      .map(m => ({
+        type: m.type,
+        content: m.content,
+        // Store timestamp as ISO string for DB persistence
+        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : (m.timestamp || new Date().toISOString())
+      }))
+      .slice(-150);
+
+    onUpdateProposal(prev => ({
+      ...prev,
+      aiChatHistory: sanitized
+    }));
+  };
+
   // Format AI responses with proper HTML
   const formatAIResponse = (text) => {
     // Split into paragraphs first
@@ -162,6 +183,27 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     scrollToBottom();
   }, [messages]);
 
+  // Load saved chat history for this proposal (text-only). Do NOT persist images in chat.
+  useEffect(() => {
+    const proposalIdKey = proposalData?.id ?? 'new';
+    if (initializedForProposalIdRef.current === proposalIdKey) return;
+
+    const saved = proposalData?.aiChatHistory;
+    if (Array.isArray(saved) && saved.length > 0) {
+      const restored = saved
+        .filter(m => m && (m.type === 'user' || m.type === 'assistant') && typeof m.content === 'string')
+        .map((m, idx) => ({
+          id: Date.now() + idx,
+          type: m.type,
+          content: m.content,
+          timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+        }));
+      setMessages(restored);
+    }
+
+    initializedForProposalIdRef.current = proposalIdKey;
+  }, [proposalData?.id, proposalData?.aiChatHistory]);
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -216,7 +258,11 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => {
+      const next = [...prev, userMessage];
+      persistChatHistoryToProposal(next);
+      return next;
+    });
     setInputValue('');
     setPastedImages([]);
     setIsTyping(true);
@@ -353,7 +399,11 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         actions: extractActions(aiResponseText, proposalData)
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => {
+        const next = [...prev, assistantMessage];
+        persistChatHistoryToProposal(next);
+        return next;
+      });
 
       // Execute any actions
       if (assistantMessage.actions) {
@@ -388,7 +438,11 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
                 timestamp: new Date(),
                 isValidationWarning: true
               };
-              setMessages(prev => [...prev, validationMessage]);
+              setMessages(prev => {
+                const next = [...prev, validationMessage];
+                persistChatHistoryToProposal(next);
+                return next;
+              });
             }
           }
           
@@ -423,7 +477,11 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         isError: true
       };
 
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => {
+        const next = [...prev, errorMessage];
+        persistChatHistoryToProposal(next);
+        return next;
+      });
     } finally {
       setIsTyping(false);
     }

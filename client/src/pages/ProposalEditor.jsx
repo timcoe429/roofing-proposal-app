@@ -54,7 +54,9 @@ const ProposalEditor = () => {
     timeline: '',
     warranty: '',
     notes: '',
-    uploadedFiles: []
+    uploadedFiles: [],
+    // Persisted AI chat history for this proposal (text-only, capped in the AI component)
+    aiChatHistory: []
   });
 
   const [lastSavedData, setLastSavedData] = useState(null);

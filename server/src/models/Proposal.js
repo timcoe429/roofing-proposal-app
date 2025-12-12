@@ -220,6 +220,13 @@ const Proposal = sequelize.define('Proposal', {
     type: DataTypes.DATE,
     field: 'respondedAt'
   },
+
+  // AI Chat History (text-only). Client caps to last 150 messages.
+  aiChatHistory: {
+    type: DataTypes.JSONB,
+    defaultValue: [],
+    field: 'aiChatHistory'
+  },
   
   // Timestamps
   createdAt: {

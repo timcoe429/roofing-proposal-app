@@ -41,6 +41,20 @@ export default function CompanyPricing() {
     }
   });
 
+  // Resync pricing sheet mutation (Google Sheets URL)
+  const resyncPricingSheetMutation = useMutation({
+    mutationFn: (id) => api.resyncPricingSheet(id),
+    onSuccess: (result) => {
+      toast.success(`Pricing sheet synced (${result.totalItems} items)`);
+      queryClient.invalidateQueries({ queryKey: ['materials'] });
+    },
+    onError: (error) => {
+      const message = error?.response?.data?.error || 'Failed to resync pricing sheet';
+      toast.error(message);
+      console.error(error);
+    }
+  });
+
   const [showUpload, setShowUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [sheetName, setSheetName] = useState('');
@@ -109,6 +123,16 @@ export default function CompanyPricing() {
       console.log('Deleting pricing sheet from database:', id);
       deleteMaterialMutation.mutate(id);
     }
+  };
+
+  const resyncSheet = (sheet) => {
+    const isUrlSheet = sheet?.category === 'pricing_sheet' && sheet?.specifications?.type === 'url';
+    if (!isUrlSheet) {
+      toast.error('Resync is only available for Google Sheets pricing sheets');
+      return;
+    }
+
+    resyncPricingSheetMutation.mutate(sheet.id);
   };
 
   // Update material mutation
@@ -258,6 +282,17 @@ export default function CompanyPricing() {
                 <Edit size={16} />
                 Edit
               </button>
+              {sheet?.category === 'pricing_sheet' && sheet?.specifications?.type === 'url' && (
+                <button
+                  className="action-btn"
+                  onClick={() => resyncSheet(sheet)}
+                  disabled={resyncPricingSheetMutation.isLoading}
+                  title="Fetch the latest version of your Google Sheet and refresh pricing"
+                >
+                  <Zap size={16} />
+                  Resync Now
+                </button>
+              )}
               <button 
                 className="action-btn delete"
                 onClick={() => deleteSheet(sheet.id)}

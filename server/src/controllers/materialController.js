@@ -3,6 +3,60 @@ import User from '../models/User.js';
 import Company from '../models/Company.js';
 import { fetchGoogleSheetData } from '../services/googleSheetsService.js';
 
+const parseMoney = (value) => {
+  if (value === null || value === undefined) return 0;
+  const cleaned = String(value).replace(/[$,\s]/g, '').trim();
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const buildPricingSnapshotFromSheet = (sheetData, sheetUrl) => {
+  const rows = Array.isArray(sheetData?.rows) ? sheetData.rows : [];
+  const header = rows[0] || [];
+  const materials = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i] || [];
+    const category = (row[0] || '').toString().trim();
+    const name = (row[1] || '').toString().trim();
+    const unit = (row[2] || '').toString().trim();
+
+    // Skip category/header rows that don't have an item/service name
+    if (!name) continue;
+
+    const materialCost = parseMoney(row[3]);
+    const laborCost = parseMoney(row[4]);
+    const totalPrice = parseMoney(row[5]);
+    const minOrder = (row[6] || '').toString().trim();
+    const notes = (row[7] || '').toString().trim();
+
+    // Skip rows that have no pricing numbers at all
+    if (materialCost === 0 && laborCost === 0 && totalPrice === 0) continue;
+
+    materials.push({
+      category: category || 'General',
+      name,
+      unit: unit || 'Per Square',
+      materialCost,
+      laborCost,
+      totalPrice,
+      minOrder,
+      notes
+    });
+  }
+
+  const lastSyncedAt = new Date().toISOString();
+
+  return {
+    sourceUrl: sheetUrl,
+    header,
+    totalRows: rows.length,
+    totalItems: materials.length,
+    lastSyncedAt,
+    materials
+  };
+};
+
 // Get all materials for a company
 export const getMaterials = async (req, res) => {
   try {
@@ -55,22 +109,27 @@ export const createMaterial = async (req, res) => {
       companyId
     };
     
-    // If it's a Google Sheets URL, fetch the actual data to get item count
+    // If it's a Google Sheets URL, fetch and snapshot pricing data
     if (materialData.specifications?.type === 'url' && materialData.specifications?.files?.[0]?.name) {
       const sheetUrl = materialData.specifications.files[0].name;
       console.log('Processing Google Sheet URL:', sheetUrl);
       
       try {
         const sheetData = await fetchGoogleSheetData(sheetUrl);
-        console.log(`✅ Google Sheet processed: ${sheetData.dataRowCount} items found`);
+        const snapshot = buildPricingSnapshotFromSheet(sheetData, sheetUrl);
+        console.log(`✅ Google Sheet processed: ${snapshot.totalItems} priced items found`);
         
-        // Update specifications with actual item count
+        // Update specifications with snapshot + metadata
         materialData.specifications = {
           ...materialData.specifications,
-          itemCount: sheetData.dataRowCount,
-          totalRows: sheetData.rowCount,
-          processedAt: new Date().toISOString(),
-          extractedData: sheetData.rows.slice(0, 10) // Store first 10 rows as preview
+          itemCount: snapshot.totalItems,
+          totalRows: snapshot.totalRows,
+          processedAt: snapshot.lastSyncedAt,
+          extractedData: sheetData.rows.slice(0, 10), // Store first 10 rows as preview
+          pricingSnapshot: snapshot,
+          syncStatus: 'ok',
+          syncError: null,
+          lastSyncedAt: snapshot.lastSyncedAt
         };
       } catch (error) {
         console.error('Failed to process Google Sheet:', error);
@@ -79,7 +138,11 @@ export const createMaterial = async (req, res) => {
           ...materialData.specifications,
           itemCount: 0,
           processingError: error.message,
-          processedAt: new Date().toISOString()
+          processedAt: new Date().toISOString(),
+          pricingSnapshot: null,
+          syncStatus: 'error',
+          syncError: error.message,
+          lastSyncedAt: null
         };
       }
     }
@@ -115,6 +178,53 @@ export const updateMaterial = async (req, res) => {
   } catch (error) {
     console.error('Error updating material:', error);
     res.status(500).json({ error: 'Failed to update material' });
+  }
+};
+
+// Resync a pricing sheet (Google Sheets URL) and store a snapshot for stable AI usage
+export const resyncPricingSheet = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('POST /api/materials/:id/resync - Params:', req.params);
+
+    const material = await Material.findByPk(id);
+    if (!material) {
+      return res.status(404).json({ error: 'Pricing sheet not found' });
+    }
+
+    const sheetUrl = material.specifications?.files?.[0]?.name;
+    const isUrlSheet = material.category === 'pricing_sheet' && material.specifications?.type === 'url' && sheetUrl;
+
+    if (!isUrlSheet) {
+      return res.status(400).json({ error: 'Resync is only available for Google Sheets pricing sheets' });
+    }
+
+    const sheetData = await fetchGoogleSheetData(sheetUrl);
+    const snapshot = buildPricingSnapshotFromSheet(sheetData, sheetUrl);
+
+    const nextSpecs = {
+      ...(material.specifications || {}),
+      itemCount: snapshot.totalItems,
+      totalRows: snapshot.totalRows,
+      processedAt: snapshot.lastSyncedAt,
+      pricingSnapshot: snapshot,
+      syncStatus: 'ok',
+      syncError: null,
+      lastSyncedAt: snapshot.lastSyncedAt
+    };
+
+    await material.update({ specifications: nextSpecs });
+
+    return res.json({
+      success: true,
+      id: material.id,
+      name: material.name,
+      totalItems: snapshot.totalItems,
+      lastSyncedAt: snapshot.lastSyncedAt
+    });
+  } catch (error) {
+    console.error('Error resyncing pricing sheet:', error);
+    return res.status(500).json({ error: 'Failed to resync pricing sheet', details: error.message });
   }
 };
 
@@ -166,7 +276,7 @@ export const getActivePricingForAI = async (req, res) => {
     
     console.log(`Found ${pricingSheets.length} active pricing sheets`);
     
-    // Fetch actual pricing data from Google Sheets
+    // Prefer stored snapshot (stable). If missing, attempt one-time fetch and store snapshot.
     const pricingData = [];
     const errors = [];
     
@@ -174,38 +284,42 @@ export const getActivePricingForAI = async (req, res) => {
       try {
         if (sheet.specifications?.type === 'url' && sheet.specifications?.files?.[0]?.name) {
           const sheetUrl = sheet.specifications.files[0].name;
-          console.log(`📊 Fetching pricing data from: ${sheet.name}`);
-          
-          const sheetData = await fetchGoogleSheetData(sheetUrl);
-          
-          // Parse the CSV data into structured pricing
-          const rows = sheetData.csvData.split('\n').filter(row => row.trim());
-          const headers = rows[0].split(',').map(h => h.trim());
-          
-          const materials = [];
-          for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].split(',').map(c => c.trim());
-            if (cells.length >= 6 && cells[1] && cells[3] && cells[4]) {
-              materials.push({
-                category: cells[0] || 'General',
-                name: cells[1],
-                unit: cells[2] || 'Per Square',
-                materialCost: parseFloat(cells[3]) || 0,
-                laborCost: parseFloat(cells[4]) || 0,
-                totalPrice: parseFloat(cells[5]) || 0,
-                minOrder: cells[6] || '',
-                notes: cells[7] || ''
-              });
-            }
+
+          const existingSnapshot = sheet.specifications?.pricingSnapshot;
+          if (existingSnapshot?.materials?.length) {
+            pricingData.push({
+              sheetName: sheet.name,
+              materials: existingSnapshot.materials,
+              totalItems: existingSnapshot.materials.length,
+              lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null
+            });
+            continue;
           }
-          
+
+          console.log(`📊 No snapshot yet. Fetching pricing data from: ${sheet.name}`);
+          const sheetData = await fetchGoogleSheetData(sheetUrl);
+          const snapshot = buildPricingSnapshotFromSheet(sheetData, sheetUrl);
+
+          const nextSpecs = {
+            ...(sheet.specifications || {}),
+            itemCount: snapshot.totalItems,
+            totalRows: snapshot.totalRows,
+            processedAt: snapshot.lastSyncedAt,
+            pricingSnapshot: snapshot,
+            syncStatus: 'ok',
+            syncError: null,
+            lastSyncedAt: snapshot.lastSyncedAt
+          };
+          await sheet.update({ specifications: nextSpecs });
+
           pricingData.push({
             sheetName: sheet.name,
-            materials: materials,
-            totalItems: materials.length
+            materials: snapshot.materials,
+            totalItems: snapshot.totalItems,
+            lastSyncedAt: snapshot.lastSyncedAt
           });
-          
-          console.log(`✅ Processed ${materials.length} materials from ${sheet.name}`);
+
+          console.log(`✅ Snapshot stored for ${sheet.name}: ${snapshot.totalItems} items`);
         }
       } catch (error) {
         errors.push({

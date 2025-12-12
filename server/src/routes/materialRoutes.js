@@ -5,7 +5,8 @@ import {
   createMaterial, 
   updateMaterial, 
   deleteMaterial,
-  getActivePricingForAI
+  getActivePricingForAI,
+  resyncPricingSheet
 } from '../controllers/materialController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -25,6 +26,7 @@ router.use((req, res, next) => {
 router.get('/', getMaterials);
 router.get('/ai-pricing', getActivePricingForAI);
 router.post('/', createMaterial);
+router.post('/:id/resync', resyncPricingSheet);
 router.put('/:id', updateMaterial);
 router.delete('/:id', deleteMaterial);
 
