@@ -3,6 +3,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import { aiConfig } from '../config/openai.js';
 import logger from '../utils/logger.js';
 import { checkProposalCompleteness } from '../utils/infoChecker.js';
+import Material from '../models/Material.js';
+import Company from '../models/Company.js';
+import { fetchGoogleSheetData } from './googleSheetsService.js';
 
 // Initialize AI clients
 let openai = null;
@@ -240,60 +243,191 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
     }
   }
 
-  // Fetch real pricing data from the company's uploaded pricing sheets
+  // Fetch real pricing data DIRECTLY from database (no HTTP call - more reliable)
   let pricingContext = '';
+  let pricingStatus = 'NOT_LOADED';
+  let debugInfo = {
+    step: 'starting',
+    companyId: null,
+    sheetsFound: 0,
+    sheetsWithSnapshots: 0,
+    sheetsFetchedFromGoogle: 0,
+    totalMaterials: 0,
+    errors: []
+  };
+
   try {
-    const axios = (await import('axios')).default;
-    // Production (Railway): avoid hardcoding ports. Use loopback + PORT so the server can call itself reliably.
-    // You can override with INTERNAL_API_URL if needed.
-    const port = process.env.PORT || 3001;
-    const baseURL =
-      process.env.INTERNAL_API_URL ||
-      (process.env.NODE_ENV === 'production'
-        ? `http://127.0.0.1:${port}`
-        : 'http://127.0.0.1:3001');
-
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-    const fetchPricingWithRetry = async (attempts = 3) => {
-      let lastErr;
-      for (let i = 1; i <= attempts; i++) {
-        try {
-          return await axios.get(`${baseURL}/api/materials/ai-pricing`, { timeout: 8000 });
-        } catch (err) {
-          lastErr = err;
-          // Exponential backoff with small jitter: 250ms, 750ms, 1750ms...
-          const delay = 250 * (2 ** (i - 1)) + Math.floor(Math.random() * 100);
-          await sleep(delay);
-        }
-      }
-      throw lastErr;
-    };
+    logger.info('🔍 [PRICING DEBUG] Starting pricing fetch for AI chat...');
     
-    console.log('🔍 Fetching real pricing data for AI...');
-    const pricingResponse = await fetchPricingWithRetry(3);
-    
-    if (pricingResponse.data.success && pricingResponse.data.pricingSheets.length > 0) {
-      console.log(`✅ Found ${pricingResponse.data.pricingSheets.length} pricing sheets with real data`);
-      
-      pricingContext = `\n\n=== AUTHORIZED PRICING DATA (USE ONLY THESE PRICES) ===\n`;
-      
-      pricingResponse.data.pricingSheets.forEach(sheet => {
-        pricingContext += `\n**${sheet.sheetName}:**\n`;
-        sheet.materials.forEach(material => {
-          pricingContext += `- ${material.name}: $${material.materialCost} (material) + $${material.laborCost} (labor) = $${material.totalPrice} per ${material.unit}\n`;
-        });
+    // Determine company ID (same logic as /api/materials/ai-pricing)
+    let companyId = null;
+    if (proposalContext?.companyId) {
+      companyId = proposalContext.companyId;
+      logger.info(`🔍 [PRICING DEBUG] Using companyId from proposalContext: ${companyId}`);
+    } else {
+      logger.info('🔍 [PRICING DEBUG] No companyId in proposalContext, looking up first company...');
+      const company = await Company.findOne({ order: [['createdAt', 'ASC']] });
+      companyId = company?.id || null;
+      logger.info(`🔍 [PRICING DEBUG] Found company: ${companyId} (${company?.name || 'unknown'})`);
+    }
+    debugInfo.companyId = companyId;
+
+    if (!companyId) {
+      logger.warn('⚠️ [PRICING DEBUG] No company found - cannot load pricing');
+      debugInfo.step = 'no_company';
+    } else {
+      // Query pricing sheets directly from database
+      logger.info(`🔍 [PRICING DEBUG] Querying materials table for companyId=${companyId}, category='pricing_sheet', isActive=true`);
+      const pricingSheets = await Material.findAll({
+        where: { 
+          companyId: companyId,
+          category: 'pricing_sheet',
+          isActive: true
+        },
+        order: [['updatedAt', 'DESC']]
       });
       
-      pricingContext += `\n**RULES:**\n`;
-      pricingContext += `- ONLY use prices listed above\n`;
-      pricingContext += `- If a material isn't listed, say "I don't see [material] in your pricing sheets" and ask what price to use\n`;
-      pricingContext += `- NEVER invent or estimate prices - only use what's provided\n`;
-    } else {
-      console.log('⚠️ No pricing sheets found, using generic pricing');
+      debugInfo.sheetsFound = pricingSheets.length;
+      logger.info(`🔍 [PRICING DEBUG] Found ${pricingSheets.length} active pricing sheets in database`);
+
+      const pricingData = [];
+      
+      for (const sheet of pricingSheets) {
+        try {
+          logger.info(`🔍 [PRICING DEBUG] Processing sheet: ${sheet.name} (ID: ${sheet.id})`);
+          
+          // Check if it's a Google Sheets URL type
+          if (sheet.specifications?.type === 'url' && sheet.specifications?.files?.[0]?.name) {
+            const sheetUrl = sheet.specifications.files[0].name;
+            logger.info(`🔍 [PRICING DEBUG] Sheet ${sheet.name} is Google Sheets URL: ${sheetUrl.substring(0, 50)}...`);
+
+            // Check for existing snapshot first (preferred - fast and reliable)
+            const existingSnapshot = sheet.specifications?.pricingSnapshot;
+            if (existingSnapshot?.materials?.length) {
+              logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials.length} materials`);
+              pricingData.push({
+                sheetName: sheet.name,
+                materials: existingSnapshot.materials,
+                totalItems: existingSnapshot.materials.length,
+                lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null,
+                source: 'snapshot'
+              });
+              debugInfo.sheetsWithSnapshots++;
+              debugInfo.totalMaterials += existingSnapshot.materials.length;
+              continue;
+            }
+
+            // No snapshot - fetch from Google (fallback)
+            logger.info(`⚠️ [PRICING DEBUG] No snapshot found for ${sheet.name}, fetching from Google Sheets...`);
+            try {
+              const sheetData = await fetchGoogleSheetData(sheetUrl);
+              logger.info(`✅ [PRICING DEBUG] Fetched ${sheetData.rowCount} rows from Google Sheet`);
+              
+              // Build snapshot (same logic as materialController)
+              const parseMoney = (value) => {
+                if (value === null || value === undefined) return 0;
+                const cleaned = String(value).replace(/[$,\s]/g, '').trim();
+                const num = parseFloat(cleaned);
+                return Number.isFinite(num) ? num : 0;
+              };
+
+              const rows = Array.isArray(sheetData?.rows) ? sheetData.rows : [];
+              const materials = [];
+              for (let i = 1; i < rows.length; i++) {
+                const row = rows[i] || [];
+                const name = (row[1] || '').toString().trim();
+                if (!name) continue;
+                
+                const materialCost = parseMoney(row[3]);
+                const laborCost = parseMoney(row[4]);
+                const totalPrice = parseMoney(row[5]);
+                if (materialCost === 0 && laborCost === 0 && totalPrice === 0) continue;
+
+                materials.push({
+                  category: (row[0] || '').toString().trim() || 'General',
+                  name,
+                  unit: (row[2] || '').toString().trim() || 'Per Square',
+                  materialCost,
+                  laborCost,
+                  totalPrice,
+                  minOrder: (row[6] || '').toString().trim(),
+                  notes: (row[7] || '').toString().trim()
+                });
+              }
+
+              logger.info(`✅ [PRICING DEBUG] Parsed ${materials.length} materials from Google Sheet`);
+              
+              pricingData.push({
+                sheetName: sheet.name,
+                materials,
+                totalItems: materials.length,
+                lastSyncedAt: new Date().toISOString(),
+                source: 'google_fetch'
+              });
+              debugInfo.sheetsFetchedFromGoogle++;
+              debugInfo.totalMaterials += materials.length;
+            } catch (fetchError) {
+              logger.error(`❌ [PRICING DEBUG] Failed to fetch Google Sheet for ${sheet.name}:`, fetchError.message);
+              debugInfo.errors.push({ sheet: sheet.name, error: fetchError.message });
+            }
+          } else {
+            logger.info(`⚠️ [PRICING DEBUG] Sheet ${sheet.name} is not a Google Sheets URL type, skipping`);
+          }
+        } catch (sheetError) {
+          logger.error(`❌ [PRICING DEBUG] Error processing sheet ${sheet.name}:`, sheetError.message);
+          debugInfo.errors.push({ sheet: sheet.name, error: sheetError.message });
+        }
+      }
+
+      // Build pricing context string for Claude
+      if (pricingData.length > 0) {
+        pricingStatus = 'LOADED';
+        logger.info(`✅ [PRICING DEBUG] Building pricing context from ${pricingData.length} sheets, ${debugInfo.totalMaterials} total materials`);
+        
+        pricingContext = `\n\n=== AUTHORIZED PRICING DATA (USE ONLY THESE PRICES) ===\n`;
+        
+        pricingData.forEach(sheet => {
+          pricingContext += `\n**${sheet.sheetName}** (${sheet.source === 'snapshot' ? 'from snapshot' : 'fresh from Google'}, synced: ${sheet.lastSyncedAt || 'unknown'}):\n`;
+          sheet.materials.forEach(material => {
+            pricingContext += `- ${material.name}: $${material.materialCost} (material) + $${material.laborCost} (labor) = $${material.totalPrice} per ${material.unit}\n`;
+          });
+        });
+        
+        pricingContext += `\n**RULES:**\n`;
+        pricingContext += `- ONLY use prices listed above\n`;
+        pricingContext += `- If a material isn't listed, say "I don't see [material] in your pricing sheets" and ask what price to use\n`;
+        pricingContext += `- NEVER invent or estimate prices - only use what's provided\n`;
+        
+        logger.info(`✅ [PRICING DEBUG] Pricing context built: ${pricingContext.length} characters`);
+      } else {
+        logger.warn(`⚠️ [PRICING DEBUG] No pricing data found after processing ${pricingSheets.length} sheets`);
+        debugInfo.step = 'no_data_after_processing';
+      }
     }
+
+    logger.info(`🔍 [PRICING DEBUG] Final status: ${pricingStatus}, sheets=${debugInfo.sheetsFound}, materials=${debugInfo.totalMaterials}, errors=${debugInfo.errors.length}`);
+    logger.info(`🔍 [PRICING DEBUG] Full debug info:`, JSON.stringify(debugInfo, null, 2));
+    
+    // Also log to console for Railway visibility
+    console.log(`\n📊 [PRICING SUMMARY FOR AI CHAT]`);
+    console.log(`   Status: ${pricingStatus}`);
+    console.log(`   Company ID: ${debugInfo.companyId}`);
+    console.log(`   Sheets found: ${debugInfo.sheetsFound}`);
+    console.log(`   Sheets with snapshots: ${debugInfo.sheetsWithSnapshots}`);
+    console.log(`   Sheets fetched from Google: ${debugInfo.sheetsFetchedFromGoogle}`);
+    console.log(`   Total materials: ${debugInfo.totalMaterials}`);
+    console.log(`   Pricing context length: ${pricingContext.length} chars`);
+    if (debugInfo.errors.length > 0) {
+      console.log(`   ⚠️ Errors: ${JSON.stringify(debugInfo.errors)}`);
+    }
+    console.log(`\n`);
+
   } catch (error) {
-    console.error('❌ Failed to fetch pricing data for AI:', error.message);
+    logger.error('❌ [PRICING DEBUG] CRITICAL ERROR fetching pricing data for AI:', error);
+    logger.error('❌ [PRICING DEBUG] Error stack:', error.stack);
+    console.error(`\n❌ [PRICING DEBUG] CRITICAL ERROR: ${error.message}\n`);
+    debugInfo.step = 'error';
+    debugInfo.errors.push({ error: error.message, stack: error.stack?.split('\n')[0] });
   }
 
   // Build system prompt with info about missing fields if applicable
@@ -303,6 +437,11 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
   }
 
   const systemPrompt = `You're a helpful roofing expert assistant helping create estimates and proposals. Talk naturally and conversationally, just like ChatGPT - be friendly, engaging, and helpful.
+
+**CRITICAL - Pricing Status: ${pricingStatus}**
+${pricingStatus === 'LOADED' 
+  ? '✅ PRICING IS LOADED. You MUST acknowledge that pricing sheets are available. NEVER say "no pricing sheet" or "upload your pricing sheet" - pricing is already loaded and ready to use.'
+  : '⚠️ PRICING IS NOT LOADED. Tell the user they need to upload/resync their pricing sheet before you can provide accurate cost estimates.'}
 
 **Your Role:**
 - Help create accurate roofing estimates and proposals
