@@ -5,17 +5,32 @@ import './MarginDashboard.css';
 const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePercentages }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Safety check
+  if (!breakdown) {
+    return null;
+  }
+
+  // Helper to safely convert strings/numbers to numbers
+  const toNumber = (value, defaultValue = 0) => {
+    if (value === null || value === undefined || value === '') return defaultValue;
+    if (typeof value === 'number') return isNaN(value) ? defaultValue : value;
+    const num = parseFloat(String(value).replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(num) ? num : defaultValue;
+  };
+
   const formatCurrency = (amount) => {
+    const num = toNumber(amount, 0);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount || 0);
+    }).format(num);
   };
 
   const formatPercentage = (value) => {
-    return `${(value || 0).toFixed(1)}%`;
+    const num = toNumber(value, 0);
+    return `${num.toFixed(1)}%`;
   };
 
   const handleProfitChange = (e) => {
@@ -28,9 +43,12 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
     onUpdatePercentages({ overheadPercent: newOverhead });
   };
 
-  const netMarginColor = breakdown.netMarginActual >= (breakdown.netMarginTarget || 20) 
+  // Convert to numbers - breakdown values might be strings from API
+  const netMarginActual = toNumber(breakdown.netMarginActual, 0);
+  const netMarginTarget = toNumber(breakdown.netMarginTarget, 20);
+  const netMarginColor = netMarginActual >= netMarginTarget 
     ? '#10b981' 
-    : breakdown.netMarginActual >= (breakdown.netMarginTarget || 20) * 0.8
+    : netMarginActual >= netMarginTarget * 0.8
     ? '#f59e0b'
     : '#ef4444';
 
@@ -59,7 +77,7 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
           <div className="summary-item net-margin-summary" style={{ color: netMarginColor }}>
             <TrendingUp size={14} />
             <span className="summary-label">NET:</span>
-            <span className="summary-value">{formatPercentage(breakdown.netMarginActual || 0)}</span>
+            <span className="summary-value">{formatPercentage(netMarginActual)}</span>
           </div>
           <div className="summary-item">
             <span className="summary-label">Total:</span>
@@ -82,7 +100,7 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
                 min="0"
                 max="50"
                 step="0.5"
-                value={profitPercent || 20}
+                value={toNumber(profitPercent, 20)}
                 onChange={handleProfitChange}
                 className="slider"
               />
@@ -102,7 +120,7 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
                 min="0"
                 max="30"
                 step="0.5"
-                value={overheadPercent || 10}
+                value={toNumber(overheadPercent, 10)}
                 onChange={handleOverheadChange}
                 className="slider"
               />
@@ -129,12 +147,12 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
             </div>
             <div className="card-content">
               <div className="card-value net-margin-value" style={{ color: netMarginColor }}>
-                {formatPercentage(breakdown.netMarginActual || 0)}
+                {formatPercentage(netMarginActual)}
               </div>
-              <div className="card-subtext">Target: {formatPercentage(breakdown.netMarginTarget || 20)}</div>
+              <div className="card-subtext">Target: {formatPercentage(netMarginTarget)}</div>
             </div>
             <div className="card-status" style={{ color: netMarginColor }}>
-              {breakdown.netMarginActual >= (breakdown.netMarginTarget || 20) ? '✓ ON TARGET' : '⚠ BELOW TARGET'}
+              {netMarginActual >= netMarginTarget ? '✓ ON TARGET' : '⚠ BELOW TARGET'}
             </div>
           </div>
 

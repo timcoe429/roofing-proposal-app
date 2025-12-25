@@ -8,6 +8,12 @@ import './LivePreviewPanel.css';
 const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
   const [showMarginsBakedIn, setShowMarginsBakedIn] = useState(false);
   const [isClientInfoExpanded, setIsClientInfoExpanded] = useState(false);
+  
+  // Safety check
+  if (!proposalData) {
+    return <div className="live-preview-panel">Loading...</div>;
+  }
+  
   // Calculate cost breakdown
   const breakdown = calculations.getCostBreakdown(
     proposalData.materials || [],
@@ -260,8 +266,7 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
       )}
 
       {/* Cost Breakdown */}
-      {baseLineItems.length > 0 && (
-
+      {baseLineItems.length > 0 && breakdown && (
         <div className="preview-section cost-breakdown">
           <h3>Cost Breakdown</h3>
           <div className="breakdown-list">
@@ -308,11 +313,11 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
             {!breakdown.isMarginHidden && breakdown.netMarginActual !== undefined && (
               <>
                 <div className="breakdown-row" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
-                  <span className="breakdown-label" style={{ fontWeight: 'bold', color: breakdown.netMarginActual >= (breakdown.netMarginTarget || 20) ? '#10b981' : '#ef4444' }}>
-                    NET Margin (Target: {breakdown.netMarginTarget || 20}%):
+                  <span className="breakdown-label" style={{ fontWeight: 'bold', color: (parseFloat(breakdown.netMarginActual) || 0) >= (parseFloat(breakdown.netMarginTarget) || 20) ? '#10b981' : '#ef4444' }}>
+                    NET Margin (Target: {parseFloat(breakdown.netMarginTarget) || 20}%):
                   </span>
-                  <span className="breakdown-value" style={{ fontWeight: 'bold', color: breakdown.netMarginActual >= (breakdown.netMarginTarget || 20) ? '#10b981' : '#ef4444' }}>
-                    {breakdown.netMarginActual.toFixed(2)}%
+                  <span className="breakdown-value" style={{ fontWeight: 'bold', color: (parseFloat(breakdown.netMarginActual) || 0) >= (parseFloat(breakdown.netMarginTarget) || 20) ? '#10b981' : '#ef4444' }}>
+                    {(parseFloat(breakdown.netMarginActual) || 0).toFixed(2)}%
                   </span>
                 </div>
                 {breakdown.totalCost > 0 && (
