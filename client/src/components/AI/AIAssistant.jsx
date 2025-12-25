@@ -761,9 +761,12 @@ Return ONLY the JSON object, no other text.`;
                   ...newMaterial,
                   id: existingMatch.id, // Keep original ID
                   quantity: newMaterial.quantity !== undefined ? newMaterial.quantity : existingMatch.quantity,
-                  // Recalculate total if unitPrice or quantity changed
-                  total: (newMaterial.unitPrice !== undefined ? newMaterial.unitPrice : existingMatch.unitPrice) * 
-                         (newMaterial.quantity !== undefined ? newMaterial.quantity : existingMatch.quantity)
+                  // Recalculate total if unitPrice or quantity changed - preserve decimal precision
+                  total: (() => {
+                    const qty = parseFloat(newMaterial.quantity !== undefined ? newMaterial.quantity : existingMatch.quantity) || 0;
+                    const price = parseFloat(newMaterial.unitPrice !== undefined ? newMaterial.unitPrice : existingMatch.unitPrice) || 0;
+                    return Math.round((qty * price) * 100) / 100; // Round to 2 decimals
+                  })()
                 };
                 updatedMaterials[index] = updatedMaterial;
               }
@@ -782,8 +785,12 @@ Return ONLY the JSON object, no other text.`;
                   ...newMaterial,
                   id: existingStructuredMatch.id,
                   quantity: newMaterial.quantity !== undefined ? newMaterial.quantity : existingStructuredMatch.quantity,
-                  total: (newMaterial.unitPrice !== undefined ? newMaterial.unitPrice : existingStructuredMatch.unitPrice) * 
-                         (newMaterial.quantity !== undefined ? newMaterial.quantity : existingStructuredMatch.quantity)
+                  // Preserve decimal precision
+                  total: (() => {
+                    const qty = parseFloat(newMaterial.quantity !== undefined ? newMaterial.quantity : existingStructuredMatch.quantity) || 0;
+                    const price = parseFloat(newMaterial.unitPrice !== undefined ? newMaterial.unitPrice : existingStructuredMatch.unitPrice) || 0;
+                    return Math.round((qty * price) * 100) / 100; // Round to 2 decimals
+                  })()
                 };
                 updatedStructuredMaterials[structuredIndex] = updatedStructuredMaterial;
               }
@@ -807,8 +814,12 @@ Return ONLY the JSON object, no other text.`;
                   ...newLabor,
                   id: existingMatch.id,
                   quantity: newLabor.quantity !== undefined ? newLabor.quantity : existingMatch.quantity,
-                  total: (newLabor.unitPrice !== undefined ? newLabor.unitPrice : existingMatch.unitPrice) * 
-                         (newLabor.quantity !== undefined ? newLabor.quantity : existingMatch.quantity)
+                  // Preserve decimal precision
+                  total: (() => {
+                    const qty = parseFloat(newLabor.quantity !== undefined ? newLabor.quantity : existingMatch.quantity) || 0;
+                    const price = parseFloat(newLabor.unitPrice !== undefined ? newLabor.unitPrice : existingMatch.unitPrice) || 0;
+                    return Math.round((qty * price) * 100) / 100; // Round to 2 decimals
+                  })()
                 };
                 updatedStructuredLabor[index] = updatedLabor;
               }

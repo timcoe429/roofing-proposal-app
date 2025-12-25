@@ -50,7 +50,10 @@ export default function MaterialsList({
       if (material.id === id) {
         const updatedMaterial = { ...material, [field]: value };
         if (field === 'quantity' || field === 'unitPrice') {
-          updatedMaterial.total = updatedMaterial.quantity * updatedMaterial.unitPrice;
+          // Preserve decimal precision - ensure values are floats and round to 2 decimals
+          const qty = parseFloat(updatedMaterial.quantity) || 0;
+          const price = parseFloat(updatedMaterial.unitPrice) || 0;
+          updatedMaterial.total = Math.round((qty * price) * 100) / 100; // Round to 2 decimals, preserves cents
         }
         return updatedMaterial;
       }
