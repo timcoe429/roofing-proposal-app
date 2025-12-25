@@ -261,6 +261,7 @@ const ProposalEditor = () => {
           <LivePreviewPanel 
             proposalData={proposalData}
             onExportCSV={handleExportCSV}
+            onUpdateProposal={setProposalData}
           />
         </div>
       </div>

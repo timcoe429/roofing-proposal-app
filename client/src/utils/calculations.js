@@ -142,5 +142,20 @@ export const calculations = {
       finalTotal,
       isMarginHidden: false
     };
+  },
+
+  // Calculate markup multiplier from overhead + profit
+  calculateMarkupMultiplier: (subtotal, overheadAmount, profitAmount) => {
+    if (subtotal === 0) return 1;
+    return (subtotal + overheadAmount + profitAmount) / subtotal;
+  },
+
+  // Apply markup to individual line items
+  applyMarkupToLineItems: (items, multiplier) => {
+    return items.map(item => ({
+      ...item,
+      unitPrice: (item.unitPrice || 0) * multiplier,
+      total: (item.total || 0) * multiplier
+    }));
   }
 };

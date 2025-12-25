@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Download, CheckCircle, AlertCircle } from 'lucide-react';
 import { calculations } from '../../utils/calculations';
 import { getValidationReport } from '../../utils/mathValidator';
+import MarginDashboard from './MarginDashboard';
 import './LivePreviewPanel.css';
 
-const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
+const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
+  const [showMarginsBakedIn, setShowMarginsBakedIn] = useState(false);
   // Calculate cost breakdown
   const breakdown = calculations.getCostBreakdown(
     proposalData.materials || [],
@@ -43,8 +45,8 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
     };
   }, [proposalData]);
 
-  // Get all line items (materials + labor + add-ons)
-  const allLineItems = [
+  // Get base line items (materials + labor + add-ons) - these are the original prices
+  const baseLineItems = [
     ...(proposalData.materials || []).map(item => ({
       ...item,
       type: item.category === 'labor' ? 'labor' : 'material'
@@ -59,6 +61,34 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
     }))
   ];
 
+  // Calculate markup multiplier if toggle is ON
+  const markupMultiplier = useMemo(() => {
+    if (!showMarginsBakedIn || breakdown.subtotal === 0) return 1;
+    return calculations.calculateMarkupMultiplier(
+      breakdown.subtotal,
+      breakdown.overheadAmount,
+      breakdown.profitAmount
+    );
+  }, [showMarginsBakedIn, breakdown.subtotal, breakdown.overheadAmount, breakdown.profitAmount]);
+
+  // Apply markup to line items if toggle is ON
+  const allLineItems = useMemo(() => {
+    if (showMarginsBakedIn) {
+      return calculations.applyMarkupToLineItems(baseLineItems, markupMultiplier);
+    }
+    return baseLineItems;
+  }, [showMarginsBakedIn, baseLineItems, markupMultiplier]);
+
+  // Handle percentage updates from dashboard
+  const handleUpdatePercentages = (updates) => {
+    if (onUpdateProposal) {
+      onUpdateProposal({
+        ...proposalData,
+        ...updates
+      });
+    }
+  };
+
   // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -71,28 +101,36 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
   return (
     <div className="live-preview-panel">
       <div className="preview-header">
-        <div className="header-left">
-          <h2>Quote Preview</h2>
-          {validation.isValid ? (
-            <div className="validation-status valid">
-              <CheckCircle size={16} />
-              <span>All calculations valid</span>
-            </div>
-          ) : (
-            <div className="validation-status invalid">
-              <AlertCircle size={16} />
-              <span>{validation.summary.totalErrors} error(s)</span>
-            </div>
-          )}
+        <div className="header-top">
+          <div className="header-left">
+            <h2>Quote Preview</h2>
+            {validation.isValid ? (
+              <div className="validation-status valid">
+                <CheckCircle size={16} />
+                <span>All calculations valid</span>
+              </div>
+            ) : (
+              <div className="validation-status invalid">
+                <AlertCircle size={16} />
+                <span>{validation.summary.totalErrors} error(s)</span>
+              </div>
+            )}
+          </div>
+          <button 
+            className="export-btn"
+            onClick={onExportCSV}
+            disabled={!proposalData.clientName || baseLineItems.length === 0 || !validation.isValid}
+          >
+            <Download size={16} />
+            Export to CSV
+          </button>
         </div>
-        <button 
-          className="export-btn"
-          onClick={onExportCSV}
-          disabled={!proposalData.clientName || allLineItems.length === 0 || !validation.isValid}
-        >
-          <Download size={16} />
-          Export to CSV
-        </button>
+        <MarginDashboard
+          breakdown={breakdown}
+          overheadPercent={proposalData.overheadPercent || 15}
+          profitPercent={proposalData.profitPercent || 20}
+          onUpdatePercentages={handleUpdatePercentages}
+        />
       </div>
 
       {/* Validation Warnings */}
@@ -145,9 +183,25 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
       )}
 
       {/* Line Items */}
-      {allLineItems.length > 0 ? (
+      {baseLineItems.length > 0 ? (
         <div className="preview-section">
-          <h3>Line Items</h3>
+          <div className="line-items-header">
+            <h3>Line Items</h3>
+            <div className="margin-toggle">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  checked={showMarginsBakedIn}
+                  onChange={(e) => setShowMarginsBakedIn(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+                <span className="toggle-text">
+                  {showMarginsBakedIn ? 'Show With Margins' : 'Show Base Costs'}
+                </span>
+              </label>
+            </div>
+          </div>
           <div className="line-items-table">
             <div className="table-header">
               <div className="col-item">Item</div>
@@ -191,7 +245,8 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
       )}
 
       {/* Cost Breakdown */}
-      {allLineItems.length > 0 && (
+      {baseLineItems.length > 0 && (
+
         <div className="preview-section cost-breakdown">
           <h3>Cost Breakdown</h3>
           <div className="breakdown-list">
