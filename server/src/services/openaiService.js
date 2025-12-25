@@ -329,15 +329,34 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
               continue;
             }
 
-            // No snapshot - fetch from Google (fallback)
+            // No snapshot - fetch from Google (fallback only)
             logger.info(`⚠️ [PRICING DEBUG] No snapshot found for ${sheet.name}, fetching from Google Sheets...`);
             try {
               const sheetData = await fetchGoogleSheetData(sheetUrl);
               logger.info(`✅ [PRICING DEBUG] Fetched ${sheetData.rowCount} rows from Google Sheet`);
               
-              // Use the same flexible parser as materialController (detects column structure from headers)
+              // Parse the fresh data
               const snapshot = buildPricingSnapshotFromSheet(sheetData, sheetUrl);
               logger.info(`✅ [PRICING DEBUG] Parsed ${snapshot.materials.length} materials using flexible parser`);
+              
+              // Store snapshot for future use (wrap in try-catch so DB errors don't break pricing)
+              try {
+                const nextSpecs = {
+                  ...(sheet.specifications || {}),
+                  itemCount: snapshot.totalItems,
+                  totalRows: snapshot.totalRows,
+                  processedAt: snapshot.lastSyncedAt,
+                  pricingSnapshot: snapshot,  // Store snapshot for next time
+                  syncStatus: 'ok',
+                  syncError: null,
+                  lastSyncedAt: snapshot.lastSyncedAt
+                };
+                await sheet.update({ specifications: nextSpecs });
+                logger.info(`✅ [PRICING DEBUG] Stored snapshot in database for ${sheet.name}`);
+              } catch (dbError) {
+                // Log but don't fail - pricing data is still valid even if snapshot save fails
+                logger.warn(`⚠️ [PRICING DEBUG] Failed to save snapshot in database for ${sheet.name}:`, dbError.message);
+              }
               
               pricingData.push({
                 sheetName: sheet.name,
@@ -348,9 +367,14 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
               });
               debugInfo.sheetsFetchedFromGoogle++;
               debugInfo.totalMaterials += snapshot.materials.length;
+              
             } catch (fetchError) {
               logger.error(`❌ [PRICING DEBUG] Failed to fetch Google Sheet for ${sheet.name}:`, fetchError.message);
               debugInfo.errors.push({ sheet: sheet.name, error: fetchError.message });
+              
+              // No snapshot AND fetch failed - skip this sheet (don't use stale data)
+              logger.warn(`⚠️ [PRICING DEBUG] Skipping ${sheet.name} - no snapshot and Google Sheets fetch failed`);
+              // Don't add anything to pricingData - this sheet is unavailable
             }
           } else {
             logger.info(`⚠️ [PRICING DEBUG] Sheet ${sheet.name} is not a Google Sheets URL type, skipping`);
@@ -361,8 +385,13 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
         }
       }
 
-      // Build pricing context string for Claude
-      if (pricingData.length > 0) {
+      // After processing all sheets, check if we have any valid pricing data
+      if (pricingData.length === 0) {
+        logger.error(`❌ [PRICING DEBUG] NO VALID PRICING DATA AVAILABLE - all sheets failed to load or no sheets found`);
+        pricingStatus = 'NOT_LOADED';
+        pricingContext = ''; // Clear pricing context so AI knows it can't see pricing
+      } else {
+        // Build pricing context string for Claude
         pricingStatus = 'LOADED';
         logger.info(`✅ [PRICING DEBUG] Building pricing context from ${pricingData.length} sheets, ${debugInfo.totalMaterials} total materials`);
         
@@ -381,9 +410,6 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
         pricingContext += `- NEVER invent or estimate prices - only use what's provided\n`;
         
         logger.info(`✅ [PRICING DEBUG] Pricing context built: ${pricingContext.length} characters`);
-      } else {
-        logger.warn(`⚠️ [PRICING DEBUG] No pricing data found after processing ${pricingSheets.length} sheets`);
-        debugInfo.step = 'no_data_after_processing';
       }
     }
 
@@ -423,7 +449,16 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
 **CRITICAL - Pricing Status: ${pricingStatus}**
 ${pricingStatus === 'LOADED' 
   ? '✅ PRICING IS LOADED. You MUST acknowledge that pricing sheets are available. NEVER say "no pricing sheet" or "upload your pricing sheet" - pricing is already loaded and ready to use.'
-  : '⚠️ PRICING IS NOT LOADED. Tell the user they need to upload/resync their pricing sheet before you can provide accurate cost estimates.'}
+  : `⚠️ **PRICING IS NOT LOADED - NO PRICING DATA AVAILABLE**
+
+**ABSOLUTE RULE - NO PRICING DATA:**
+- You CANNOT see the pricing sheet right now
+- You MUST tell the user: "I cannot access your pricing sheet right now. Please resync your pricing sheet in the app settings to update the pricing data."
+- You MUST NOT provide any prices, estimates, or cost information
+- You MUST NOT make up, guess, or estimate any prices
+- You MUST NOT use phrases like "typically costs around..." or "usually priced at..."
+- If asked for pricing, you MUST refuse and explain that you need access to their pricing sheet first
+- The only exception: You can discuss general roofing concepts, materials, and processes - but NO prices or costs`}
 
 **Your Role:**
 - Help create accurate roofing estimates and proposals
@@ -493,13 +528,22 @@ When generating quotes, follow these steps:
    - Recalculate the total: total = quantity × unitPrice
 
 **Pricing Rules (Critical):**
-- ALWAYS use EXACT prices from the company's pricing sheets when available
-- If a material isn't in the pricing sheets, ask the user what price to use - don't guess
+${pricingStatus === 'LOADED' 
+  ? `- ALWAYS use EXACT prices from the company's pricing sheets (provided below)
+- If a material isn't in the pricing sheets, say "I don't see [material] in your pricing sheets" and ask what price to use
+- NEVER invent or estimate prices - only use what's provided`
+  : `- **STOP - NO PRICING DATA AVAILABLE**
+- You CANNOT provide any prices because the pricing sheet is not accessible
+- Tell the user: "I cannot access your pricing sheet. Please resync your pricing sheet in the app settings."
+- DO NOT provide any cost estimates, material prices, or pricing information
+- DO NOT make up prices or use "typical" prices`}
 - Double-check all math - accuracy is critical
 - Validate: quantity × unitPrice = total for each line item
 - **NET Margin:** Always ensure 20% NET margin is achieved
 - **Overhead Costs:** Always include 10% for workers comp, insurance, and office costs
 - You can adjust overheadCostPercent and netMarginTarget if the user requests changes
+
+${pricingStatus === 'LOADED' ? pricingContext : ''}
 
 **Conversation Style:**
 - Be natural and conversational - talk like you're helping a colleague
@@ -507,7 +551,7 @@ When generating quotes, follow these steps:
 - Ask clarifying questions when needed
 - Be helpful and engaging
 
-${pricingContext ? `\n**Available Pricing Data:**\n${pricingContext}\n\nUse these exact prices from the company's pricing sheets. If something isn't listed, ask the user for the price.` : '\n**Note:** No pricing sheets are loaded yet. Ask the user to upload their pricing sheet before providing cost estimates.'}`;
+${pricingStatus === 'LOADED' && pricingContext ? `\n**Available Pricing Data:**\n${pricingContext}\n\nUse these exact prices from the company's pricing sheets. If something isn't listed, ask the user for the price.` : ''}`;
 
   // Build messages array for Claude API
   const messages = [];

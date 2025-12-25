@@ -42,8 +42,10 @@ export async function fetchGoogleSheetData(sheetUrl) {
       for (let i = 1; i <= attempts; i++) {
         try {
           // Fetch all data from the first sheet
+          // For public Google Sheets, use 'key' parameter with API key
+          // The 'auth' parameter is for OAuth2 clients, not API keys
           return await sheets.spreadsheets.values.get({
-            auth: process.env.GOOGLE_SHEETS_API_KEY,
+            key: process.env.GOOGLE_SHEETS_API_KEY,
             spreadsheetId: spreadsheetId,
             range: 'A:Z', // Get all columns
           });

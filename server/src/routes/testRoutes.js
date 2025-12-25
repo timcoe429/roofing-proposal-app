@@ -28,8 +28,9 @@ router.get('/test-google-sheets-api', async (req, res) => {
     
     logger.info(`🔍 Testing API call with test spreadsheet: ${testSpreadsheetId}`);
     
+    // For public Google Sheets, use 'key' parameter with API key
     const response = await sheets.spreadsheets.values.get({
-      auth: process.env.GOOGLE_SHEETS_API_KEY,
+      key: process.env.GOOGLE_SHEETS_API_KEY,
       spreadsheetId: testSpreadsheetId,
       range: 'Class Data!A2:E', // Known range in the test sheet
     });
@@ -111,8 +112,9 @@ router.post('/test-your-spreadsheet', async (req, res) => {
 
     const sheets = google.sheets('v4');
     
+    // For public Google Sheets, use 'key' parameter with API key
     const response = await sheets.spreadsheets.values.get({
-      auth: process.env.GOOGLE_SHEETS_API_KEY,
+      key: process.env.GOOGLE_SHEETS_API_KEY,
       spreadsheetId: spreadsheetId,
       range: 'A:Z', // Get all data
     });
