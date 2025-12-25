@@ -83,22 +83,30 @@ export const createProposal = async (req, res) => {
       console.log('Found company:', company?.id, company?.name);
     }
 
-    // Calculate total amount with overhead and profit
-    const totalAmount = calculations.calculateTotal(
+    // Calculate cost breakdown with NET margin and overhead costs
+    const costBreakdown = calculations.getCostBreakdown(
       req.body.materials || [],
       req.body.laborHours || 0,
       req.body.laborRate || 0,
       req.body.addOns || [],
       req.body.overheadPercent || 15,
       req.body.profitPercent || 20,
-      req.body.discountAmount || 0
+      req.body.overheadCostPercent || 10,
+      req.body.netMarginTarget || 20,
+      req.body.discountAmount || 0,
+      false
     );
 
     const proposalData = {
       ...req.body,
       ...(userId ? { userId } : {}),
       ...(companyId ? { companyId } : {}),
-      totalAmount
+      totalAmount: costBreakdown.finalTotal,
+      overheadCosts: costBreakdown.overheadCosts,
+      totalCost: costBreakdown.totalCost,
+      netMarginActual: costBreakdown.netMarginActual,
+      overheadCostPercent: req.body.overheadCostPercent || 10,
+      netMarginTarget: req.body.netMarginTarget || 20
     };
     
     console.log('Final proposal data to create:', JSON.stringify(proposalData, null, 2));
@@ -144,20 +152,28 @@ export const updateProposal = async (req, res) => {
     
     console.log('Found proposal, updating...');
     
-    // Calculate total amount with overhead and profit
-    const totalAmount = calculations.calculateTotal(
-      req.body.materials || [],
-      req.body.laborHours || 0,
-      req.body.laborRate || 0,
-      req.body.addOns || [],
-      req.body.overheadPercent || 15,
-      req.body.profitPercent || 20,
-      req.body.discountAmount || 0
+    // Calculate cost breakdown with NET margin and overhead costs
+    const costBreakdown = calculations.getCostBreakdown(
+      req.body.materials || proposal.materials || [],
+      req.body.laborHours !== undefined ? req.body.laborHours : (proposal.laborHours || 0),
+      req.body.laborRate !== undefined ? req.body.laborRate : (proposal.laborRate || 0),
+      req.body.addOns || proposal.addOns || [],
+      req.body.overheadPercent !== undefined ? req.body.overheadPercent : (proposal.overheadPercent || 15),
+      req.body.profitPercent !== undefined ? req.body.profitPercent : (proposal.profitPercent || 20),
+      req.body.overheadCostPercent !== undefined ? req.body.overheadCostPercent : (proposal.overheadCostPercent || 10),
+      req.body.netMarginTarget !== undefined ? req.body.netMarginTarget : (proposal.netMarginTarget || 20),
+      req.body.discountAmount !== undefined ? req.body.discountAmount : (proposal.discountAmount || 0),
+      false
     );
 
     const updateData = {
       ...req.body,
-      totalAmount
+      totalAmount: costBreakdown.finalTotal,
+      overheadCosts: costBreakdown.overheadCosts,
+      totalCost: costBreakdown.totalCost,
+      netMarginActual: costBreakdown.netMarginActual,
+      overheadCostPercent: req.body.overheadCostPercent !== undefined ? req.body.overheadCostPercent : (proposal.overheadCostPercent || 10),
+      netMarginTarget: req.body.netMarginTarget !== undefined ? req.body.netMarginTarget : (proposal.netMarginTarget || 20)
     };
     
     await proposal.update(updateData);

@@ -153,6 +153,35 @@ const Proposal = sequelize.define('Proposal', {
     allowNull: true,
     field: 'profitPercent'
   },
+  overheadCostPercent: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 10,
+    allowNull: true,
+    field: 'overheadCostPercent'
+  },
+  netMarginTarget: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 20,
+    allowNull: true,
+    field: 'netMarginTarget'
+  },
+  netMarginActual: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+    field: 'netMarginActual'
+  },
+  overheadCosts: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    allowNull: true,
+    field: 'overheadCosts'
+  },
+  totalCost: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    allowNull: true,
+    field: 'totalCost'
+  },
   totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,

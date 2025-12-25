@@ -13,6 +13,8 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
     proposalData.addOns || [],
     proposalData.overheadPercent || 15,
     proposalData.profitPercent || 20,
+    proposalData.overheadCostPercent || 10,
+    proposalData.netMarginTarget || 20,
     proposalData.discountAmount || 0
   );
 
@@ -214,6 +216,10 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
             {!breakdown.isMarginHidden && (
               <>
                 <div className="breakdown-row">
+                  <span className="breakdown-label">Overhead Costs (Workers Comp, Insurance, Office - {breakdown.overheadCostPercent || 10}%):</span>
+                  <span className="breakdown-value">{formatCurrency(breakdown.overheadCosts || 0)}</span>
+                </div>
+                <div className="breakdown-row">
                   <span className="breakdown-label">Overhead ({breakdown.overheadPercent}%):</span>
                   <span className="breakdown-value">{formatCurrency(breakdown.overheadAmount)}</span>
                 </div>
@@ -233,6 +239,24 @@ const LivePreviewPanel = ({ proposalData, onExportCSV }) => {
               <span className="breakdown-label">Total:</span>
               <span className="breakdown-value">{formatCurrency(breakdown.finalTotal)}</span>
             </div>
+            {!breakdown.isMarginHidden && breakdown.netMarginActual !== undefined && (
+              <>
+                <div className="breakdown-row" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+                  <span className="breakdown-label" style={{ fontWeight: 'bold', color: breakdown.netMarginActual >= (breakdown.netMarginTarget || 20) ? '#10b981' : '#ef4444' }}>
+                    NET Margin (Target: {breakdown.netMarginTarget || 20}%):
+                  </span>
+                  <span className="breakdown-value" style={{ fontWeight: 'bold', color: breakdown.netMarginActual >= (breakdown.netMarginTarget || 20) ? '#10b981' : '#ef4444' }}>
+                    {breakdown.netMarginActual.toFixed(2)}%
+                  </span>
+                </div>
+                {breakdown.totalCost > 0 && (
+                  <div className="breakdown-row" style={{ fontSize: '0.9em', color: '#666' }}>
+                    <span className="breakdown-label">Total Cost (Materials + Labor + Overhead Costs):</span>
+                    <span className="breakdown-value">{formatCurrency(breakdown.totalCost)}</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

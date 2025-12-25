@@ -91,7 +91,9 @@ export default function MaterialsList({
     laborRate, 
     addOns, 
     overheadPercent, 
-    profitPercent, 
+    profitPercent,
+    10, // overheadCostPercent (workers comp, insurance, office costs)
+    20, // netMarginTarget (20% NET margin)
     discountAmount,
     false // Show margins in materials list for internal tracking
   );
@@ -295,6 +297,10 @@ export default function MaterialsList({
           <span>{formatters.formatCurrency(costBreakdown.subtotal)}</span>
         </div>
         <div className="summary-line">
+          <span>Overhead Costs (Workers Comp, Insurance, Office - {formatters.formatPercentage(costBreakdown.overheadCostPercent || 10)}):</span>
+          <span>{formatters.formatCurrency(costBreakdown.overheadCosts || 0)}</span>
+        </div>
+        <div className="summary-line">
           <span>Overhead ({formatters.formatPercentage(overheadPercent)}):</span>
           <span>{formatters.formatCurrency(costBreakdown.overheadAmount)}</span>
         </div>
@@ -314,6 +320,19 @@ export default function MaterialsList({
           <span>Total:</span>
           <span>{formatters.formatCurrency(costBreakdown.finalTotal)}</span>
         </div>
+        
+        {/* NET Margin Display */}
+        <div className="summary-divider"></div>
+        <div className="summary-line" style={{ fontWeight: 'bold', color: costBreakdown.netMarginActual >= (costBreakdown.netMarginTarget || 20) ? '#10b981' : '#ef4444' }}>
+          <span>NET Margin (Target: {formatters.formatPercentage(costBreakdown.netMarginTarget || 20)}):</span>
+          <span>{formatters.formatPercentage(costBreakdown.netMarginActual || 0)}</span>
+        </div>
+        {costBreakdown.totalCost > 0 && (
+          <div className="summary-line" style={{ fontSize: '0.9em', color: '#666' }}>
+            <span>Total Cost (Materials + Labor + Overhead Costs):</span>
+            <span>{formatters.formatCurrency(costBreakdown.totalCost || 0)}</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -319,6 +319,8 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         pricing: {
           overheadPercent: proposalData.overheadPercent || 15,
           profitPercent: proposalData.profitPercent || 20,
+          overheadCostPercent: proposalData.overheadCostPercent || 10,
+          netMarginTarget: proposalData.netMarginTarget || 20,
           discountAmount: proposalData.discountAmount || 0,
           laborHours: proposalData.laborHours || 0,
           laborRate: proposalData.laborRate || 75
@@ -622,6 +624,8 @@ Extract ONLY new/modified items and return a JSON object with this structure:
   ],
   "overheadPercent": 15,
   "profitPercent": 20,
+  "overheadCostPercent": 10,
+  "netMarginTarget": 20,
   "discountAmount": 0,
   "totalAmount": 22770,
   "timeline": "5-7 working days"
@@ -630,7 +634,7 @@ Extract ONLY new/modified items and return a JSON object with this structure:
 CRITICAL EXTRACTION RULES:
 - If the user asks to CHANGE or UPDATE an existing material's price, include that material with the NEW price
 - If the user asks to CHANGE quantity, include the material with the NEW quantity
-- ALWAYS include overheadPercent: 15 and profitPercent: 20
+- ALWAYS include overheadPercent: 15, profitPercent: 20, overheadCostPercent: 10, and netMarginTarget: 20
 - ALWAYS extract totalAmount if any final pricing is mentioned
 - Extract ALL materials, labor, permits, disposal costs mentioned
 - Include timeline, warranty, and any project details
@@ -853,6 +857,15 @@ Return ONLY the JSON object, no other text.`;
           updates.profitPercent = parsedData.profitPercent;
         }
         
+        // Set overhead costs and NET margin if specified
+        if (parsedData.overheadCostPercent !== undefined) {
+          updates.overheadCostPercent = parsedData.overheadCostPercent;
+        }
+        
+        if (parsedData.netMarginTarget !== undefined) {
+          updates.netMarginTarget = parsedData.netMarginTarget;
+        }
+        
         if (parsedData.discountAmount !== undefined) {
           updates.discountAmount = parsedData.discountAmount;
         }
@@ -865,23 +878,32 @@ Return ONLY the JSON object, no other text.`;
           const addOns = proposalData.addOns || [];
           const overheadPercent = updates.overheadPercent || proposalData.overheadPercent || 15;
           const profitPercent = updates.profitPercent || proposalData.profitPercent || 20;
+          const overheadCostPercent = updates.overheadCostPercent || proposalData.overheadCostPercent || 10;
+          const netMarginTarget = updates.netMarginTarget || proposalData.netMarginTarget || 20;
           const discountAmount = updates.discountAmount || proposalData.discountAmount || 0;
           
-          // Calculate final total using the calculation utilities
-          const calculatedTotal = calculations.calculateTotal(
+          // Calculate final total using the calculation utilities with NET margin
+          const costBreakdown = calculations.getCostBreakdown(
             materialsForCalc,
             laborHours,
             laborRate,
             addOns,
             overheadPercent,
             profitPercent,
-            discountAmount
+            overheadCostPercent,
+            netMarginTarget,
+            discountAmount,
+            false
           );
           
           // Only update total if AI didn't provide one or if calculated total is significantly different
-          if (!parsedData.totalAmount || Math.abs(calculatedTotal - (parsedData.totalAmount || 0)) > 100) {
-            updates.totalAmount = calculatedTotal;
-            console.log('🔢 Auto-calculated total using calculation utilities:', calculatedTotal);
+          if (!parsedData.totalAmount || Math.abs(costBreakdown.finalTotal - (parsedData.totalAmount || 0)) > 100) {
+            updates.totalAmount = costBreakdown.finalTotal;
+            updates.overheadCosts = costBreakdown.overheadCosts;
+            updates.totalCost = costBreakdown.totalCost;
+            updates.netMarginActual = costBreakdown.netMarginActual;
+            console.log('🔢 Auto-calculated total using calculation utilities:', costBreakdown.finalTotal);
+            console.log('📊 NET Margin:', costBreakdown.netMarginActual.toFixed(2) + '%');
           }
         }
         

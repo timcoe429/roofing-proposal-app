@@ -138,7 +138,12 @@ export const createTables = async () => {
     // Add new columns to existing databases safely (Railway production)
     await sequelize.query(`
       ALTER TABLE proposals
-      ADD COLUMN IF NOT EXISTS "aiChatHistory" JSONB DEFAULT '[]'::jsonb;
+      ADD COLUMN IF NOT EXISTS "aiChatHistory" JSONB DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS "overheadCostPercent" DECIMAL(5,2) DEFAULT 10,
+      ADD COLUMN IF NOT EXISTS "netMarginTarget" DECIMAL(5,2) DEFAULT 20,
+      ADD COLUMN IF NOT EXISTS "netMarginActual" DECIMAL(5,2) DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS "overheadCosts" DECIMAL(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "totalCost" DECIMAL(10,2) DEFAULT 0;
     `);
     
     console.log('Proposals table created successfully');

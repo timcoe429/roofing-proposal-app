@@ -105,6 +105,8 @@ export const validateProposalTotals = (proposalData) => {
     proposalData.addOns || [],
     proposalData.overheadPercent || 15,
     proposalData.profitPercent || 20,
+    proposalData.overheadCostPercent || 10,
+    proposalData.netMarginTarget || 20,
     proposalData.discountAmount || 0
   );
 
@@ -187,6 +189,8 @@ export const compareAICalculation = (aiTotal, proposalData) => {
     proposalData.addOns || [],
     proposalData.overheadPercent || 15,
     proposalData.profitPercent || 20,
+    proposalData.overheadCostPercent || 10,
+    proposalData.netMarginTarget || 20,
     proposalData.discountAmount || 0
   );
 

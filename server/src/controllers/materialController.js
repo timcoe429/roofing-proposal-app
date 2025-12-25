@@ -10,46 +10,142 @@ const parseMoney = (value) => {
   return Number.isFinite(num) ? num : 0;
 };
 
+// Detect column structure from headers
+const detectColumnStructure = (headerRow) => {
+  const headers = headerRow.map(h => String(h || '').toLowerCase().trim());
+  
+  // Find column indices
+  const categoryIdx = headers.findIndex(h => h.includes('category'));
+  const itemNameIdx = headers.findIndex(h => (h.includes('item') && h.includes('name')) || (h.includes('item') && !h.includes('category')));
+  const unitIdx = headers.findIndex(h => h === 'unit' || h.includes('unit'));
+  const descriptionIdx = headers.findIndex(h => h.includes('description') || h.includes('desc'));
+  const priceIdx = headers.findIndex(h => h.includes('price') || (h.includes('cost') && !h.includes('material') && !h.includes('labor')));
+  const materialCostIdx = headers.findIndex(h => h.includes('material') && h.includes('cost'));
+  const laborCostIdx = headers.findIndex(h => h.includes('labor') && h.includes('cost'));
+  const totalPriceIdx = headers.findIndex(h => h.includes('total') && (h.includes('price') || h.includes('cost')));
+  
+  // Detect format type
+  if (itemNameIdx >= 0 && priceIdx >= 0 && categoryIdx >= 0) {
+    // New format: Category, Item Name, Unit, Description, Price
+    return {
+      type: 'simple',
+      category: categoryIdx,
+      name: itemNameIdx,
+      unit: unitIdx >= 0 ? unitIdx : null,
+      description: descriptionIdx >= 0 ? descriptionIdx : null,
+      price: priceIdx,
+      materialCost: null,
+      laborCost: null,
+      totalPrice: priceIdx
+    };
+  } else if (materialCostIdx >= 0 && laborCostIdx >= 0) {
+    // Original format: Category, Name, Unit, Material Cost, Labor Cost, Total Price
+    return {
+      type: 'detailed',
+      category: categoryIdx >= 0 ? categoryIdx : 0,
+      name: itemNameIdx >= 0 ? itemNameIdx : 1,
+      unit: unitIdx >= 0 ? unitIdx : 2,
+      description: descriptionIdx >= 0 ? descriptionIdx : null,
+      price: null,
+      materialCost: materialCostIdx,
+      laborCost: laborCostIdx,
+      totalPrice: totalPriceIdx >= 0 ? totalPriceIdx : 5
+    };
+  }
+  
+  // Fallback: assume original format based on position
+  return {
+    type: 'fallback',
+    category: 0,
+    name: 1,
+    unit: 2,
+    description: null,
+    price: null,
+    materialCost: 3,
+    laborCost: 4,
+    totalPrice: 5
+  };
+};
+
 const buildPricingSnapshotFromSheet = (sheetData, sheetUrl) => {
   const rows = Array.isArray(sheetData?.rows) ? sheetData.rows : [];
+  if (rows.length === 0) {
+    return {
+      sourceUrl: sheetUrl,
+      header: [],
+      totalRows: 0,
+      totalItems: 0,
+      lastSyncedAt: new Date().toISOString(),
+      materials: []
+    };
+  }
+  
   const header = rows[0] || [];
+  const structure = detectColumnStructure(header);
   const materials = [];
-
+  
+  // Track current category for rows without category
+  let currentCategory = 'General';
+  
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i] || [];
-    const category = (row[0] || '').toString().trim();
-    const name = (row[1] || '').toString().trim();
-    const unit = (row[2] || '').toString().trim();
-
-    // Skip category/header rows that don't have an item/service name
+    
+    // Get category - use current category if cell is empty
+    const categoryCell = structure.category !== null ? (row[structure.category] || '').toString().trim() : '';
+    if (categoryCell) {
+      currentCategory = categoryCell;
+    }
+    
+    // Get item name
+    const name = structure.name !== null ? (row[structure.name] || '').toString().trim() : '';
+    
+    // Skip rows without item name
     if (!name) continue;
-
-    const materialCost = parseMoney(row[3]);
-    const laborCost = parseMoney(row[4]);
-    const totalPrice = parseMoney(row[5]);
-    const minOrder = (row[6] || '').toString().trim();
-    const notes = (row[7] || '').toString().trim();
-
-    // Skip rows that have no pricing numbers at all
+    
+    // Get unit
+    const unit = structure.unit !== null ? (row[structure.unit] || '').toString().trim() : 'each';
+    
+    // Get description if available
+    const description = structure.description !== null ? (row[structure.description] || '').toString().trim() : '';
+    
+    let materialCost = 0;
+    let laborCost = 0;
+    let totalPrice = 0;
+    
+    if (structure.type === 'simple') {
+      // Simple format: Price is the total price
+      totalPrice = parseMoney(row[structure.price]);
+      materialCost = totalPrice; // Assume all cost is material cost
+      laborCost = 0;
+    } else {
+      // Detailed format: Separate material and labor costs
+      materialCost = structure.materialCost !== null ? parseMoney(row[structure.materialCost]) : 0;
+      laborCost = structure.laborCost !== null ? parseMoney(row[structure.laborCost]) : 0;
+      totalPrice = structure.totalPrice !== null ? parseMoney(row[structure.totalPrice]) : (materialCost + laborCost);
+    }
+    
+    // Skip rows with no pricing
     if (materialCost === 0 && laborCost === 0 && totalPrice === 0) continue;
-
+    
     materials.push({
-      category: category || 'General',
+      category: currentCategory || 'General',
       name,
-      unit: unit || 'Per Square',
+      unit: unit || 'each',
+      description: description || '',
       materialCost,
       laborCost,
       totalPrice,
-      minOrder,
-      notes
+      minOrder: '',
+      notes: description || ''
     });
   }
-
+  
   const lastSyncedAt = new Date().toISOString();
-
+  
   return {
     sourceUrl: sheetUrl,
     header,
+    structure: structure.type,
     totalRows: rows.length,
     totalItems: materials.length,
     lastSyncedAt,
