@@ -67,7 +67,7 @@ const detectColumnStructure = (headerRow) => {
   };
 };
 
-const buildPricingSnapshotFromSheet = (sheetData, sheetUrl) => {
+export const buildPricingSnapshotFromSheet = (sheetData, sheetUrl) => {
   const rows = Array.isArray(sheetData?.rows) ? sheetData.rows : [];
   if (rows.length === 0) {
     return {

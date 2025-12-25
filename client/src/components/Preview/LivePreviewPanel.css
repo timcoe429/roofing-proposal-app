@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 1.5rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
   position: sticky;
@@ -23,7 +23,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .header-left {
@@ -34,7 +34,7 @@
 
 .preview-header h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #111827;
 }
@@ -111,7 +111,7 @@
 }
 
 .preview-section {
-  padding: 1.5rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -120,19 +120,71 @@
 }
 
 .preview-section h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
   font-weight: 600;
   color: #374151;
+}
+
+/* Collapsible sections */
+.collapsible-section {
+  padding: 0.5rem 1rem;
+}
+
+.section-header-clickable {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.25rem 0;
+}
+
+.section-header-clickable:hover {
+  opacity: 0.8;
+}
+
+.section-header-clickable h3 {
+  margin: 0;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.client-property {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.section-chevron {
+  transition: transform 0.2s;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.section-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.collapsible-section .info-grid {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
 }
 
 .line-items-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.5rem;
+}
+
+.line-items-header h3 {
+  margin: 0;
 }
 
 .margin-toggle {
@@ -154,18 +206,18 @@
 
 .toggle-slider {
   position: relative;
-  width: 44px;
-  height: 24px;
+  width: 36px;
+  height: 20px;
   background: #e5e7eb;
-  border-radius: 12px;
+  border-radius: 10px;
   transition: background 0.2s;
 }
 
 .toggle-slider::before {
   content: '';
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: white;
   top: 2px;
@@ -179,11 +231,11 @@
 }
 
 .toggle-input:checked + .toggle-slider::before {
-  transform: translateX(20px);
+  transform: translateX(16px);
 }
 
 .toggle-text {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: #374151;
 }
@@ -197,7 +249,7 @@
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .info-grid .full-width {
@@ -206,14 +258,14 @@
 
 .info-grid .label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: #6b7280;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
 }
 
 .info-grid .value {
   display: block;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   color: #111827;
   font-weight: 500;
 }
@@ -226,12 +278,12 @@
 
 .table-header {
   display: grid;
-  grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1fr;
-  gap: 0.75rem;
-  padding: 0.75rem;
+  grid-template-columns: 2fr 0.6fr 0.6fr 0.8fr 0.8fr;
+  gap: 0.5rem;
+  padding: 0.5rem;
   background: #f9fafb;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: #6b7280;
   text-transform: uppercase;
@@ -240,11 +292,11 @@
 
 .table-row {
   display: grid;
-  grid-template-columns: 2fr 0.8fr 0.8fr 1fr 1fr;
-  gap: 0.75rem;
-  padding: 0.75rem;
+  grid-template-columns: 2fr 0.6fr 0.6fr 0.8fr 0.8fr;
+  gap: 0.5rem;
+  padding: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .table-row:last-child {
@@ -304,21 +356,21 @@
 .breakdown-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.375rem;
 }
 
 .breakdown-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
-  font-size: 0.9375rem;
+  padding: 0.25rem 0;
+  font-size: 0.8125rem;
 }
 
 .breakdown-row.subtotal {
   border-top: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
-  padding: 0.75rem 0;
+  padding: 0.5rem 0;
   font-weight: 600;
 }
 
@@ -328,15 +380,16 @@
 
 .breakdown-row.total {
   border-top: 2px solid #2563eb;
-  padding-top: 1rem;
-  margin-top: 0.5rem;
-  font-size: 1.125rem;
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #111827;
 }
 
 .breakdown-label {
   color: #6b7280;
+  font-size: 0.75rem;
 }
 
 .breakdown-value {
@@ -346,6 +399,6 @@
 
 .breakdown-row.total .breakdown-value {
   color: #2563eb;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
 }
 

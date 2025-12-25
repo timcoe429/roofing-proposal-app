@@ -82,8 +82,26 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
 
   // Format AI responses with proper HTML
   const formatAIResponse = (text) => {
-    // Split into paragraphs first
-    const paragraphs = text.split('\n\n');
+    // FIRST: Remove JSON code blocks and standalone JSON objects from display
+    let cleanedText = text
+      // Remove ```json ... ``` blocks
+      .replace(/```json\s*[\s\S]*?```/gi, '')
+      // Remove ``` ... ``` blocks that contain JSON-like content
+      .replace(/```[\s\S]*?```/g, (match) => {
+        // If it looks like JSON (has { and } and quotes), remove it
+        if (match.includes('{') && match.includes('}') && match.includes('"')) {
+          return '';
+        }
+        return match; // Keep other code blocks
+      })
+      // Remove standalone JSON objects on their own lines
+      .replace(/^\s*\{[\s\S]*?\}\s*$/gm, '')
+      // Clean up excessive whitespace from removals
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // Split into paragraphs
+    const paragraphs = cleanedText.split('\n\n');
     
     return paragraphs.map(paragraph => {
       const lines = paragraph.split('\n');

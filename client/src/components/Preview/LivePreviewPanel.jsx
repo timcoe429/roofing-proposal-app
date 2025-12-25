@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { Download, CheckCircle, AlertCircle, ChevronDown } from 'lucide-react';
 import { calculations } from '../../utils/calculations';
 import { getValidationReport } from '../../utils/mathValidator';
 import MarginDashboard from './MarginDashboard';
@@ -7,6 +7,7 @@ import './LivePreviewPanel.css';
 
 const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
   const [showMarginsBakedIn, setShowMarginsBakedIn] = useState(false);
+  const [isClientInfoExpanded, setIsClientInfoExpanded] = useState(false);
   // Calculate cost breakdown
   const breakdown = calculations.getCostBreakdown(
     proposalData.materials || [],
@@ -151,34 +152,48 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
         </div>
       )}
 
-      {/* Client Info Summary */}
+      {/* Client Info Summary - Collapsible */}
       {proposalData.clientName && (
-        <div className="preview-section">
-          <h3>Client Information</h3>
-          <div className="info-grid">
-            <div>
-              <span className="label">Client:</span>
-              <span className="value">{proposalData.clientName}</span>
-            </div>
-            {proposalData.propertyAddress && (
-              <div>
-                <span className="label">Property:</span>
-                <span className="value">{proposalData.propertyAddress}</span>
-              </div>
-            )}
-            {proposalData.clientEmail && (
-              <div>
-                <span className="label">Email:</span>
-                <span className="value">{proposalData.clientEmail}</span>
-              </div>
-            )}
-            {proposalData.clientPhone && (
-              <div>
-                <span className="label">Phone:</span>
-                <span className="value">{proposalData.clientPhone}</span>
-              </div>
-            )}
+        <div className="preview-section collapsible-section">
+          <div 
+            className="section-header-clickable"
+            onClick={() => setIsClientInfoExpanded(!isClientInfoExpanded)}
+          >
+            <h3>
+              Client: {proposalData.clientName}
+              {proposalData.propertyAddress && <span className="client-property"> • {proposalData.propertyAddress}</span>}
+            </h3>
+            <ChevronDown 
+              size={16} 
+              className={`section-chevron ${isClientInfoExpanded ? 'expanded' : ''}`}
+            />
           </div>
+          {isClientInfoExpanded && (
+            <div className="info-grid">
+              <div>
+                <span className="label">Client:</span>
+                <span className="value">{proposalData.clientName}</span>
+              </div>
+              {proposalData.propertyAddress && (
+                <div>
+                  <span className="label">Property:</span>
+                  <span className="value">{proposalData.propertyAddress}</span>
+                </div>
+              )}
+              {proposalData.clientEmail && (
+                <div>
+                  <span className="label">Email:</span>
+                  <span className="value">{proposalData.clientEmail}</span>
+                </div>
+              )}
+              {proposalData.clientPhone && (
+                <div>
+                  <span className="label">Phone:</span>
+                  <span className="value">{proposalData.clientPhone}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -273,10 +288,6 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
                 <div className="breakdown-row">
                   <span className="breakdown-label">Overhead Costs (Workers Comp, Insurance, Office - {breakdown.overheadCostPercent || 10}%):</span>
                   <span className="breakdown-value">{formatCurrency(breakdown.overheadCosts || 0)}</span>
-                </div>
-                <div className="breakdown-row">
-                  <span className="breakdown-label">Overhead ({breakdown.overheadPercent}%):</span>
-                  <span className="breakdown-value">{formatCurrency(breakdown.overheadAmount)}</span>
                 </div>
                 <div className="breakdown-row">
                   <span className="breakdown-label">Profit ({breakdown.profitPercent}%):</span>

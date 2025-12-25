@@ -6,6 +6,7 @@ import { checkProposalCompleteness } from '../utils/infoChecker.js';
 import Material from '../models/Material.js';
 import Company from '../models/Company.js';
 import { fetchGoogleSheetData } from './googleSheetsService.js';
+import { buildPricingSnapshotFromSheet } from '../controllers/materialController.js';
 
 // Initialize AI clients
 let openai = null;
@@ -334,49 +335,19 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
               const sheetData = await fetchGoogleSheetData(sheetUrl);
               logger.info(`✅ [PRICING DEBUG] Fetched ${sheetData.rowCount} rows from Google Sheet`);
               
-              // Build snapshot (same logic as materialController)
-              const parseMoney = (value) => {
-                if (value === null || value === undefined) return 0;
-                const cleaned = String(value).replace(/[$,\s]/g, '').trim();
-                const num = parseFloat(cleaned);
-                return Number.isFinite(num) ? num : 0;
-              };
-
-              const rows = Array.isArray(sheetData?.rows) ? sheetData.rows : [];
-              const materials = [];
-              for (let i = 1; i < rows.length; i++) {
-                const row = rows[i] || [];
-                const name = (row[1] || '').toString().trim();
-                if (!name) continue;
-                
-                const materialCost = parseMoney(row[3]);
-                const laborCost = parseMoney(row[4]);
-                const totalPrice = parseMoney(row[5]);
-                if (materialCost === 0 && laborCost === 0 && totalPrice === 0) continue;
-
-                materials.push({
-                  category: (row[0] || '').toString().trim() || 'General',
-                  name,
-                  unit: (row[2] || '').toString().trim() || 'Per Square',
-                  materialCost,
-                  laborCost,
-                  totalPrice,
-                  minOrder: (row[6] || '').toString().trim(),
-                  notes: (row[7] || '').toString().trim()
-                });
-              }
-
-              logger.info(`✅ [PRICING DEBUG] Parsed ${materials.length} materials from Google Sheet`);
+              // Use the same flexible parser as materialController (detects column structure from headers)
+              const snapshot = buildPricingSnapshotFromSheet(sheetData, sheetUrl);
+              logger.info(`✅ [PRICING DEBUG] Parsed ${snapshot.materials.length} materials using flexible parser`);
               
               pricingData.push({
                 sheetName: sheet.name,
-                materials,
-                totalItems: materials.length,
-                lastSyncedAt: new Date().toISOString(),
+                materials: snapshot.materials,
+                totalItems: snapshot.materials.length,
+                lastSyncedAt: snapshot.lastSyncedAt,
                 source: 'google_fetch'
               });
               debugInfo.sheetsFetchedFromGoogle++;
-              debugInfo.totalMaterials += materials.length;
+              debugInfo.totalMaterials += snapshot.materials.length;
             } catch (fetchError) {
               logger.error(`❌ [PRICING DEBUG] Failed to fetch Google Sheet for ${sheet.name}:`, fetchError.message);
               debugInfo.errors.push({ sheet: sheet.name, error: fetchError.message });
