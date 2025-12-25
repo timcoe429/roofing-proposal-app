@@ -294,7 +294,7 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
             {!breakdown.isMarginHidden && (
               <>
                 <div className="breakdown-row">
-                  <span className="breakdown-label">Overhead Costs (Workers Comp, Insurance, Office - {breakdown.overheadCostPercent || 10}%):</span>
+                  <span className="breakdown-label">Overhead Costs (Workers Comp, Insurance, Office):</span>
                   <span className="breakdown-value">{formatCurrency(breakdown.overheadCosts || 0)}</span>
                 </div>
                 <div className="breakdown-row">
@@ -320,7 +320,7 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
                     NET Margin (Target: {parseFloat(breakdown.netMarginTarget) || 20}%):
                   </span>
                   <span className="breakdown-value" style={{ fontWeight: 'bold', color: (parseFloat(breakdown.netMarginActual) || 0) >= (parseFloat(breakdown.netMarginTarget) || 20) ? '#10b981' : '#ef4444' }}>
-                    {(parseFloat(breakdown.netMarginActual) || 0).toFixed(2)}%
+                    {formatCurrency(breakdown.netMarginAmount || (breakdown.finalTotal - breakdown.totalCost))} ({(parseFloat(breakdown.netMarginActual) || 0).toFixed(2)}%)
                   </span>
                 </div>
                 {breakdown.totalCost > 0 && (

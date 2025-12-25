@@ -315,17 +315,18 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
 
             // Check for existing snapshot first (preferred - fast and reliable)
             const existingSnapshot = sheet.specifications?.pricingSnapshot;
-            if (existingSnapshot?.materials?.length) {
-              logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials.length} materials`);
+            if (existingSnapshot?.materials?.length || existingSnapshot?.rawCsvData) {
+              logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials?.length || 0} materials`);
               pricingData.push({
                 sheetName: sheet.name,
-                materials: existingSnapshot.materials,
-                totalItems: existingSnapshot.materials.length,
+                materials: existingSnapshot.materials || [],
+                rawCsvData: existingSnapshot.rawCsvData || null, // Include raw CSV data
+                totalItems: existingSnapshot.materials?.length || 0,
                 lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null,
                 source: 'snapshot'
               });
               debugInfo.sheetsWithSnapshots++;
-              debugInfo.totalMaterials += existingSnapshot.materials.length;
+              debugInfo.totalMaterials += existingSnapshot.materials?.length || 0;
               continue;
             }
 
@@ -361,6 +362,7 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
               pricingData.push({
                 sheetName: sheet.name,
                 materials: snapshot.materials,
+                rawCsvData: snapshot.rawCsvData || sheetData.csvData || null, // Include raw CSV data
                 totalItems: snapshot.materials.length,
                 lastSyncedAt: snapshot.lastSyncedAt,
                 source: 'google_fetch'
@@ -399,15 +401,53 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
         
         pricingData.forEach(sheet => {
           pricingContext += `\n**${sheet.sheetName}** (${sheet.source === 'snapshot' ? 'from snapshot' : 'fresh from Google'}, synced: ${sheet.lastSyncedAt || 'unknown'}):\n`;
-          sheet.materials.forEach(material => {
-            pricingContext += `- ${material.name}: $${material.materialCost} (material) + $${material.laborCost} (labor) = $${material.totalPrice} per ${material.unit}\n`;
-          });
+          
+          // If raw CSV data is available, use that (includes ALL columns)
+          if (sheet.rawCsvData) {
+            pricingContext += `\n\`\`\`\n${sheet.rawCsvData}\n\`\`\`\n`;
+            pricingContext += `\n**Note:** This pricing sheet contains ALL columns from the original spreadsheet. Use the column headers to understand what each field represents.\n`;
+          } else {
+            // Fallback to parsed materials if raw CSV not available
+            const materialsByCategory = {};
+            sheet.materials.forEach(material => {
+              const category = material.category || 'General';
+              if (!materialsByCategory[category]) {
+                materialsByCategory[category] = [];
+              }
+              materialsByCategory[category].push(material);
+            });
+            
+            // Display grouped by category
+            Object.keys(materialsByCategory).sort().forEach(category => {
+              pricingContext += `\n**${category}:**\n`;
+              materialsByCategory[category].forEach(material => {
+                let materialLine = `  - ${material.name}`;
+                if (material.description && material.description.trim()) {
+                  materialLine += ` (${material.description.trim()})`;
+                }
+                materialLine += `: $${material.materialCost} (material) + $${material.laborCost} (labor) = $${material.totalPrice} per ${material.unit}`;
+                if (material.minOrder && material.minOrder.trim()) {
+                  materialLine += ` | Min order: ${material.minOrder}`;
+                }
+                if (material.notes && material.notes.trim() && material.notes !== material.description) {
+                  materialLine += ` | Notes: ${material.notes.trim()}`;
+                }
+                pricingContext += materialLine + `\n`;
+              });
+            });
+          }
         });
         
         pricingContext += `\n**RULES:**\n`;
         pricingContext += `- ONLY use prices listed above\n`;
+        pricingContext += `- **UNDERSTAND THE STRUCTURE:** The pricing data is shown as a CSV table with ALL columns from the original spreadsheet. Use the column headers (first row) to understand what each field represents.\n`;
+        pricingContext += `- **Categories:** Materials are organized by CATEGORY (typically in the first column). Each category contains MULTIPLE DIFFERENT PRODUCTS with different names, descriptions, and prices.\n`;
+        pricingContext += `- **CRITICAL - Category vs. Product:** When a user mentions a category name (e.g., "Brava" or "Brava shake"), they're referring to the CATEGORY, not a specific product. You MUST ask which specific product they want from that category.\n`;
+        pricingContext += `- **Example:** If user says "Brava shake shingles" and you see "BRAVA SHAKE" category with multiple products like "Brava Field Tile", "Brava Starter", and "Brava H&R", ask: "I see multiple Brava products in your pricing sheet. Which specific product would you like to use?"\n`;
+        pricingContext += `- **NEVER add multiple products from the same category unless explicitly requested** - each product name is a DISTINCT item with different prices and specifications\n`;
+        pricingContext += `- **Use ALL columns:** All columns from the pricing sheet are provided - use them to understand product details, descriptions, units, pricing breakdowns, etc.\n`;
         pricingContext += `- If a material isn't listed, say "I don't see [material] in your pricing sheets" and ask what price to use\n`;
-        pricingContext += `- NEVER invent or estimate prices - only use what's provided\n`;
+        pricingContext += `- NEVER invent or estimate prices - only use what's provided in the pricing sheet\n`;
         
         logger.info(`✅ [PRICING DEBUG] Pricing context built: ${pricingContext.length} characters`);
       }
@@ -479,7 +519,13 @@ When generating quotes, follow these steps:
 
 2. **Use Pricing Sheet Data:**
    - ALWAYS use EXACT prices from the company's pricing sheets when available
-   - Match materials by name - if exact match isn't found, ask the user
+   - **UNDERSTAND THE STRUCTURE:** Pricing sheets are organized by CATEGORIES (e.g., "BRAVA SHAKE", "DAVINCI SHAKE"). Each category contains MULTIPLE DISTINCT PRODUCTS with different names and prices
+   - **Category vs. Product:** When a user mentions a category name (e.g., "Brava" or "Brava shake"), they mean the CATEGORY, not a specific product. You MUST ask which specific product they want
+   - **Example:** User says "Brava shake shingles" → You see category "BRAVA SHAKE" with products: "Brava Field Tile", "Brava Starter", "Brava H&R" → Ask: "I see multiple Brava products: Brava Field Tile, Brava Starter, and Brava H&R. Which specific product would you like to use?"
+   - Match materials by EXACT product name - if exact match isn't found, ask the user
+   - **NEVER add multiple products from the same category** unless the user explicitly asks for multiple products
+   - Each product name is a DISTINCT item - "Brava Field Tile" and "Brava Starter" are DIFFERENT products, not variations of the same product
+   - **CRITICAL - Labor is Already Included:** The pricing sheet prices ALREADY include both material cost AND labor cost. Each material shows: materialCost + laborCost = totalPrice. DO NOT add separate labor calculations - labor is already baked into the material prices.
    - Use material cost + labor cost from pricing sheet for total price per unit
    - If a material isn't in the pricing sheets, ask the user what price to use - don't guess
 
@@ -548,7 +594,8 @@ ${pricingStatus === 'LOADED' ? pricingContext : ''}
 **Conversation Style:**
 - Be natural and conversational - talk like you're helping a colleague
 - Use "I" and "you" naturally
-- Ask clarifying questions when needed
+- **ASK FIRST, DON'T ASSUME:** When you see multiple similar products or aren't sure which material to use, ask the user for clarification BEFORE adding materials
+- Ask clarifying questions when needed - it's better to ask than to guess wrong
 - Be helpful and engaging
 
 ${pricingStatus === 'LOADED' && pricingContext ? `\n**Available Pricing Data:**\n${pricingContext}\n\nUse these exact prices from the company's pricing sheets. If something isn't listed, ask the user for the price.` : ''}`;

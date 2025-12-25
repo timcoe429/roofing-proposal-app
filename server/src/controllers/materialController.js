@@ -142,6 +142,15 @@ export const buildPricingSnapshotFromSheet = (sheetData, sheetUrl) => {
   
   const lastSyncedAt = new Date().toISOString();
   
+  // Store raw CSV data for AI (includes ALL columns)
+  const rawCsvData = sheetData?.csvData || rows.map(row => 
+    row.map(cell => 
+      cell && (cell.includes(',') || cell.includes('"')) 
+        ? `"${cell.replace(/"/g, '""')}"` 
+        : cell || ''
+    ).join(',')
+  ).join('\n');
+  
   return {
     sourceUrl: sheetUrl,
     header,
@@ -149,7 +158,8 @@ export const buildPricingSnapshotFromSheet = (sheetData, sheetUrl) => {
     totalRows: rows.length,
     totalItems: materials.length,
     lastSyncedAt,
-    materials
+    materials,
+    rawCsvData // Store raw CSV with ALL columns for AI
   };
 };
 

@@ -137,6 +137,7 @@ export const calculations = {
       profitAmount,
       netMarginTarget,
       netMarginActual: actualNetMargin,
+      netMarginAmount: finalTotal - totalCost, // Dollar amount of net margin
       totalCost,
       discountAmount,
       finalTotal,

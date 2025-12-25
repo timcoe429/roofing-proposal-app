@@ -300,7 +300,7 @@ export default function MaterialsList({
           <span>{formatters.formatCurrency(costBreakdown.subtotal)}</span>
         </div>
         <div className="summary-line">
-          <span>Overhead Costs (Workers Comp, Insurance, Office - {formatters.formatPercentage(costBreakdown.overheadCostPercent || 10)}):</span>
+          <span>Overhead Costs (Workers Comp, Insurance, Office):</span>
           <span>{formatters.formatCurrency(costBreakdown.overheadCosts || 0)}</span>
         </div>
         <div className="summary-line">
