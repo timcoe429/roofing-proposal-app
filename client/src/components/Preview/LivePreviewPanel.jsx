@@ -9,26 +9,24 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
   const [showMarginsBakedIn, setShowMarginsBakedIn] = useState(false);
   const [isClientInfoExpanded, setIsClientInfoExpanded] = useState(false);
   
-  // Safety check
-  if (!proposalData) {
-    return <div className="live-preview-panel">Loading...</div>;
-  }
-  
-  // Calculate cost breakdown
+  // Calculate cost breakdown - provide defaults if proposalData is null
   const breakdown = calculations.getCostBreakdown(
-    proposalData.materials || [],
-    proposalData.laborHours || 0,
-    proposalData.laborRate || 75,
-    proposalData.addOns || [],
-    proposalData.overheadPercent || 15,
-    proposalData.profitPercent || 20,
-    proposalData.overheadCostPercent || 10,
-    proposalData.netMarginTarget || 20,
-    proposalData.discountAmount || 0
+    proposalData?.materials || [],
+    proposalData?.laborHours || 0,
+    proposalData?.laborRate || 75,
+    proposalData?.addOns || [],
+    proposalData?.overheadPercent || 15,
+    proposalData?.profitPercent || 20,
+    proposalData?.overheadCostPercent || 10,
+    proposalData?.netMarginTarget || 20,
+    proposalData?.discountAmount || 0
   );
 
-  // Get validation report
+  // Get validation report - handle null proposalData
   const validation = useMemo(() => {
+    if (!proposalData) {
+      return { isValid: true, errors: [], summary: { totalErrors: 0 }, lineItems: { errors: [] } };
+    }
     const report = getValidationReport(proposalData);
     
     // COMPLETELY filter out ALL total_mismatch errors - they're always transient
@@ -54,11 +52,11 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
 
   // Get base line items (materials + labor + add-ons) - these are the original prices
   const baseLineItems = [
-    ...(proposalData.materials || []).map(item => ({
+    ...(proposalData?.materials || []).map(item => ({
       ...item,
       type: item.category === 'labor' ? 'labor' : 'material'
     })),
-    ...(proposalData.addOns || []).map(item => ({
+    ...(proposalData?.addOns || []).map(item => ({
       ...item,
       type: 'addon',
       quantity: 1,
@@ -88,7 +86,7 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
 
   // Handle percentage updates from dashboard
   const handleUpdatePercentages = (updates) => {
-    if (onUpdateProposal) {
+    if (onUpdateProposal && proposalData) {
       onUpdateProposal({
         ...proposalData,
         ...updates
@@ -104,6 +102,11 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
       minimumFractionDigits: 2
     }).format(amount || 0);
   };
+
+  // Handle loading state AFTER all hooks
+  if (!proposalData) {
+    return <div className="live-preview-panel">Loading...</div>;
+  }
 
   return (
     <div className="live-preview-panel">
