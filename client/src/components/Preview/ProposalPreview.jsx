@@ -17,11 +17,29 @@ export default function ProposalPreview({
       return proposalData.totalAmount;
     }
     
+    // Migrate laborHours/laborRate to labor array for calculation
+    const labor = (() => {
+      if (proposalData.labor && Array.isArray(proposalData.labor) && proposalData.labor.length > 0) {
+        return proposalData.labor;
+      }
+      const laborHours = proposalData.laborHours || 0;
+      const laborRate = proposalData.laborRate || 75;
+      if (laborHours > 0 || laborRate > 0) {
+        return [{
+          id: Date.now(),
+          name: 'Roofing Labor',
+          hours: laborHours,
+          rate: laborRate,
+          total: laborHours * laborRate
+        }];
+      }
+      return [];
+    })();
+    
     // Fallback: calculate from individual items
     const breakdown = calculations.getCostBreakdown(
       proposalData.materials || [],
-      proposalData.laborHours || 0,
-      proposalData.laborRate || 0,
+      labor,
       proposalData.addOns || [],
       proposalData.overheadPercent || 15,
       proposalData.profitPercent || 20,

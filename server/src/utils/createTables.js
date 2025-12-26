@@ -119,6 +119,7 @@ export const createTables = async () => {
         urgency VARCHAR(50),
         measurements JSONB DEFAULT '{}',
         materials JSONB DEFAULT '[]',
+        labor JSONB DEFAULT '[]',
         "laborHours" DECIMAL(10,2) DEFAULT 0,
         "laborRate" DECIMAL(10,2) DEFAULT 75,
         "materialsCost" DECIMAL(10,2) DEFAULT 0,

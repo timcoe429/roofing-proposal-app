@@ -441,37 +441,65 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
           console.log('✅ Applying detailed AI parsing results:', detailedData);
           
           // Update proposal with new data
-          const updatedProposal = {
+          let updatedProposal = {
             ...proposalData,
             ...detailedData
           };
           
-          // Validate calculations after update
+          // Migrate laborHours/laborRate to labor array if needed
+          let labor = updatedProposal.labor || [];
+          if (!Array.isArray(labor) || labor.length === 0) {
+            const laborHours = updatedProposal.laborHours || 0;
+            const laborRate = updatedProposal.laborRate || 75;
+            if (laborHours > 0 || laborRate > 0) {
+              labor = [{
+                id: Date.now(),
+                name: 'Roofing Labor',
+                hours: laborHours,
+                rate: laborRate,
+                total: laborHours * laborRate
+              }];
+            }
+          }
+          
+          // Calculate final total (but don't store totalAmount - always calculate)
+          const breakdown = calculations.getCostBreakdown(
+            updatedProposal.materials || [],
+            labor,
+            updatedProposal.addOns || [],
+            updatedProposal.overheadPercent || 15,
+            updatedProposal.profitPercent || 20,
+            updatedProposal.overheadCostPercent || 10,
+            updatedProposal.netMarginTarget || 20,
+            updatedProposal.discountAmount || 0
+          );
+          console.log('🔧 Calculated finalTotal:', breakdown.finalTotal);
+          
+          // Validate calculations after update (show errors, don't auto-fix)
           const validation = getValidationReport(updatedProposal);
           
-          if (!validation.isValid || validation.hasWarnings) {
-            console.warn('⚠️ Validation issues found:', validation);
-            
-            // Add validation message to chat if there are significant issues
-            if (validation.errors.length > 0) {
-              const validationMessage = {
-                id: Date.now() + 2,
-                type: 'assistant',
-                content: `⚠️ **Math Validation Alert:**\n\nI found ${validation.errors.length} calculation error(s):\n${validation.errors.map(e => `- ${e.message || e.type}`).join('\n')}\n\nPlease review the calculations. I'll recalculate if needed.`,
-                timestamp: new Date(),
-                isValidationWarning: true
-              };
-              setMessages(prev => {
-                const next = [...prev, validationMessage];
-                persistChatHistoryToProposal(next);
-                return next;
-              });
-            }
+          // Filter out total_mismatch errors - we don't store totalAmount anymore, always calculate
+          const realErrors = validation.errors.filter(e => e.type !== 'total_mismatch');
+          
+          if (realErrors.length > 0) {
+            console.warn('⚠️ Validation issues found:', realErrors);
+            const validationMessage = {
+              id: Date.now() + 2,
+              type: 'assistant',
+              content: `⚠️ **Math Validation Alert:**\n\nI found ${realErrors.length} calculation error(s):\n${realErrors.map(e => `- ${e.message || e.type}`).join('\n')}\n\nPlease review the calculations.`,
+              timestamp: new Date(),
+              isValidationWarning: true
+            };
+            setMessages(prev => {
+              const next = [...prev, validationMessage];
+              persistChatHistoryToProposal(next);
+              return next;
+            });
           }
           
           onUpdateProposal(prev => ({
             ...prev,
-            ...detailedData
+            ...updatedProposal
           }));
         }
       } catch (error) {
@@ -720,7 +748,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     if (actionData.overheadCostPercent !== undefined) updates.overheadCostPercent = actionData.overheadCostPercent;
     if (actionData.netMarginTarget !== undefined) updates.netMarginTarget = actionData.netMarginTarget;
     if (actionData.discountAmount !== undefined) updates.discountAmount = actionData.discountAmount;
-    if (actionData.totalAmount !== undefined) updates.totalAmount = actionData.totalAmount;
+    // totalAmount removed - always calculate from current data, never store
     
     return updates;
   };
@@ -950,9 +978,7 @@ Return ONLY the JSON object, no other text.`;
         }
         
         // Set total amount from AI - this is the authoritative total
-        if (parsedData.totalAmount) {
-          updates.totalAmount = parsedData.totalAmount;
-        }
+        // totalAmount removed - always calculate from current data
         
         // Set timeline
         if (parsedData.timeline) {
@@ -984,8 +1010,22 @@ Return ONLY the JSON object, no other text.`;
         // Auto-calculate total using calculation utilities if we have materials/labor
         if (updates.materials || parsedData.materials || parsedData.labor) {
           const materialsForCalc = updates.materials || proposalData.materials || [];
-          const laborHours = proposalData.laborHours || 0;
-          const laborRate = proposalData.laborRate || 75;
+          // Migrate laborHours/laborRate to labor array if needed
+          let labor = updates.labor || proposalData.labor || [];
+          if (!Array.isArray(labor) || labor.length === 0) {
+            const laborHours = proposalData.laborHours || 0;
+            const laborRate = proposalData.laborRate || 75;
+            if (laborHours > 0 || laborRate > 0) {
+              labor = [{
+                id: Date.now(),
+                name: 'Roofing Labor',
+                hours: laborHours,
+                rate: laborRate,
+                total: laborHours * laborRate
+              }];
+            }
+          }
+          
           const addOns = proposalData.addOns || [];
           const overheadPercent = updates.overheadPercent || proposalData.overheadPercent || 15;
           const profitPercent = updates.profitPercent || proposalData.profitPercent || 20;
@@ -996,8 +1036,7 @@ Return ONLY the JSON object, no other text.`;
           // Calculate final total using the calculation utilities with NET margin
           const costBreakdown = calculations.getCostBreakdown(
             materialsForCalc,
-            laborHours,
-            laborRate,
+            labor,
             addOns,
             overheadPercent,
             profitPercent,
@@ -1007,15 +1046,10 @@ Return ONLY the JSON object, no other text.`;
             false
           );
           
-          // Only update total if AI didn't provide one or if calculated total is significantly different
-          if (!parsedData.totalAmount || Math.abs(costBreakdown.finalTotal - (parsedData.totalAmount || 0)) > 100) {
-            updates.totalAmount = costBreakdown.finalTotal;
-            updates.overheadCosts = costBreakdown.overheadCosts;
-            updates.totalCost = costBreakdown.totalCost;
-            updates.netMarginActual = costBreakdown.netMarginActual;
-            console.log('🔢 Auto-calculated total using calculation utilities:', costBreakdown.finalTotal);
-            console.log('📊 NET Margin:', costBreakdown.netMarginActual.toFixed(2) + '%');
-          }
+          // totalAmount removed - always calculate from current data
+          // Still calculate breakdown for validation, but don't store calculated fields
+          console.log('🔢 Calculated breakdown - finalTotal:', costBreakdown.finalTotal);
+          console.log('📊 NET Margin:', costBreakdown.netMarginActual.toFixed(2) + '%');
         }
         
         console.log('✅ AI successfully parsed estimate data:', parsedData);
@@ -1176,7 +1210,7 @@ Return ONLY the JSON object, no other text.`;
     // Basic extraction - extract total amount with simple pattern
     const totalMatch = response.match(/(?:Total|Subtotal|TOTAL).*?\$([0-9,]+(?:\.[0-9]{2})?)/i);
     if (totalMatch) {
-      updates.totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
+      // totalAmount removed - always calculate from current data
     }
     
     // Extract timeline

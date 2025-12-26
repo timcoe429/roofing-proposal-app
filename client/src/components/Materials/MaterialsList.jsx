@@ -87,11 +87,24 @@ export default function MaterialsList({
     onAddOnsChange(addOns.filter(addon => addon.id !== id));
   };
 
+  // Migrate laborHours/laborRate to labor array for calculation
+  const labor = React.useMemo(() => {
+    if (laborHours > 0 || laborRate > 0) {
+      return [{
+        id: Date.now(),
+        name: 'Roofing Labor',
+        hours: laborHours,
+        rate: laborRate,
+        total: laborHours * laborRate
+      }];
+    }
+    return [];
+  }, [laborHours, laborRate]);
+  
   // Use the calculation utilities for consistent calculations (show margins for internal use)
   const costBreakdown = calculations.getCostBreakdown(
     materials, 
-    laborHours, 
-    laborRate, 
+    labor, 
     addOns, 
     overheadPercent, 
     profitPercent,

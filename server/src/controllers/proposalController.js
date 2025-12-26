@@ -84,10 +84,26 @@ export const createProposal = async (req, res) => {
     }
 
     // Calculate cost breakdown with NET margin and overhead costs
+    // Use labor array if provided, otherwise migrate from old fields for compatibility
+    let labor = req.body.labor || [];
+    if (!Array.isArray(labor) || labor.length === 0) {
+      // Migration: convert old laborHours/laborRate to labor array
+      const laborHours = req.body.laborHours || 0;
+      const laborRate = req.body.laborRate || 75;
+      if (laborHours > 0 || laborRate > 0) {
+        labor = [{
+          id: Date.now(),
+          name: 'Roofing Labor',
+          hours: laborHours,
+          rate: laborRate,
+          total: laborHours * laborRate
+        }];
+      }
+    }
+    
     const costBreakdown = calculations.getCostBreakdown(
       req.body.materials || [],
-      req.body.laborHours || 0,
-      req.body.laborRate || 0,
+      labor,
       req.body.addOns || [],
       req.body.overheadPercent || 15,
       req.body.profitPercent || 20,
@@ -101,10 +117,8 @@ export const createProposal = async (req, res) => {
       ...req.body,
       ...(userId ? { userId } : {}),
       ...(companyId ? { companyId } : {}),
-      totalAmount: costBreakdown.finalTotal,
-      overheadCosts: costBreakdown.overheadCosts,
-      totalCost: costBreakdown.totalCost,
-      netMarginActual: costBreakdown.netMarginActual,
+      // Calculated fields removed - always calculate from current data
+      // overheadCosts, totalCost, netMarginActual removed - calculate on demand
       overheadCostPercent: req.body.overheadCostPercent || 10,
       netMarginTarget: req.body.netMarginTarget || 20
     };
@@ -153,10 +167,26 @@ export const updateProposal = async (req, res) => {
     console.log('Found proposal, updating...');
     
     // Calculate cost breakdown with NET margin and overhead costs
+    // Use labor array if provided, otherwise migrate from old fields for compatibility
+    let labor = req.body.labor !== undefined ? req.body.labor : (proposal.labor || []);
+    if (!Array.isArray(labor) || labor.length === 0) {
+      // Migration: convert old laborHours/laborRate to labor array
+      const laborHours = req.body.laborHours !== undefined ? req.body.laborHours : (proposal.laborHours || 0);
+      const laborRate = req.body.laborRate !== undefined ? req.body.laborRate : (proposal.laborRate || 75);
+      if (laborHours > 0 || laborRate > 0) {
+        labor = [{
+          id: Date.now(),
+          name: 'Roofing Labor',
+          hours: laborHours,
+          rate: laborRate,
+          total: laborHours * laborRate
+        }];
+      }
+    }
+    
     const costBreakdown = calculations.getCostBreakdown(
       req.body.materials || proposal.materials || [],
-      req.body.laborHours !== undefined ? req.body.laborHours : (proposal.laborHours || 0),
-      req.body.laborRate !== undefined ? req.body.laborRate : (proposal.laborRate || 0),
+      labor,
       req.body.addOns || proposal.addOns || [],
       req.body.overheadPercent !== undefined ? req.body.overheadPercent : (proposal.overheadPercent || 15),
       req.body.profitPercent !== undefined ? req.body.profitPercent : (proposal.profitPercent || 20),
@@ -168,10 +198,8 @@ export const updateProposal = async (req, res) => {
 
     const updateData = {
       ...req.body,
-      totalAmount: costBreakdown.finalTotal,
-      overheadCosts: costBreakdown.overheadCosts,
-      totalCost: costBreakdown.totalCost,
-      netMarginActual: costBreakdown.netMarginActual,
+      // Calculated fields removed - always calculate from current data
+      // overheadCosts, totalCost, netMarginActual removed - calculate on demand
       overheadCostPercent: req.body.overheadCostPercent !== undefined ? req.body.overheadCostPercent : (proposal.overheadCostPercent || 10),
       netMarginTarget: req.body.netMarginTarget !== undefined ? req.body.netMarginTarget : (proposal.netMarginTarget || 20)
     };

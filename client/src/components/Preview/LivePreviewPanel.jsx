@@ -10,10 +10,29 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
   const [isClientInfoExpanded, setIsClientInfoExpanded] = useState(false);
   
   // Calculate cost breakdown - provide defaults if proposalData is null
+  // Use labor array if available, otherwise migrate from old fields for compatibility
+  const labor = useMemo(() => {
+    if (proposalData?.labor && Array.isArray(proposalData.labor) && proposalData.labor.length > 0) {
+      return proposalData.labor;
+    }
+    // Migration: convert old laborHours/laborRate to labor array
+    const laborHours = proposalData?.laborHours || 0;
+    const laborRate = proposalData?.laborRate || 75;
+    if (laborHours > 0 || laborRate > 0) {
+      return [{
+        id: Date.now(),
+        name: 'Roofing Labor',
+        hours: laborHours,
+        rate: laborRate,
+        total: laborHours * laborRate
+      }];
+    }
+    return [];
+  }, [proposalData?.labor, proposalData?.laborHours, proposalData?.laborRate]);
+  
   const breakdown = calculations.getCostBreakdown(
     proposalData?.materials || [],
-    proposalData?.laborHours || 0,
-    proposalData?.laborRate || 75,
+    labor,
     proposalData?.addOns || [],
     proposalData?.overheadPercent || 15,
     proposalData?.profitPercent || 20,

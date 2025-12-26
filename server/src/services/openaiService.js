@@ -298,7 +298,7 @@ When generating quotes, follow these steps:
    - Factor in tear-off time if multiple layers
    - Include setup, cleanup, and disposal time
 
-4. **Apply Margins:**
+4. **Apply Margins and Calculate Total:**
    - Calculate subtotal: Materials + Labor + Add-ons
    - Add overhead costs: Subtotal × 10% (workers comp, insurance, office costs) - this is separate from overhead percentage
    - Add overhead: Subtotal × (overhead % / 100) - typically 15%
@@ -308,6 +308,8 @@ When generating quotes, follow these steps:
      - Total Cost = Subtotal + Overhead Costs (workers comp, insurance, office)
      - If calculated total doesn't achieve 20% NET margin, adjust to meet target
    - Apply discount if any: Final total - discount amount
+   - **ALWAYS include "totalAmount" in your structured output** - this is the final calculated total
+   - When you make ANY changes (add, remove, update materials, change rates, etc.), ALWAYS recalculate and include the new totalAmount
 
 5. **Structured Output Format:**
    You MUST return your response in TWO parts:
@@ -337,7 +339,7 @@ When generating quotes, follow these steps:
        "profitPercent": 20,
        "overheadCostPercent": 10,
        "netMarginTarget": 20,
-       "totalAmount": 8625
+       "totalAmount": 8625  // ALWAYS include this - recalculate whenever you make changes
      }
    }
    </STRUCTURED_ACTIONS>

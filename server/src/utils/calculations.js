@@ -7,16 +7,19 @@ export const calculations = {
       .reduce((sum, material) => sum + (material.total || 0), 0);
   },
 
-  // Calculate labor total from hours and rate OR from labor line items
-  calculateLaborTotal: (laborHours = 0, laborRate = 0, materials = []) => {
-    // First try hours * rate
-    const hourlyLabor = laborHours * laborRate;
+  // Calculate labor total from labor array (single source of truth)
+  calculateLaborTotal: (labor = []) => {
+    if (!Array.isArray(labor)) return 0;
     
-    // Then add any labor line items
-    const laborLineItems = materials.filter(item => item.category === 'labor');
-    const lineItemLabor = laborLineItems.reduce((sum, item) => sum + (item.total || 0), 0);
-    
-    return hourlyLabor + lineItemLabor;
+    return labor.reduce((sum, item) => {
+      // If total is already calculated, use it; otherwise calculate hours * rate
+      if (item.total !== undefined) {
+        return sum + (parseFloat(item.total) || 0);
+      }
+      const hours = parseFloat(item.hours) || 0;
+      const rate = parseFloat(item.rate) || 0;
+      return sum + (hours * rate);
+    }, 0);
   },
 
   // Calculate add-ons total
@@ -25,9 +28,9 @@ export const calculations = {
   },
 
   // Calculate subtotal (materials + labor + addons)
-  calculateSubtotal: (materials = [], laborHours = 0, laborRate = 0, addOns = []) => {
+  calculateSubtotal: (materials = [], labor = [], addOns = []) => {
     const materialsTotal = calculations.calculateMaterialsTotal(materials);
-    const laborTotal = calculations.calculateLaborTotal(laborHours, laborRate, materials);
+    const laborTotal = calculations.calculateLaborTotal(labor);
     const addOnsTotal = calculations.calculateAddOnsTotal(addOns);
     return materialsTotal + laborTotal + addOnsTotal;
   },
@@ -54,8 +57,8 @@ export const calculations = {
   },
 
   // Calculate final total with overhead and profit
-  calculateTotal: (materials = [], laborHours = 0, laborRate = 0, addOns = [], overheadPercent = 15, profitPercent = 20, discountAmount = 0) => {
-    const subtotal = calculations.calculateSubtotal(materials, laborHours, laborRate, addOns);
+  calculateTotal: (materials = [], labor = [], addOns = [], overheadPercent = 15, profitPercent = 20, discountAmount = 0) => {
+    const subtotal = calculations.calculateSubtotal(materials, labor, addOns);
     const overheadAmount = calculations.calculateOverheadAmount(subtotal, overheadPercent);
     const subtotalWithOverhead = subtotal + overheadAmount;
     const profitAmount = calculations.calculateProfitAmount(subtotalWithOverhead, profitPercent);
@@ -63,10 +66,10 @@ export const calculations = {
     return Math.max(0, totalBeforeDiscount - (discountAmount || 0));
   },
 
-  // Get breakdown of all costs
-  getCostBreakdown: (materials = [], laborHours = 0, laborRate = 0, addOns = [], overheadPercent = 15, profitPercent = 20, overheadCostPercent = 10, netMarginTarget = 20, discountAmount = 0, hideMargins = false) => {
+  // Get breakdown of all costs (SINGLE SOURCE OF TRUTH - always calculate from current data)
+  getCostBreakdown: (materials = [], labor = [], addOns = [], overheadPercent = 15, profitPercent = 20, overheadCostPercent = 10, netMarginTarget = 20, discountAmount = 0, hideMargins = false) => {
     const materialsTotal = calculations.calculateMaterialsTotal(materials);
-    const laborTotal = calculations.calculateLaborTotal(laborHours, laborRate, materials);
+    const laborTotal = calculations.calculateLaborTotal(labor);
     const addOnsTotal = calculations.calculateAddOnsTotal(addOns);
     const subtotal = materialsTotal + laborTotal + addOnsTotal;
     

@@ -114,7 +114,13 @@ const Proposal = sequelize.define('Proposal', {
     defaultValue: []
   },
   
-  // Labor
+  // Labor (NEW - single source of truth)
+  labor: {
+    type: DataTypes.JSONB,
+    defaultValue: []
+  },
+  
+  // Labor (DEPRECATED - kept for migration compatibility, will be removed)
   laborHours: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
