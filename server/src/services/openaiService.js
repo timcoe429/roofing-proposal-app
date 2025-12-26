@@ -427,6 +427,7 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
   // Fetch real pricing data DIRECTLY from database (no HTTP call - more reliable)
   let pricingContext = '';
   let pricingStatus = 'NOT_LOADED';
+  let companyId = null; // Declare at function level so it's accessible outside try block
   let debugInfo = {
     step: 'starting',
     companyId: null,
@@ -441,7 +442,6 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
     logger.info('🔍 [PRICING DEBUG] Starting pricing fetch for AI chat...');
     
     // Determine company ID (same logic as /api/materials/ai-pricing)
-    let companyId = null;
     
     // Try to get companyId from proposalContext first
     if (proposalContext?.companyId) {
