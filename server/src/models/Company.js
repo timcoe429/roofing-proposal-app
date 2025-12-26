@@ -58,6 +58,12 @@ const Company = sequelize.define('Company', {
   termsConditions: {
     type: DataTypes.JSON,
     allowNull: true
+  },
+  aiInstructions: {
+    type: DataTypes.JSONB,
+    defaultValue: {},
+    allowNull: false,
+    field: 'aiInstructions'
   }
 }, {
   tableName: 'companies',

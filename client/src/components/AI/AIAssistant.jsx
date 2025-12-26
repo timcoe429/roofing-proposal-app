@@ -334,6 +334,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         },
         measurements: proposalData.measurements || {},
         materials: proposalData.materials || [],
+        addOns: proposalData.addOns || [],
         pricing: {
           overheadPercent: proposalData.overheadPercent || 15,
           profitPercent: proposalData.profitPercent || 20,
@@ -406,10 +407,12 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         });
       }
       
-      // Handle response format - API returns { success: true, response: <string> }
+      // Handle response format - API returns { success: true, response: <string>, actions: <object> }
       const aiResponseText = response?.response || (typeof response === 'string' ? response : 'I apologize, but I had trouble processing that. Could you try rephrasing?');
+      const structuredActions = response?.actions || null;
       
       console.log('✅ AI Response text extracted:', aiResponseText ? aiResponseText.substring(0, 100) + '...' : 'No text');
+      console.log('✅ Structured actions:', structuredActions ? 'Present' : 'Not present');
       
       const assistantMessage = {
         id: Date.now() + 1,
@@ -430,10 +433,10 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         assistantMessage.actions.forEach(action => executeAction(action));
       }
 
-      // Parse detailed data with AI (asynchronous enhancement)
-      console.log('🚀 Starting intelligent AI parsing...');
+      // Process structured actions from Claude (if available)
+      console.log('🚀 Processing Claude structured actions...');
       try {
-        const detailedData = await parseAIResponseWithAI(aiResponseText);
+        const detailedData = structuredActions ? processStructuredActions(structuredActions) : await parseAIResponseWithAI(aiResponseText);
         if (Object.keys(detailedData).length > 0) {
           console.log('✅ Applying detailed AI parsing results:', detailedData);
           
@@ -584,37 +587,142 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     return null;
   };
 
-  // Helper function to detect materials to remove from AI response
-  const detectRemovals = (response, existingMaterials) => {
-    const removals = [];
-    const removalKeywords = /\b(remove|delete|removed|deleted|take out|drop|exclude|eliminate|get rid of)\b/i;
-    
-    if (!removalKeywords.test(response)) {
-      return removals; // No removal keywords found
+  // Process structured actions from Claude's intelligent analysis
+  const processStructuredActions = (actions) => {
+    if (!actions || !actions.actions) {
+      return {};
     }
     
-    // Extract material names mentioned with removal keywords
-    const sentences = response.split(/[.!?]\s+/);
-    for (const sentence of sentences) {
-      if (removalKeywords.test(sentence)) {
-        // Try to find material names in this sentence
-        for (const material of existingMaterials) {
-          if (material.name) {
-            const materialWords = material.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-            const sentenceLower = sentence.toLowerCase();
-            
-            // Check if most key words from material name appear in the removal sentence
-            const matchingWords = materialWords.filter(mw => sentenceLower.includes(mw));
-            if (matchingWords.length >= Math.max(2, Math.ceil(materialWords.length * 0.6))) {
-              removals.push(material.name);
-              console.log(`🗑️ Detected removal: ${material.name}`);
-            }
-          }
+    const actionData = actions.actions;
+    const updates = {};
+    const existingMaterials = proposalData.materials || [];
+    const existingAddOns = proposalData.addOns || [];
+    
+    // Process removals (exact name matching, case-insensitive)
+    if (actionData.removals && actionData.removals.length > 0) {
+      console.log('🗑️ Processing removals from Claude:', actionData.removals);
+      
+      // Filter out removals using exact name matching
+      const updatedMaterials = existingMaterials.filter(m => {
+        if (!m.name) return true;
+        const shouldRemove = actionData.removals.some(removalName => 
+          m.name.toLowerCase().trim() === removalName.toLowerCase().trim()
+        );
+        if (shouldRemove) {
+          console.log(`🗑️ Removing material: ${m.name}`);
+          return false;
         }
-      }
+        return true;
+      });
+      
+      updates.materials = updatedMaterials;
     }
     
-    return removals;
+    // Process updates (materials with changed prices/quantities)
+    if (actionData.updates && actionData.updates.length > 0) {
+      console.log('🔄 Processing updates from Claude:', actionData.updates);
+      
+      const updatedMaterials = [...(updates.materials || existingMaterials)];
+      
+      actionData.updates.forEach(update => {
+        const index = updatedMaterials.findIndex(m => 
+          m.name && m.name.toLowerCase().trim() === update.name.toLowerCase().trim()
+        );
+        
+        if (index >= 0) {
+          // Update existing material
+          const existing = updatedMaterials[index];
+          updatedMaterials[index] = {
+            ...existing,
+            ...update,
+            id: existing.id, // Keep original ID
+            total: update.total !== undefined ? update.total : 
+              (update.unitPrice !== undefined && update.quantity !== undefined 
+                ? Math.round((update.quantity * update.unitPrice) * 100) / 100
+                : existing.total)
+          };
+          console.log(`🔄 Updated material: ${update.name}`);
+        }
+      });
+      
+      updates.materials = updatedMaterials;
+    }
+    
+    // Process new materials
+    if (actionData.materials && actionData.materials.length > 0) {
+      console.log('➕ Processing new materials from Claude:', actionData.materials);
+      
+      const updatedMaterials = [...(updates.materials || existingMaterials)];
+      
+      actionData.materials.forEach(newMaterial => {
+        // Check if it already exists (exact name match)
+        const existingIndex = updatedMaterials.findIndex(m => 
+          m.name && m.name.toLowerCase().trim() === newMaterial.name.toLowerCase().trim()
+        );
+        
+        if (existingIndex >= 0) {
+          // Update existing
+          const existing = updatedMaterials[existingIndex];
+          updatedMaterials[existingIndex] = {
+            ...existing,
+            ...newMaterial,
+            id: existing.id
+          };
+          console.log(`🔄 Updated existing material: ${newMaterial.name}`);
+        } else {
+          // Add new
+          updatedMaterials.push({
+            ...newMaterial,
+            id: Date.now() + Math.random(),
+            category: 'material'
+          });
+          console.log(`➕ Added new material: ${newMaterial.name}`);
+        }
+      });
+      
+      updates.materials = updatedMaterials;
+    }
+    
+    // Process new add-ons
+    if (actionData.addOns && actionData.addOns.length > 0) {
+      console.log('➕ Processing new add-ons from Claude:', actionData.addOns);
+      
+      const updatedAddOns = [...existingAddOns];
+      
+      actionData.addOns.forEach(newAddOn => {
+        // Check if it already exists
+        const existingIndex = updatedAddOns.findIndex(a => 
+          a.name && a.name.toLowerCase().trim() === newAddOn.name.toLowerCase().trim()
+        );
+        
+        if (existingIndex >= 0) {
+          // Update existing
+          updatedAddOns[existingIndex] = {
+            ...updatedAddOns[existingIndex],
+            ...newAddOn,
+            id: updatedAddOns[existingIndex].id
+          };
+        } else {
+          // Add new
+          updatedAddOns.push({
+            ...newAddOn,
+            id: Date.now() + Math.random()
+          });
+        }
+      });
+      
+      updates.addOns = updatedAddOns;
+    }
+    
+    // Process pricing updates
+    if (actionData.overheadPercent !== undefined) updates.overheadPercent = actionData.overheadPercent;
+    if (actionData.profitPercent !== undefined) updates.profitPercent = actionData.profitPercent;
+    if (actionData.overheadCostPercent !== undefined) updates.overheadCostPercent = actionData.overheadCostPercent;
+    if (actionData.netMarginTarget !== undefined) updates.netMarginTarget = actionData.netMarginTarget;
+    if (actionData.discountAmount !== undefined) updates.discountAmount = actionData.discountAmount;
+    if (actionData.totalAmount !== undefined) updates.totalAmount = actionData.totalAmount;
+    
+    return updates;
   };
 
   // Parse AI response with AI for detailed extraction
@@ -708,39 +816,13 @@ Return ONLY the JSON object, no other text.`;
         
         const updates = {};
         
-        // Process materials and labor - UPDATE existing ones, ADD new ones, REMOVE ones
+        // Process materials and labor - UPDATE existing ones, ADD new ones
         const existingMaterials = proposalData.materials || [];
         const existingStructured = proposalData.structuredPricing || { materials: [], labor: [], additionalCosts: [] };
         
-        // FIRST: Detect removals from the AI response text
-        const removals = detectRemovals(response, existingMaterials);
-        
-        // Start with existing materials, then filter out removals
-        let updatedMaterials = existingMaterials.filter(m => {
-          if (!m.name) return true;
-          const shouldRemove = removals.some(removalName => {
-            const match = matchMaterialByName(removalName, [m]);
-            return match !== null;
-          });
-          if (shouldRemove) {
-            console.log(`🗑️ Removing material: ${m.name}`);
-            return false;
-          }
-          return true;
-        });
-        
-        let updatedStructuredMaterials = (existingStructured.materials || []).filter(m => {
-          if (!m.name) return true;
-          const shouldRemove = removals.some(removalName => {
-            const match = matchMaterialByName(removalName, [m]);
-            return match !== null;
-          });
-          if (shouldRemove) {
-            console.log(`🗑️ Removing structured material: ${m.name}`);
-            return false;
-          }
-          return true;
-        });
+        // Start with existing materials (removals are handled by Claude's structured output)
+        let updatedMaterials = [...existingMaterials];
+        let updatedStructuredMaterials = [...(existingStructured.materials || [])];
         
         // THEN: Process updates and additions (existing logic continues...)
         

@@ -82,9 +82,16 @@ export const createTables = async () => {
         "primaryColor" VARCHAR(255) DEFAULT '#2563eb',
         "secondaryColor" VARCHAR(255) DEFAULT '#1e40af',
         "termsConditions" JSON,
+        "aiInstructions" JSONB DEFAULT '{}',
         "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
+    `);
+    
+    // Add aiInstructions column to existing databases safely (Railway production)
+    await sequelize.query(`
+      ALTER TABLE companies
+      ADD COLUMN IF NOT EXISTS "aiInstructions" JSONB DEFAULT '{}'::jsonb;
     `);
     
     console.log('Companies table created successfully');

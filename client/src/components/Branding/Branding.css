@@ -10,6 +10,7 @@
 .company-info-section,
 .contact-section,
 .branding-section,
+.ai-instructions-section,
 .terms-section,
 .preview-section {
   background: white;
@@ -375,6 +376,143 @@
   margin: 0;
 }
 
+/* AI Instructions Section */
+.ai-instructions-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ai-instructions-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 150px;
+}
+
+.ai-instructions-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.location-knowledge-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.location-knowledge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.location-knowledge-header label {
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.add-location-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.add-location-btn:hover {
+  background: #1d4ed8;
+}
+
+.no-locations {
+  padding: 24px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+}
+
+.no-locations .hint {
+  font-size: 13px;
+  margin-top: 8px;
+  color: #94a3b8;
+}
+
+.location-knowledge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.location-knowledge-item {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.location-city {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.location-city strong {
+  color: #1a202c;
+  font-size: 15px;
+}
+
+.remove-location-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-location-btn:hover {
+  background: #fecaca;
+}
+
+.location-knowledge-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.location-knowledge-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .company-settings-container {
@@ -385,6 +523,7 @@
   .company-info-section,
   .contact-section,
   .branding-section,
+  .ai-instructions-section,
   .terms-section,
   .preview-section {
     padding: 20px;

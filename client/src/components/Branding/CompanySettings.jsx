@@ -1,17 +1,70 @@
-import React, { useState } from 'react';
-import { Building, Phone, Mail, MapPin, Upload, Palette, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building, Phone, Mail, MapPin, Upload, Palette, Shield, Bot, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import './Branding.css';
 
 export default function CompanySettings({ companyData, onCompanyDataChange }) {
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Initialize aiInstructions if not present
+  useEffect(() => {
+    if (!companyData.aiInstructions) {
+      onCompanyDataChange({
+        ...companyData,
+        aiInstructions: {
+          additionalInstructions: '',
+          locationKnowledge: {}
+        }
+      });
+    }
+  }, [companyData, onCompanyDataChange]);
+  
+  const aiInstructions = companyData.aiInstructions || {
+    additionalInstructions: '',
+    locationKnowledge: {}
+  };
 
   const handleChange = (field, value) => {
     onCompanyDataChange({
       ...companyData,
       [field]: value
     });
+  };
+  
+  const handleAIInstructionsChange = (field, value) => {
+    onCompanyDataChange({
+      ...companyData,
+      aiInstructions: {
+        ...aiInstructions,
+        [field]: value
+      }
+    });
+  };
+  
+  const handleLocationKnowledgeChange = (city, value) => {
+    const updatedLocationKnowledge = {
+      ...aiInstructions.locationKnowledge,
+      [city]: value
+    };
+    // Remove empty entries
+    if (!value.trim()) {
+      delete updatedLocationKnowledge[city];
+    }
+    handleAIInstructionsChange('locationKnowledge', updatedLocationKnowledge);
+  };
+  
+  const addLocationKnowledge = () => {
+    const city = prompt('Enter city name (e.g., "Aspen, CO"):');
+    if (city && city.trim()) {
+      handleLocationKnowledgeChange(city.trim(), '');
+    }
+  };
+  
+  const removeLocationKnowledge = (city) => {
+    const updatedLocationKnowledge = { ...aiInstructions.locationKnowledge };
+    delete updatedLocationKnowledge[city];
+    handleAIInstructionsChange('locationKnowledge', updatedLocationKnowledge);
   };
 
 
@@ -184,6 +237,80 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
                 <span>{companyData.primaryColor}</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="ai-instructions-section">
+        <div className="section-header">
+          <Bot size={24} />
+          <h2>AI Instructions</h2>
+        </div>
+        
+        <div className="ai-instructions-content">
+          <div className="form-group full-width">
+            <label>Additional Instructions for AI</label>
+            <textarea
+              value={aiInstructions.additionalInstructions || ''}
+              onChange={(e) => handleAIInstructionsChange('additionalInstructions', e.target.value)}
+              placeholder="Add custom instructions for the AI assistant. For example:&#10;&#10;- Always recommend premium underlayment for high-altitude projects&#10;- Include permit costs for all Denver projects&#10;- Use specific terminology for our company"
+              rows={8}
+              className="ai-instructions-textarea"
+            />
+            <small>
+              These instructions will be added to the AI's system prompt. Use this to add company-specific rules, 
+              preferences, or expertise that should guide the AI's behavior.
+            </small>
+          </div>
+          
+          <div className="location-knowledge-section">
+            <div className="location-knowledge-header">
+              <label>Location-Specific Knowledge</label>
+              <button 
+                type="button"
+                onClick={addLocationKnowledge}
+                className="add-location-btn"
+              >
+                <Plus size={16} />
+                Add Location
+              </button>
+            </div>
+            <small>
+              Add roofing codes, local requirements, or location-specific knowledge. The AI will automatically 
+              use this knowledge when working on proposals for these locations.
+            </small>
+            
+            {Object.keys(aiInstructions.locationKnowledge || {}).length === 0 ? (
+              <div className="no-locations">
+                <p>No location-specific knowledge added yet.</p>
+                <p className="hint">Click "Add Location" to add knowledge for specific cities (e.g., "Aspen, CO").</p>
+              </div>
+            ) : (
+              <div className="location-knowledge-list">
+                {Object.entries(aiInstructions.locationKnowledge || {}).map(([city, knowledge]) => (
+                  <div key={city} className="location-knowledge-item">
+                    <div className="location-city">
+                      <strong>{city}</strong>
+                      <button
+                        type="button"
+                        onClick={() => removeLocationKnowledge(city)}
+                        className="remove-location-btn"
+                        title="Remove location"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <textarea
+                      value={knowledge}
+                      onChange={(e) => handleLocationKnowledgeChange(city, e.target.value)}
+                      placeholder={`Add roofing codes, requirements, or knowledge for ${city}...`}
+                      rows={4}
+                      className="location-knowledge-textarea"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

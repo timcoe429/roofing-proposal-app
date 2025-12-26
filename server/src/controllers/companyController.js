@@ -36,7 +36,8 @@ export const getCompanySettings = async (req, res) => {
         logo: null,
         primaryColor: '#2563eb',
         secondaryColor: '#1e40af',
-        termsConditions: null
+        termsConditions: null,
+        aiInstructions: {}
       });
     }
     
@@ -67,6 +68,20 @@ export const updateCompanySettings = async (req, res) => {
       console.log('No companyId found, looking up first company...');
       const company = await Company.findOne();
       companyId = company?.id;
+    }
+    
+    // Validate aiInstructions structure if provided
+    if (req.body.aiInstructions) {
+      if (typeof req.body.aiInstructions !== 'object') {
+        return res.status(400).json({ error: 'aiInstructions must be an object' });
+      }
+      // Ensure it has the expected structure
+      if (!req.body.aiInstructions.additionalInstructions) {
+        req.body.aiInstructions.additionalInstructions = req.body.aiInstructions.additionalInstructions || '';
+      }
+      if (!req.body.aiInstructions.locationKnowledge) {
+        req.body.aiInstructions.locationKnowledge = req.body.aiInstructions.locationKnowledge || {};
+      }
     }
     
     const [company, created] = await Company.findOrCreate({

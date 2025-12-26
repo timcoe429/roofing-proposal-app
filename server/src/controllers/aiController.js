@@ -17,11 +17,16 @@ export const chatWithAI = async (req, res) => {
 
     logger.info('Processing chat message with Claude AI');
 
-    const response = await chatWithClaude(message, conversationHistory, proposalContext);
+    const result = await chatWithClaude(message, conversationHistory, proposalContext);
+    
+    // Handle both old format (string) and new format (object with response and actions)
+    const response = typeof result === 'string' ? result : result.response;
+    const actions = typeof result === 'object' && result.actions ? result.actions : null;
     
     res.json({
       success: true,
       response,
+      actions,
       timestamp: new Date().toISOString()
     });
 
