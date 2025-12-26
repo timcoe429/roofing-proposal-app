@@ -21,8 +21,8 @@ import materialRoutes from './routes/materialRoutes.js';
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { setupDatabase } from './config/database.js';
-// import { runMigrations } from './utils/runMigrations.js';
-// import logger from './utils/logger.js';
+import { runMigrations } from './utils/runMigrations.js';
+import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -135,9 +135,9 @@ const startServer = async () => {
     await setupDatabase();
     console.log('INFO: Database connected successfully');
     
-    // TODO: Run migrations
-    // await runMigrations();
-    // console.log('INFO: Database migrations completed');
+    // Run migrations
+    await runMigrations();
+    console.log('INFO: Database migrations completed');
     
     // In production, bind to 0.0.0.0 for external access (Railway/Cloudflare)
     // In development, bind to localhost for local proxy

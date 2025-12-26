@@ -32,6 +32,7 @@ export const calculations = {
 
   // Calculate add-ons total
   calculateAddOnsTotal: (addOns = []) => {
+    if (!Array.isArray(addOns)) return 0;
     const total = addOns.reduce((sum, addon) => sum + (addon.price || 0), 0);
     return calculations.roundToCents(total);
   },

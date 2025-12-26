@@ -117,7 +117,8 @@ const Proposal = sequelize.define('Proposal', {
   // Labor (NEW - single source of truth)
   labor: {
     type: DataTypes.JSONB,
-    defaultValue: []
+    defaultValue: [],
+    allowNull: true // Allow null until migration runs
   },
   
   // Labor (DEPRECATED - kept for migration compatibility, will be removed)

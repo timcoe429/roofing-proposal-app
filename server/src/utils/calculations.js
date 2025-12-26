@@ -24,6 +24,7 @@ export const calculations = {
 
   // Calculate add-ons total
   calculateAddOnsTotal: (addOns = []) => {
+    if (!Array.isArray(addOns)) return 0;
     return addOns.reduce((sum, addon) => sum + (addon.price || 0), 0);
   },
 

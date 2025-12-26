@@ -10,7 +10,8 @@ ADD COLUMN IF NOT EXISTS "labor" JSONB DEFAULT '[]';
 -- Only migrate if laborHours > 0 or laborRate > 0, and labor array is empty
 UPDATE proposals
 SET "labor" = CASE
-  WHEN ("laborHours" > 0 OR "laborRate" > 0) AND ("labor" IS NULL OR jsonb_array_length("labor") = 0) THEN
+  WHEN (COALESCE("laborHours", 0) > 0 OR COALESCE("laborRate", 0) > 0) 
+       AND ("labor" IS NULL OR jsonb_array_length(COALESCE("labor", '[]'::jsonb)) = 0) THEN
     jsonb_build_array(
       jsonb_build_object(
         'id', floor(extract(epoch from now()) * 1000),
