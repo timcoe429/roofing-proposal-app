@@ -420,6 +420,61 @@
   border-radius: 3px;
 }
 
+/* Pending changes actions */
+.pending-changes-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-apply,
+.btn-cancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-apply {
+  background: #10b981;
+  color: white;
+}
+
+.btn-apply:hover {
+  background: #059669;
+}
+
+.btn-cancel {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-cancel:hover {
+  background: #cbd5e0;
+}
+
+.changes-applied,
+.changes-cancelled {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.changes-applied {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.changes-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .ai-assistant {

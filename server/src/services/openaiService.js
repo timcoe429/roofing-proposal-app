@@ -308,8 +308,7 @@ When generating quotes, follow these steps:
      - Total Cost = Subtotal + Overhead Costs (workers comp, insurance, office)
      - If calculated total doesn't achieve 20% NET margin, adjust to meet target
    - Apply discount if any: Final total - discount amount
-   - **ALWAYS include "totalAmount" in your structured output** - this is the final calculated total
-   - When you make ANY changes (add, remove, update materials, change rates, etc.), ALWAYS recalculate and include the new totalAmount
+   - **NOTE:** The system will automatically calculate the final total from your changes - you don't need to include totalAmount in your output
 
 5. **Structured Output Format:**
    You MUST return your response in TWO parts:
@@ -331,6 +330,9 @@ When generating quotes, follow these steps:
        "addOns": [
          {"name": "Optional Upgrade Name", "description": "Description", "price": 2500}
        ],
+       "labor": [
+         {"name": "Roofing Labor", "hours": 40, "rate": 75, "total": 3000}
+       ],
        "removals": ["Exact Material Name 1", "Exact Material Name 2"],
        "updates": [
          {"name": "Existing Material Name", "unitPrice": 3373.50, "total": 10120.50}
@@ -338,8 +340,8 @@ When generating quotes, follow these steps:
        "overheadPercent": 15,
        "profitPercent": 20,
        "overheadCostPercent": 10,
-       "netMarginTarget": 20,
-       "totalAmount": 8625  // ALWAYS include this - recalculate whenever you make changes
+       "netMarginTarget": 20
+       // NOTE: totalAmount is automatically calculated - don't include it
      }
    }
    </STRUCTURED_ACTIONS>

@@ -185,6 +185,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [pastedImages, setPastedImages] = useState([]);
+  const [pendingChanges, setPendingChanges] = useState(null); // { changes: {...}, messageId: number }
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -433,24 +434,24 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         assistantMessage.actions.forEach(action => executeAction(action));
       }
 
-      // Process structured actions from Claude (if available)
+      // Process structured actions from Claude (if available) - SHOW PREVIEW, DON'T AUTO-APPLY
       console.log('🚀 Processing Claude structured actions...');
       try {
         const detailedData = structuredActions ? processStructuredActions(structuredActions) : await parseAIResponseWithAI(aiResponseText);
         if (Object.keys(detailedData).length > 0) {
-          console.log('✅ Applying detailed AI parsing results:', detailedData);
+          console.log('✅ AI suggests these changes:', detailedData);
           
-          // Update proposal with new data
-          let updatedProposal = {
+          // Calculate preview of what will change
+          let previewProposal = {
             ...proposalData,
             ...detailedData
           };
           
           // Migrate laborHours/laborRate to labor array if needed
-          let labor = updatedProposal.labor || [];
+          let labor = previewProposal.labor || [];
           if (!Array.isArray(labor) || labor.length === 0) {
-            const laborHours = updatedProposal.laborHours || 0;
-            const laborRate = updatedProposal.laborRate || 75;
+            const laborHours = previewProposal.laborHours || 0;
+            const laborRate = previewProposal.laborRate || 75;
             if (laborHours > 0 || laborRate > 0) {
               labor = [{
                 id: Date.now(),
@@ -462,45 +463,33 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
             }
           }
           
-          // Calculate final total (but don't store totalAmount - always calculate)
+          // Calculate preview total
           const breakdown = calculations.getCostBreakdown(
-            updatedProposal.materials || [],
+            previewProposal.materials || [],
             labor,
-            updatedProposal.addOns || [],
-            updatedProposal.overheadPercent || 15,
-            updatedProposal.profitPercent || 20,
-            updatedProposal.overheadCostPercent || 10,
-            updatedProposal.netMarginTarget || 20,
-            updatedProposal.discountAmount || 0
+            previewProposal.addOns || [],
+            previewProposal.overheadPercent || 15,
+            previewProposal.profitPercent || 20,
+            previewProposal.overheadCostPercent || 10,
+            previewProposal.netMarginTarget || 20,
+            previewProposal.discountAmount || 0
           );
-          console.log('🔧 Calculated finalTotal:', breakdown.finalTotal);
           
-          // Validate calculations after update (show errors, don't auto-fix)
-          const validation = getValidationReport(updatedProposal);
+          // Store pending changes for user to review
+          setPendingChanges({
+            changes: detailedData,
+            messageId: assistantMessage.id,
+            previewTotal: breakdown.finalTotal,
+            previewBreakdown: breakdown
+          });
           
-          // Filter out total_mismatch errors - we don't store totalAmount anymore, always calculate
-          const realErrors = validation.errors.filter(e => e.type !== 'total_mismatch');
-          
-          if (realErrors.length > 0) {
-            console.warn('⚠️ Validation issues found:', realErrors);
-            const validationMessage = {
-              id: Date.now() + 2,
-              type: 'assistant',
-              content: `⚠️ **Math Validation Alert:**\n\nI found ${realErrors.length} calculation error(s):\n${realErrors.map(e => `- ${e.message || e.type}`).join('\n')}\n\nPlease review the calculations.`,
-              timestamp: new Date(),
-              isValidationWarning: true
-            };
-            setMessages(prev => {
-              const next = [...prev, validationMessage];
-              persistChatHistoryToProposal(next);
-              return next;
-            });
-          }
-          
-          onUpdateProposal(prev => ({
-            ...prev,
-            ...updatedProposal
-          }));
+          // Update assistant message to show preview
+          const previewContent = buildPreviewMessage(detailedData, breakdown);
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessage.id 
+              ? { ...msg, content: aiResponseText + '\n\n' + previewContent, hasPendingChanges: true }
+              : msg
+          ));
         }
       } catch (error) {
         console.error('❌ Detailed AI parsing failed:', error);
@@ -615,6 +604,128 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     return null;
   };
 
+  // Build preview message showing what changes will be made
+  const buildPreviewMessage = (changes, breakdown) => {
+    const parts = [];
+    parts.push('**📋 Preview of Changes:**\n');
+    
+    if (changes.materials && changes.materials.length > 0) {
+      parts.push(`➕ **Add ${changes.materials.length} material(s):**`);
+      changes.materials.forEach(m => {
+        parts.push(`  - ${m.name}: ${m.quantity || 0} ${m.unit || ''} @ $${m.unitPrice || 0} = $${m.total || 0}`);
+      });
+    }
+    
+    if (changes.labor && changes.labor.length > 0) {
+      parts.push(`\n➕ **Add ${changes.labor.length} labor item(s):**`);
+      changes.labor.forEach(l => {
+        parts.push(`  - ${l.name}: ${l.hours || 0} hours @ $${l.rate || 0}/hr = $${l.total || 0}`);
+      });
+    }
+    
+    if (changes.addOns && changes.addOns.length > 0) {
+      parts.push(`\n➕ **Add ${changes.addOns.length} add-on(s):**`);
+      changes.addOns.forEach(a => {
+        parts.push(`  - ${a.name}: $${a.price || 0}`);
+      });
+    }
+    
+    if (changes.removals && changes.removals.length > 0) {
+      parts.push(`\n🗑️ **Remove ${changes.removals.length} item(s):**`);
+      changes.removals.forEach(r => parts.push(`  - ${r}`));
+    }
+    
+    if (changes.updates && changes.updates.length > 0) {
+      parts.push(`\n🔄 **Update ${changes.updates.length} item(s):**`);
+      changes.updates.forEach(u => {
+        const updates = Object.keys(u).filter(k => k !== 'name').join(', ');
+        parts.push(`  - ${u.name}: ${updates}`);
+      });
+    }
+    
+    parts.push(`\n💰 **New Total: $${breakdown.finalTotal.toFixed(2)}**`);
+    parts.push('\n*Click "Apply Changes" to confirm or "Cancel" to reject.*');
+    
+    return parts.join('\n');
+  };
+  
+  // Apply pending changes when user confirms
+  const applyPendingChanges = () => {
+    if (!pendingChanges) return;
+    
+    const { changes } = pendingChanges;
+    
+    // Migrate labor if needed
+    let updatedProposal = {
+      ...proposalData,
+      ...changes
+    };
+    
+    let labor = updatedProposal.labor || [];
+    if (!Array.isArray(labor) || labor.length === 0) {
+      const laborHours = updatedProposal.laborHours || 0;
+      const laborRate = updatedProposal.laborRate || 75;
+      if (laborHours > 0 || laborRate > 0) {
+        labor = [{
+          id: Date.now(),
+          name: 'Roofing Labor',
+          hours: laborHours,
+          rate: laborRate,
+          total: laborHours * laborRate
+        }];
+      }
+    }
+    
+    // Validate before applying
+    const validation = getValidationReport(updatedProposal);
+    const realErrors = validation.errors.filter(e => e.type !== 'total_mismatch');
+    
+    if (realErrors.length > 0) {
+      const validationMessage = {
+        id: Date.now() + 2,
+        type: 'assistant',
+        content: `⚠️ **Math Validation Alert:**\n\nI found ${realErrors.length} calculation error(s):\n${realErrors.map(e => `- ${e.message || e.type}`).join('\n')}\n\nPlease review the calculations.`,
+        timestamp: new Date(),
+        isValidationWarning: true
+      };
+      setMessages(prev => {
+        const next = [...prev, validationMessage];
+        persistChatHistoryToProposal(next);
+        return next;
+      });
+    }
+    
+    // Apply changes
+    onUpdateProposal(prev => ({
+      ...prev,
+      ...updatedProposal
+    }));
+    
+    // Update message to remove preview
+    setMessages(prev => prev.map(msg => 
+      msg.id === pendingChanges.messageId 
+        ? { ...msg, hasPendingChanges: false, changesApplied: true }
+        : msg
+    ));
+    
+    // Clear pending changes
+    setPendingChanges(null);
+  };
+  
+  // Cancel pending changes
+  const cancelPendingChanges = () => {
+    if (!pendingChanges) return;
+    
+    // Update message to remove preview
+    setMessages(prev => prev.map(msg => 
+      msg.id === pendingChanges.messageId 
+        ? { ...msg, hasPendingChanges: false, changesCancelled: true }
+        : msg
+    ));
+    
+    setPendingChanges(null);
+  };
+  
   // Process structured actions from Claude's intelligent analysis
   const processStructuredActions = (actions) => {
     if (!actions || !actions.actions) {
@@ -740,6 +851,43 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       });
       
       updates.addOns = updatedAddOns;
+    }
+    
+    // Process new labor items
+    if (actionData.labor && actionData.labor.length > 0) {
+      console.log('➕ Processing new labor from Claude:', actionData.labor);
+      
+      const existingLabor = proposalData.labor || [];
+      const updatedLabor = [...existingLabor];
+      
+      actionData.labor.forEach(newLabor => {
+        // Check if it already exists
+        const existingIndex = updatedLabor.findIndex(l => 
+          l.name && l.name.toLowerCase().trim() === newLabor.name.toLowerCase().trim()
+        );
+        
+        if (existingIndex >= 0) {
+          // Update existing
+          updatedLabor[existingIndex] = {
+            ...updatedLabor[existingIndex],
+            ...newLabor,
+            id: updatedLabor[existingIndex].id,
+            total: newLabor.total !== undefined ? newLabor.total : 
+              ((newLabor.hours || updatedLabor[existingIndex].hours || 0) * 
+               (newLabor.rate || updatedLabor[existingIndex].rate || 0))
+          };
+        } else {
+          // Add new
+          updatedLabor.push({
+            ...newLabor,
+            id: Date.now() + Math.random(),
+            total: newLabor.total !== undefined ? newLabor.total : 
+              ((newLabor.hours || 0) * (newLabor.rate || 0))
+          });
+        }
+      });
+      
+      updates.labor = updatedLabor;
     }
     
     // Process pricing updates
@@ -1419,6 +1567,37 @@ Return ONLY the JSON object, no other text.`;
                       : message.content.replace(/\n/g, '<br>')
                   }}
                 />
+                
+                {/* Show Apply/Cancel buttons for pending changes */}
+                {message.hasPendingChanges && pendingChanges && pendingChanges.messageId === message.id && (
+                  <div className="pending-changes-actions">
+                    <button 
+                      onClick={applyPendingChanges}
+                      className="btn-apply"
+                    >
+                      ✓ Apply Changes
+                    </button>
+                    <button 
+                      onClick={cancelPendingChanges}
+                      className="btn-cancel"
+                    >
+                      ✕ Cancel
+                    </button>
+                  </div>
+                )}
+                
+                {/* Show confirmation message */}
+                {message.changesApplied && (
+                  <div className="changes-applied">
+                    ✓ Changes applied successfully
+                  </div>
+                )}
+                
+                {message.changesCancelled && (
+                  <div className="changes-cancelled">
+                    ✕ Changes cancelled
+                  </div>
+                )}
               </div>
             </div>
           ))}
