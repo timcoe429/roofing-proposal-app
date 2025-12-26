@@ -320,10 +320,6 @@ const LivePreviewPanel = ({ proposalData, onExportCSV, onUpdateProposal }) => {
                   <span className="breakdown-value">{formatCurrency(breakdown.subtotal)}</span>
                 </div>
                 <div className="breakdown-row">
-                  <span className="breakdown-label">Overhead Costs (Workers Comp, Insurance, Office):</span>
-                  <span className="breakdown-value">{formatCurrency(breakdown.overheadCosts || 0)}</span>
-                </div>
-                <div className="breakdown-row">
                   <span className="breakdown-label">Overhead ({breakdown.overheadPercent}%):</span>
                   <span className="breakdown-value">{formatCurrency(breakdown.overheadAmount)}</span>
                 </div>
