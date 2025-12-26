@@ -20,11 +20,6 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
     }
   }, [companyData, onCompanyDataChange]);
   
-  const aiInstructions = companyData.aiInstructions || {
-    additionalInstructions: '',
-    locationKnowledge: {}
-  };
-
   const handleChange = (field, value) => {
     onCompanyDataChange({
       ...companyData,
@@ -33,24 +28,23 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
   };
   
   const handleAIInstructionsChange = (field, value) => {
+    const currentAIInstructions = companyData.aiInstructions || { additionalInstructions: '', locationKnowledge: {} };
     onCompanyDataChange({
       ...companyData,
       aiInstructions: {
-        ...aiInstructions,
+        ...currentAIInstructions,
         [field]: value
       }
     });
   };
   
   const handleLocationKnowledgeChange = (city, value) => {
+    const currentAIInstructions = companyData.aiInstructions || { additionalInstructions: '', locationKnowledge: {} };
     const updatedLocationKnowledge = {
-      ...aiInstructions.locationKnowledge,
+      ...(currentAIInstructions.locationKnowledge || {}),
       [city]: value
     };
-    // Remove empty entries
-    if (!value.trim()) {
-      delete updatedLocationKnowledge[city];
-    }
+    // Keep empty strings - don't delete them (user might be adding a new location)
     handleAIInstructionsChange('locationKnowledge', updatedLocationKnowledge);
   };
   
@@ -62,7 +56,8 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
   };
   
   const removeLocationKnowledge = (city) => {
-    const updatedLocationKnowledge = { ...aiInstructions.locationKnowledge };
+    const currentAIInstructions = companyData.aiInstructions || { additionalInstructions: '', locationKnowledge: {} };
+    const updatedLocationKnowledge = { ...(currentAIInstructions.locationKnowledge || {}) };
     delete updatedLocationKnowledge[city];
     handleAIInstructionsChange('locationKnowledge', updatedLocationKnowledge);
   };
@@ -251,7 +246,7 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
           <div className="form-group full-width">
             <label>Additional Instructions for AI</label>
             <textarea
-              value={aiInstructions.additionalInstructions || ''}
+              value={(companyData.aiInstructions?.additionalInstructions) || ''}
               onChange={(e) => handleAIInstructionsChange('additionalInstructions', e.target.value)}
               placeholder="Add custom instructions for the AI assistant. For example:&#10;&#10;- Always recommend premium underlayment for high-altitude projects&#10;- Include permit costs for all Denver projects&#10;- Use specific terminology for our company"
               rows={8}
@@ -280,14 +275,14 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
               use this knowledge when working on proposals for these locations.
             </small>
             
-            {Object.keys(aiInstructions.locationKnowledge || {}).length === 0 ? (
+            {(!companyData.aiInstructions?.locationKnowledge || Object.keys(companyData.aiInstructions.locationKnowledge).length === 0) ? (
               <div className="no-locations">
                 <p>No location-specific knowledge added yet.</p>
                 <p className="hint">Click "Add Location" to add knowledge for specific cities (e.g., "Aspen, CO").</p>
               </div>
             ) : (
               <div className="location-knowledge-list">
-                {Object.entries(aiInstructions.locationKnowledge || {}).map(([city, knowledge]) => (
+                {Object.entries(companyData.aiInstructions.locationKnowledge).map(([city, knowledge]) => (
                   <div key={city} className="location-knowledge-item">
                     <div className="location-city">
                       <strong>{city}</strong>
@@ -301,7 +296,7 @@ export default function CompanySettings({ companyData, onCompanyDataChange }) {
                       </button>
                     </div>
                     <textarea
-                      value={knowledge}
+                      value={knowledge || ''}
                       onChange={(e) => handleLocationKnowledgeChange(city, e.target.value)}
                       placeholder={`Add roofing codes, requirements, or knowledge for ${city}...`}
                       rows={4}
