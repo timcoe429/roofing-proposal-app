@@ -23,8 +23,8 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(num);
   };
 
@@ -129,17 +129,6 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
             <div className="card-amount">{formatCurrency(breakdown.overheadAmount || 0)}</div>
           </div>
 
-          <div className="dashboard-card overhead-costs-card">
-            <div className="card-header">
-              <DollarSign size={14} />
-              <span className="card-label">Overhead Costs</span>
-            </div>
-            <div className="card-content">
-              <div className="card-value fixed">{formatPercentage(breakdown.overheadCostPercent || 10)}</div>
-            </div>
-            <div className="card-amount">{formatCurrency(breakdown.overheadCosts || 0)}</div>
-          </div>
-
           <div className="dashboard-card net-margin-card" style={{ borderColor: netMarginColor }}>
             <div className="card-header">
               <TrendingUp size={14} />
@@ -163,6 +152,19 @@ const MarginDashboard = ({ breakdown, overheadPercent, profitPercent, onUpdatePe
             </div>
             <div className="card-content">
               <div className="card-value">{formatCurrency(breakdown.totalCost || 0)}</div>
+            </div>
+          </div>
+
+          <div className="dashboard-card net-margin-amount-card" style={{ borderColor: netMarginColor }}>
+            <div className="card-header">
+              <DollarSign size={14} />
+              <span className="card-label">NET Margin</span>
+            </div>
+            <div className="card-content">
+              <div className="card-value" style={{ color: netMarginColor }}>
+                {formatCurrency(breakdown.netMarginAmount || (breakdown.finalTotal - breakdown.totalCost))}
+              </div>
+              <div className="card-subtext">{formatPercentage(netMarginActual)}</div>
             </div>
           </div>
 
