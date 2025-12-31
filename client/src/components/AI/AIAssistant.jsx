@@ -58,7 +58,7 @@ const BASE_QUICK_ACTIONS = [
   }
 ];
 
-export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange }) {
+export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange, projectVariables = {}, onUpdateProjectVariables }) {
   const initializedForProposalIdRef = useRef(null);
 
   const persistChatHistoryToProposal = (nextMessages) => {
@@ -437,7 +437,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       // Process structured actions from Claude (if available) - SHOW PREVIEW, DON'T AUTO-APPLY
       console.log('🚀 Processing Claude structured actions...');
       try {
-        const detailedData = structuredActions ? processStructuredActions(structuredActions) : await parseAIResponseWithAI(aiResponseText);
+        const detailedData = structuredActions ? await processStructuredActions(structuredActions) : await parseAIResponseWithAI(aiResponseText);
         if (Object.keys(detailedData).length > 0) {
           console.log('✅ AI suggests these changes:', detailedData);
           
@@ -727,7 +727,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   };
   
   // Process structured actions from Claude's intelligent analysis
-  const processStructuredActions = (actions) => {
+  const processStructuredActions = async (actions) => {
     if (!actions || !actions.actions) {
       return {};
     }
@@ -737,12 +737,125 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     const existingMaterials = proposalData.materials || [];
     const existingAddOns = proposalData.addOns || [];
     
+    // Process setProjectVariables - update project variables state
+    if (actionData.setProjectVariables && onUpdateProjectVariables) {
+      console.log('🔧 Setting project variables from Claude:', actionData.setProjectVariables);
+      onUpdateProjectVariables(prev => ({ ...prev, ...actionData.setProjectVariables }));
+      // Also update proposal data measurements if needed
+      if (actionData.setProjectVariables.roof_sqft || actionData.setProjectVariables.roof_sq) {
+        const roofSq = actionData.setProjectVariables.roof_sq || (actionData.setProjectVariables.roof_sqft / 100);
+        updates.measurements = {
+          ...proposalData.measurements,
+          totalSquares: roofSq
+        };
+      }
+    }
+    
+    // Process askQuestions - display questions to user (handled in UI, not here)
+    if (actionData.askQuestions && actionData.askQuestions.length > 0) {
+      console.log('❓ AI is asking questions:', actionData.askQuestions);
+      // Questions will be displayed in the chat response
+    }
+    
+    // Process addMaterials - AI suggests materials by name, code calculates everything
+    if (actionData.addMaterials && actionData.addMaterials.length > 0) {
+      console.log('➕ Processing addMaterials from Claude (names only):', actionData.addMaterials);
+      
+      try {
+        // Extract material names
+        const materialNames = actionData.addMaterials.map(m => m.name || m);
+        
+        // Call calculation API to get calculated line items
+        const calculatedResponse = await api.calculateMaterials(
+          materialNames,
+          { ...projectVariables, ...(actionData.setProjectVariables || {}) },
+          {}
+        );
+        
+        if (calculatedResponse.success && calculatedResponse.lineItems) {
+          console.log(`✅ Calculated ${calculatedResponse.lineItems.length} line items`);
+          
+          const updatedMaterials = [...(updates.materials || existingMaterials)];
+          
+          calculatedResponse.lineItems.forEach(lineItem => {
+            // Check if it already exists
+            const existingIndex = updatedMaterials.findIndex(m => 
+              m.name && m.name.toLowerCase().trim() === lineItem.name.toLowerCase().trim()
+            );
+            
+            if (existingIndex >= 0) {
+              // Update existing
+              updatedMaterials[existingIndex] = {
+                ...updatedMaterials[existingIndex],
+                ...lineItem,
+                id: updatedMaterials[existingIndex].id
+              };
+              console.log(`🔄 Updated existing material: ${lineItem.name}`);
+            } else {
+              // Add new
+              updatedMaterials.push({
+                ...lineItem,
+                id: Date.now() + Math.random()
+              });
+              console.log(`➕ Added calculated material: ${lineItem.name} (qty: ${lineItem.quantity}, total: $${lineItem.total})`);
+            }
+          });
+          
+          updates.materials = updatedMaterials;
+        } else {
+          console.warn('⚠️ Calculation API returned no line items');
+        }
+      } catch (error) {
+        console.error('❌ Error calculating materials:', error);
+        toast.error('Failed to calculate material prices. Please try again.');
+      }
+    }
+    
+    // Process addCustomItems - custom items not in pricing sheet
+    if (actionData.addCustomItems && actionData.addCustomItems.length > 0) {
+      console.log('➕ Processing addCustomItems from Claude:', actionData.addCustomItems);
+      
+      const updatedMaterials = [...(updates.materials || existingMaterials)];
+      
+      for (const customItem of actionData.addCustomItems) {
+        try {
+          // Call custom item API to calculate total
+          const customResponse = await api.addCustomItem(customItem);
+          
+          if (customResponse.success && customResponse.lineItem) {
+            updatedMaterials.push({
+              ...customResponse.lineItem,
+              id: Date.now() + Math.random()
+            });
+            console.log(`➕ Added custom item: ${customItem.name}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error adding custom item ${customItem.name}:`, error);
+          // Fallback: add with manual calculation
+          const total = (customItem.unitPrice || 0) * (customItem.quantity || 0);
+          updatedMaterials.push({
+            name: customItem.name,
+            unit: customItem.unit || 'each',
+            quantity: customItem.quantity || 0,
+            unitPrice: customItem.unitPrice || 0,
+            total: Math.round(total * 100) / 100,
+            category: customItem.category || 'MISC',
+            description: customItem.description || '',
+            isCustom: true,
+            id: Date.now() + Math.random()
+          });
+        }
+      }
+      
+      updates.materials = updatedMaterials;
+    }
+    
     // Process removals (exact name matching, case-insensitive)
     if (actionData.removals && actionData.removals.length > 0) {
       console.log('🗑️ Processing removals from Claude:', actionData.removals);
       
       // Filter out removals using exact name matching
-      const updatedMaterials = existingMaterials.filter(m => {
+      const updatedMaterials = (updates.materials || existingMaterials).filter(m => {
         if (!m.name) return true;
         const shouldRemove = actionData.removals.some(removalName => 
           m.name.toLowerCase().trim() === removalName.toLowerCase().trim()
@@ -757,7 +870,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       updates.materials = updatedMaterials;
     }
     
-    // Process updates (materials with changed prices/quantities)
+    // Process updates (materials with changed quantities - code recalculates price/total)
     if (actionData.updates && actionData.updates.length > 0) {
       console.log('🔄 Processing updates from Claude:', actionData.updates);
       
@@ -769,16 +882,16 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         );
         
         if (index >= 0) {
-          // Update existing material
+          // Update existing material (code will recalculate total if quantity changes)
           const existing = updatedMaterials[index];
           updatedMaterials[index] = {
             ...existing,
             ...update,
             id: existing.id, // Keep original ID
-            total: update.total !== undefined ? update.total : 
-              (update.unitPrice !== undefined && update.quantity !== undefined 
-                ? Math.round((update.quantity * update.unitPrice) * 100) / 100
-                : existing.total)
+            // Recalculate total if quantity or unitPrice changed
+            total: update.quantity !== undefined && update.unitPrice !== undefined
+              ? Math.round((update.quantity * update.unitPrice) * 100) / 100
+              : (update.total !== undefined ? update.total : existing.total)
           };
           console.log(`🔄 Updated material: ${update.name}`);
         }
@@ -787,42 +900,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       updates.materials = updatedMaterials;
     }
     
-    // Process new materials
-    if (actionData.materials && actionData.materials.length > 0) {
-      console.log('➕ Processing new materials from Claude:', actionData.materials);
-      
-      const updatedMaterials = [...(updates.materials || existingMaterials)];
-      
-      actionData.materials.forEach(newMaterial => {
-        // Check if it already exists (exact name match)
-        const existingIndex = updatedMaterials.findIndex(m => 
-          m.name && m.name.toLowerCase().trim() === newMaterial.name.toLowerCase().trim()
-        );
-        
-        if (existingIndex >= 0) {
-          // Update existing
-          const existing = updatedMaterials[existingIndex];
-          updatedMaterials[existingIndex] = {
-            ...existing,
-            ...newMaterial,
-            id: existing.id
-          };
-          console.log(`🔄 Updated existing material: ${newMaterial.name}`);
-        } else {
-          // Add new
-          updatedMaterials.push({
-            ...newMaterial,
-            id: Date.now() + Math.random(),
-            category: 'material'
-          });
-          console.log(`➕ Added new material: ${newMaterial.name}`);
-        }
-      });
-      
-      updates.materials = updatedMaterials;
-    }
-    
-    // Process new add-ons
+    // Process new add-ons (keep existing logic)
     if (actionData.addOns && actionData.addOns.length > 0) {
       console.log('➕ Processing new add-ons from Claude:', actionData.addOns);
       
@@ -853,7 +931,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       updates.addOns = updatedAddOns;
     }
     
-    // Process new labor items
+    // Process new labor items (keep existing logic)
     if (actionData.labor && actionData.labor.length > 0) {
       console.log('➕ Processing new labor from Claude:', actionData.labor);
       

@@ -113,10 +113,21 @@ export const createProposal = async (req, res) => {
       false
     );
 
+    // Extract and store project variables if provided
+    const projectVariables = req.body.projectVariables || {};
+    
+    // Merge project variables into measurements if needed
+    const measurements = {
+      ...(req.body.measurements || {}),
+      ...projectVariables
+    };
+    
     const proposalData = {
       ...req.body,
       ...(userId ? { userId } : {}),
       ...(companyId ? { companyId } : {}),
+      measurements: measurements,
+      projectVariables: projectVariables, // Store separately for easy access
       // Calculated fields removed - always calculate from current data
       // overheadCosts, totalCost, netMarginActual removed - calculate on demand
       overheadCostPercent: req.body.overheadCostPercent || 10,
@@ -196,8 +207,22 @@ export const updateProposal = async (req, res) => {
       false
     );
 
+    // Extract and merge project variables if provided
+    const projectVariables = req.body.projectVariables !== undefined 
+      ? { ...(proposal.projectVariables || {}), ...req.body.projectVariables }
+      : proposal.projectVariables;
+    
+    // Merge project variables into measurements if needed
+    const measurements = {
+      ...(proposal.measurements || {}),
+      ...(req.body.measurements || {}),
+      ...(projectVariables || {})
+    };
+    
     const updateData = {
       ...req.body,
+      measurements: measurements,
+      projectVariables: projectVariables, // Store separately for easy access
       // Calculated fields removed - always calculate from current data
       // overheadCosts, totalCost, netMarginActual removed - calculate on demand
       overheadCostPercent: req.body.overheadCostPercent !== undefined ? req.body.overheadCostPercent : (proposal.overheadCostPercent || 10),

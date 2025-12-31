@@ -1,5 +1,10 @@
 // Server-side calculation utilities for proposals
 export const calculations = {
+  // Helper function to round to 2 decimals (cents) for financial accuracy
+  roundToCents: (amount) => {
+    return Math.round((amount || 0) * 100) / 100;
+  },
+
   // Calculate materials total from materials array (excluding labor items)
   calculateMaterialsTotal: (materials = []) => {
     return materials

@@ -264,6 +264,13 @@ const Proposal = sequelize.define('Proposal', {
     field: 'aiChatHistory'
   },
   
+  // Project Variables (for pricing engine calculations)
+  projectVariables: {
+    type: DataTypes.JSONB,
+    defaultValue: {},
+    field: 'projectVariables'
+  },
+  
   // Timestamps
   createdAt: {
     type: DataTypes.DATE,

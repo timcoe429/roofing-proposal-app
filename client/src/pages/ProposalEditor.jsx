@@ -61,6 +61,26 @@ const ProposalEditor = () => {
 
   const [lastSavedData, setLastSavedData] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Project variables for pricing engine calculations
+  const [projectVariables, setProjectVariables] = useState({
+    roof_sqft: 0,
+    roof_sq: 0,
+    roof_system: '',
+    eave_If: 0,
+    ridge_If: 0,
+    hip_lf: 0,
+    valley_lf: 0,
+    penetrations: 0,
+    skylights: 0,
+    tear_off: false,
+    ice_water: false,
+    metal_type: '',
+    low_slope_sq: 0,
+    boot_type: '',
+    snow_zone: false,
+    labor_crew: ''
+  });
 
   // Fetch existing proposal if editing
   const { data: proposalFromApi, isLoading, error, isError } = useQuery({
@@ -100,6 +120,26 @@ const ProposalEditor = () => {
       console.log('API data clientName:', proposalFromApi.clientName);
       console.log('Full API data:', JSON.stringify(proposalFromApi, null, 2));
       setProposalData(proposalFromApi);
+      
+      // Update project variables from proposal
+      if (proposalFromApi.projectVariables) {
+        setProjectVariables(prev => ({ ...prev, ...proposalFromApi.projectVariables }));
+      }
+      
+      // Also extract from measurements if projectVariables not set
+      if (proposalFromApi.measurements) {
+        const measurements = proposalFromApi.measurements;
+        setProjectVariables(prev => ({
+          ...prev,
+          roof_sqft: (measurements.totalSquares || 0) * 100,
+          roof_sq: measurements.totalSquares || 0,
+          ridge_If: measurements.ridgeLength || 0,
+          valley_lf: measurements.valleyLength || 0,
+          penetrations: measurements.penetrations || 0,
+          skylights: measurements.skylights || 0
+        }));
+      }
+      
       console.log('✅ setProposalData called');
     } else {
       console.log('❌ NOT setting proposal data');
@@ -107,6 +147,23 @@ const ProposalEditor = () => {
       console.log('Reason: is NOT new proposal?', !isNewProposal);
     }
   }, [proposalFromApi, isNewProposal]);
+  
+  // Update project variables when measurements change
+  useEffect(() => {
+    if (proposalData.measurements) {
+      const measurements = proposalData.measurements;
+      setProjectVariables(prev => ({
+        ...prev,
+        roof_sqft: (measurements.totalSquares || 0) * 100,
+        roof_sq: measurements.totalSquares || 0,
+        ridge_If: measurements.ridgeLength || 0,
+        valley_lf: measurements.valleyLength || 0,
+        eave_If: measurements.edgeLength || 0,
+        penetrations: measurements.penetrations || 0,
+        skylights: measurements.skylights || 0
+      }));
+    }
+  }, [proposalData.measurements]);
 
   // Save proposal mutation
   const saveMutation = useMutation({
@@ -138,8 +195,14 @@ const ProposalEditor = () => {
     console.log('isNewProposal:', isNewProposal);
     console.log('proposalId:', id);
     
+    // Include project variables in save
+    const dataToSave = {
+      ...proposalData,
+      projectVariables: projectVariables
+    };
+    
     try {
-      const result = await saveMutation.mutateAsync(proposalData);
+      const result = await saveMutation.mutateAsync(dataToSave);
       console.log('Save successful, result:', result);
       
       // Only show toast for manual saves, not auto-saves
@@ -158,7 +221,7 @@ const ProposalEditor = () => {
         console.warn('Auto-save failed (will retry):', error.message);
       }
     }
-  }, [saveMutation, proposalData, isNewProposal, id]);
+  }, [saveMutation, proposalData, projectVariables, isNewProposal, id]);
 
   // Track changes and trigger auto-save
   useEffect(() => {
@@ -253,6 +316,8 @@ const ProposalEditor = () => {
           <AIAssistant 
             proposalData={proposalData}
             onUpdateProposal={setProposalData}
+            projectVariables={projectVariables}
+            onUpdateProjectVariables={setProjectVariables}
           />
         </div>
         

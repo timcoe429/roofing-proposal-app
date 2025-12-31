@@ -1,7 +1,10 @@
 import Material from '../models/Material.js';
 import User from '../models/User.js';
 import Company from '../models/Company.js';
-import { fetchGoogleSheetData } from '../services/googleSheetsService.js';
+import { fetchGoogleSheetData, parsePricingSheet } from '../services/googleSheetsService.js';
+import { PricingEngine } from '../services/pricingEngine.js';
+import { calculations } from '../utils/calculations.js';
+import logger from '../utils/logger.js';
 
 const parseMoney = (value) => {
   if (value === null || value === undefined) return 0;
@@ -458,5 +461,191 @@ export const getActivePricingForAI = async (req, res) => {
   } catch (error) {
     console.error('Error getting AI pricing data:', error);
     res.status(500).json({ error: 'Failed to get pricing data for AI' });
+  }
+};
+
+// Calculate line items for suggested materials
+export const calculateMaterials = async (req, res) => {
+  try {
+    const { materialNames, projectVariables = {}, options = {} } = req.body;
+    
+    logger.info('POST /api/materials/calculate - Calculating materials');
+    logger.info('Material names:', materialNames);
+    logger.info('Project variables:', projectVariables);
+    
+    if (!materialNames || !Array.isArray(materialNames) || materialNames.length === 0) {
+      return res.status(400).json({ 
+        error: 'materialNames array is required' 
+      });
+    }
+    
+    // Get company ID
+    let companyId;
+    if (req.user?.companyId) {
+      companyId = req.user.companyId;
+    } else {
+      const company = await Company.findOne();
+      companyId = company?.id;
+    }
+    
+    if (!companyId) {
+      return res.status(400).json({ 
+        error: 'Company not found' 
+      });
+    }
+    
+    // Get active pricing sheets
+    const pricingSheets = await Material.findAll({
+      where: { 
+        companyId: companyId,
+        category: 'pricing_sheet',
+        isActive: true
+      },
+      order: [['updatedAt', 'DESC']]
+    });
+    
+    if (pricingSheets.length === 0) {
+      return res.status(404).json({ 
+        error: 'No active pricing sheets found' 
+      });
+    }
+    
+    // Load pricing sheet data
+    let allSheetItems = [];
+    
+    for (const sheet of pricingSheets) {
+      try {
+        if (sheet.specifications?.type === 'url' && sheet.specifications?.files?.[0]?.name) {
+          const sheetUrl = sheet.specifications.files[0].name;
+          
+          // Try to use existing snapshot
+          const existingSnapshot = sheet.specifications?.pricingSnapshot;
+          if (existingSnapshot?.rawCsvData) {
+            // Parse from raw CSV data
+            try {
+              const csvRows = existingSnapshot.rawCsvData.split('\n').map(row => {
+                // Handle CSV with quoted values
+                const cells = [];
+                let currentCell = '';
+                let inQuotes = false;
+                for (let i = 0; i < row.length; i++) {
+                  const char = row[i];
+                  if (char === '"') {
+                    inQuotes = !inQuotes;
+                  } else if (char === ',' && !inQuotes) {
+                    cells.push(currentCell.trim());
+                    currentCell = '';
+                  } else {
+                    currentCell += char;
+                  }
+                }
+                cells.push(currentCell.trim());
+                return cells;
+              });
+              const parsedItems = parsePricingSheet({ rows: csvRows });
+              allSheetItems.push(...parsedItems);
+              continue;
+            } catch (parseError) {
+              logger.warn(`Failed to parse snapshot CSV for ${sheet.name}, fetching fresh:`, parseError.message);
+            }
+          }
+          
+          // Fetch fresh data
+          const sheetData = await fetchGoogleSheetData(sheetUrl);
+          const parsedItems = parsePricingSheet(sheetData);
+          allSheetItems.push(...parsedItems);
+        }
+      } catch (error) {
+        logger.warn(`Failed to load pricing sheet ${sheet.name}:`, error.message);
+      }
+    }
+    
+    if (allSheetItems.length === 0) {
+      return res.status(404).json({ 
+        error: 'No pricing data available' 
+      });
+    }
+    
+    // Create pricing engine and calculate line items
+    const pricingEngine = new PricingEngine(allSheetItems);
+    const lineItems = pricingEngine.calculateLineItems(projectVariables, {
+      ...options,
+      materialNames: materialNames
+    });
+    
+    logger.info(`Calculated ${lineItems.length} line items for ${materialNames.length} requested materials`);
+    
+    res.json({
+      success: true,
+      lineItems: lineItems,
+      requestedMaterials: materialNames,
+      calculatedCount: lineItems.length
+    });
+    
+  } catch (error) {
+    logger.error('Error calculating materials:', error);
+    res.status(500).json({ 
+      error: 'Failed to calculate materials',
+      details: error.message 
+    });
+  }
+};
+
+// Add custom item (not in pricing sheet)
+export const addCustomItem = async (req, res) => {
+  try {
+    const { name, unitPrice, quantity, unit, category, description } = req.body;
+    
+    logger.info('POST /api/materials/custom - Adding custom item');
+    
+    // Validate required fields
+    if (!name || unitPrice === undefined || quantity === undefined) {
+      return res.status(400).json({ 
+        error: 'name, unitPrice, and quantity are required' 
+      });
+    }
+    
+    const price = parseFloat(unitPrice) || 0;
+    const qty = parseFloat(quantity) || 0;
+    
+    if (price < 0 || qty < 0) {
+      return res.status(400).json({ 
+        error: 'unitPrice and quantity must be non-negative' 
+      });
+    }
+    
+    // Calculate total (round to cents)
+    const total = Math.round((price * qty) * 100) / 100;
+    
+    // Build line item
+    const lineItem = {
+      category: category || 'MISC',
+      name: name,
+      unit: unit || 'each',
+      baseUOM: unit || 'each',
+      quantity: qty,
+      unitPrice: price,
+      total: total,
+      coverage: '',
+      description: description || '',
+      color: '',
+      logicTier: 'manual_only',
+      appliesWhen: 'manual_only',
+      isCustom: true
+    };
+    
+    logger.info(`Created custom item: ${name}, total: $${total}`);
+    
+    res.json({
+      success: true,
+      lineItem: lineItem
+    });
+    
+  } catch (error) {
+    logger.error('Error adding custom item:', error);
+    res.status(500).json({ 
+      error: 'Failed to add custom item',
+      details: error.message 
+    });
   }
 };

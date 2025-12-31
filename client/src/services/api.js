@@ -275,6 +275,9 @@ const api = {
   deleteMaterial: (id) => apiClient.delete(`/materials/${id}`),
   getActivePricingForAI: () => apiClient.get('/materials/ai-pricing'),
   resyncPricingSheet: (id) => apiClient.post(`/materials/${id}/resync`),
+  calculateMaterials: (materialNames, projectVariables, options) => 
+    apiClient.post('/materials/calculate', { materialNames, projectVariables, options }),
+  addCustomItem: (itemData) => apiClient.post('/materials/custom', itemData),
 };
 
 export default api;
