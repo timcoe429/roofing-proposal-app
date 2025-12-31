@@ -1,24 +1,4 @@
--- Create Users table
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
-    phone VARCHAR(20),
-    role VARCHAR(50) DEFAULT 'user',
-    is_active BOOLEAN DEFAULT true,
-    email_verified BOOLEAN DEFAULT false,
-    email_verification_token VARCHAR(255),
-    password_reset_token VARCHAR(255),
-    password_reset_expires TIMESTAMP,
-    last_login TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create index on email for faster lookups
-CREATE INDEX idx_users_email ON users(email);
-
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE
-    ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Migration 001: Create Users table
+-- NOTE: Sequelize creates this table via createTables.js, so this migration is a no-op
+-- Sequelize uses INTEGER (SERIAL) id and camelCase column names
+SELECT 1; -- No-op to mark migration as executed
