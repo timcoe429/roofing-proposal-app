@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign, MapPin, Shield, Plus, Package } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { getLocationContext, getQuickActionsForLocation } from '../../services/locationService';
 import { calculations } from '../../utils/calculations';
