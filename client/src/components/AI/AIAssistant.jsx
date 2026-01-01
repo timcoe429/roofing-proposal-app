@@ -159,6 +159,95 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     return sheets.filter(sheet => sheet.isActive && sheet.extractedData?.csvData);
   };
 
+  // Filter pricing options based on question context
+  const filterPricingByQuestion = (question, category, pricingCategory) => {
+    const sheets = getPricingSheets();
+    if (sheets.length === 0) return [];
+
+    const options = [];
+    const questionLower = question.toLowerCase();
+    
+    // Keywords to match for different question types
+    const categoryKeywords = {
+      roofing_system: ['roofing', 'shingle', 'tile', 'shake', 'metal', 'system'],
+      underlayment: ['underlayment', 'felt', 'synthetic', 'psu', 'versashield', 'sharkskin'],
+      tear_off: ['tear', 'removal', 'dumpster', 'disposal'],
+      metal: ['metal', 'copper', 'aluminum', 'flashing', 'edge'],
+      penetrations: ['penetration', 'vent', 'pipe', 'boot', 'jack'],
+      ice_water: ['ice', 'water', 'shield', 'eave', 'protection']
+    };
+
+    for (const sheet of sheets) {
+      const csvData = sheet.extractedData?.csvData || '';
+      const lines = csvData.split('\n');
+      
+      // Skip header row
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Parse CSV line (simple split, handle quoted values)
+        const cells = [];
+        let currentCell = '';
+        let inQuotes = false;
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            cells.push(currentCell.trim());
+            currentCell = '';
+          } else {
+            currentCell += char;
+          }
+        }
+        cells.push(currentCell.trim());
+        
+        if (cells.length < 2) continue;
+        
+        // Get item name (usually column 1 or 2)
+        const itemName = cells[1] || cells[0];
+        if (!itemName) continue;
+        
+        // Get category (if available)
+        const itemCategory = cells[0] || '';
+        
+        // Filter logic
+        let shouldInclude = false;
+        
+        // If pricingCategory is specified, match by category
+        if (pricingCategory && itemCategory.toUpperCase().includes(pricingCategory.toUpperCase())) {
+          shouldInclude = true;
+        }
+        
+        // If category keywords exist, match by keywords
+        if (!shouldInclude && category && categoryKeywords[category]) {
+          const keywords = categoryKeywords[category];
+          const itemLower = itemName.toLowerCase();
+          if (keywords.some(keyword => itemLower.includes(keyword))) {
+            shouldInclude = true;
+          }
+        }
+        
+        // Match by question text keywords
+        if (!shouldInclude) {
+          const itemLower = itemName.toLowerCase();
+          // Extract key terms from question
+          const questionTerms = questionLower.split(/\s+/).filter(term => term.length > 3);
+          if (questionTerms.some(term => itemLower.includes(term))) {
+            shouldInclude = true;
+          }
+        }
+        
+        if (shouldInclude && !options.includes(itemName)) {
+          options.push(itemName);
+        }
+      }
+    }
+    
+    return options.slice(0, 10); // Limit to 10 options
+  };
+
   // Get full pricing context for AI
   const getPricingContext = () => {
     const sheets = getPricingSheets();
@@ -187,6 +276,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [pastedImages, setPastedImages] = useState([]);
   const [pendingChanges, setPendingChanges] = useState(null); // { changes: {...}, messageId: number }
+  const [currentQuestion, setCurrentQuestion] = useState(null); // { question: string, category: string, pricingRelevant: boolean, pricingCategory: string, messageId: number }
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -286,6 +376,10 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     setInputValue('');
     setPastedImages([]);
     setIsTyping(true);
+    // Clear current question when user sends a message (they're answering)
+    if (currentQuestion) {
+      setCurrentQuestion(null);
+    }
 
     // Extract data from user message too
     const userDataUpdates = extractProposalData(message);
@@ -416,13 +510,47 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       console.log('✅ AI Response text extracted:', aiResponseText ? aiResponseText.substring(0, 100) + '...' : 'No text');
       console.log('✅ Structured actions:', structuredActions ? 'Present' : 'Not present');
       
+      // Check if AI is asking a question
+      let questionData = null;
+      if (structuredActions?.actions?.askQuestions && structuredActions.actions.askQuestions.length > 0) {
+        const firstQuestion = structuredActions.actions.askQuestions[0];
+        // Handle both old format (string) and new format (object)
+        if (typeof firstQuestion === 'object' && firstQuestion.question) {
+          questionData = {
+            question: firstQuestion.question,
+            category: firstQuestion.category || null,
+            pricingRelevant: firstQuestion.pricingRelevant !== false,
+            pricingCategory: firstQuestion.pricingCategory || null,
+            messageId: Date.now() + 1
+          };
+        } else if (typeof firstQuestion === 'string') {
+          // Legacy format - just a string question
+          questionData = {
+            question: firstQuestion,
+            category: null,
+            pricingRelevant: true,
+            pricingCategory: null,
+            messageId: Date.now() + 1
+          };
+        }
+      }
+      
       const assistantMessage = {
         id: Date.now() + 1,
         type: 'assistant',
         content: aiResponseText,
         timestamp: new Date(),
-        actions: extractActions(aiResponseText, proposalData)
+        actions: extractActions(aiResponseText, proposalData),
+        questionData: questionData
       };
+      
+      // Set current question if one exists
+      if (questionData) {
+        setCurrentQuestion(questionData);
+      } else {
+        // Clear question if AI is not asking one
+        setCurrentQuestion(null);
+      }
 
       setMessages(prev => {
         const next = [...prev, assistantMessage];
@@ -1646,6 +1774,130 @@ Return ONLY the JSON object, no other text.`;
                       : message.content.replace(/\n/g, '<br>')
                   }}
                 />
+                
+                {/* Show question with pricing options if this message has a question */}
+                {message.questionData && message.questionData.messageId === message.id && (
+                  <div className="question-flow">
+                    <div className="question-text">{message.questionData.question}</div>
+                    {message.questionData.pricingRelevant && (() => {
+                      const pricingOptions = filterPricingByQuestion(
+                        message.questionData.question,
+                        message.questionData.category,
+                        message.questionData.pricingCategory
+                      );
+                      return pricingOptions.length > 0 ? (
+                        <div className="pricing-options">
+                          {pricingOptions.map((option, idx) => (
+                            <button
+                              key={idx}
+                              className="pricing-option-btn"
+                              onClick={async () => {
+                                // Send the option as user's answer
+                                const answerMessage = option;
+                                setInputValue('');
+                                setCurrentQuestion(null);
+                                
+                                // Create user message
+                                const userMessage = {
+                                  id: Date.now(),
+                                  type: 'user',
+                                  content: answerMessage,
+                                  timestamp: new Date()
+                                };
+                                
+                                setMessages(prev => {
+                                  const next = [...prev, userMessage];
+                                  persistChatHistoryToProposal(next);
+                                  return next;
+                                });
+                                
+                                // Send to AI
+                                setIsTyping(true);
+                                try {
+                                  const conversationHistory = messages
+                                    .filter(msg => msg.type === 'user' || msg.type === 'assistant')
+                                    .map(msg => ({ 
+                                      role: msg.type === 'user' ? 'user' : 'assistant', 
+                                      content: msg.content 
+                                    }))
+                                    .slice(-10);
+                                  
+                                  const response = await api.chatWithAI(answerMessage, conversationHistory, proposalContext);
+                                  const aiResponseText = response?.response || '';
+                                  const structuredActions = response?.actions || null;
+                                  
+                                  // Check for new question
+                                  let questionData = null;
+                                  if (structuredActions?.actions?.askQuestions && structuredActions.actions.askQuestions.length > 0) {
+                                    const firstQuestion = structuredActions.actions.askQuestions[0];
+                                    if (typeof firstQuestion === 'object' && firstQuestion.question) {
+                                      questionData = {
+                                        question: firstQuestion.question,
+                                        category: firstQuestion.category || null,
+                                        pricingRelevant: firstQuestion.pricingRelevant !== false,
+                                        pricingCategory: firstQuestion.pricingCategory || null,
+                                        messageId: Date.now() + 1
+                                      };
+                                    }
+                                  }
+                                  
+                                  const assistantMessage = {
+                                    id: Date.now() + 1,
+                                    type: 'assistant',
+                                    content: aiResponseText,
+                                    timestamp: new Date(),
+                                    actions: extractActions(aiResponseText, proposalData),
+                                    questionData: questionData
+                                  };
+                                  
+                                  setMessages(prev => {
+                                    const next = [...prev, assistantMessage];
+                                    persistChatHistoryToProposal(next);
+                                    return next;
+                                  });
+                                  
+                                  if (questionData) {
+                                    setCurrentQuestion(questionData);
+                                  }
+                                  
+                                  // Process structured actions
+                                  if (structuredActions?.actions) {
+                                    const detailedData = await processStructuredActions(structuredActions);
+                                    if (Object.keys(detailedData).length > 0) {
+                                      onUpdateProposal(prev => ({ ...prev, ...detailedData }));
+                                    }
+                                  }
+                                } catch (error) {
+                                  console.error('Error sending answer:', error);
+                                  toast.error('Failed to send answer. Please try again.');
+                                } finally {
+                                  setIsTyping(false);
+                                }
+                              }}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                          <button
+                            className="pricing-option-btn custom"
+                            onClick={() => {
+                              // Focus input for custom answer
+                              textareaRef.current?.focus();
+                              setCurrentQuestion(message.questionData);
+                            }}
+                          >
+                            Add Custom
+                          </button>
+                        </div>
+                      ) : null;
+                    })()}
+                    {currentQuestion && currentQuestion.messageId === message.id && (
+                      <div className="question-input-hint">
+                        Type your answer below or select an option above
+                      </div>
+                    )}
+                  </div>
+                )}
                 
                 {/* Show Apply/Cancel buttons for pending changes */}
                 {message.hasPendingChanges && pendingChanges && pendingChanges.messageId === message.id && (
