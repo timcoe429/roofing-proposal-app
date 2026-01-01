@@ -566,19 +566,54 @@ export const calculateMaterials = async (req, res) => {
       });
     }
     
+    // Validate that all requested materials exist in pricing sheet (exact case-insensitive match)
+    const allItemNames = allSheetItems.map(item => {
+      const name = item['Item Name'] || item.name || item['itemName'] || '';
+      return name.toLowerCase().trim();
+    }).filter(name => name.length > 0);
+    
+    const missingMaterials = [];
+    const validatedMaterialNames = [];
+    
+    for (const requestedName of materialNames) {
+      const searchName = (requestedName || '').toLowerCase().trim();
+      if (!searchName) continue;
+      
+      // Check for exact match (case-insensitive)
+      const found = allItemNames.some(itemName => itemName === searchName);
+      
+      if (!found) {
+        missingMaterials.push(requestedName);
+        logger.warn(`Material not found in pricing sheet: "${requestedName}"`);
+      } else {
+        validatedMaterialNames.push(requestedName);
+      }
+    }
+    
+    // If any materials don't exist, return error
+    if (missingMaterials.length > 0) {
+      logger.error(`Validation failed: ${missingMaterials.length} materials not found in pricing sheet:`, missingMaterials);
+      return res.status(400).json({
+        success: false,
+        error: 'Some materials not found in pricing sheet',
+        missingMaterials: missingMaterials,
+        message: `The following materials are not in your pricing sheet: ${missingMaterials.join(', ')}. Please use exact Item Names from your pricing sheet.`
+      });
+    }
+    
     // Create pricing engine and calculate line items
     const pricingEngine = new PricingEngine(allSheetItems);
     const lineItems = pricingEngine.calculateLineItems(projectVariables, {
       ...options,
-      materialNames: materialNames
+      materialNames: validatedMaterialNames
     });
     
-    logger.info(`Calculated ${lineItems.length} line items for ${materialNames.length} requested materials`);
+    logger.info(`Calculated ${lineItems.length} line items for ${validatedMaterialNames.length} validated materials`);
     
     res.json({
       success: true,
       lineItems: lineItems,
-      requestedMaterials: materialNames,
+      requestedMaterials: validatedMaterialNames,
       calculatedCount: lineItems.length
     });
     

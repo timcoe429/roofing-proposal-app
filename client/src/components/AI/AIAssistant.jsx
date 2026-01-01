@@ -159,110 +159,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     return sheets.filter(sheet => sheet.isActive && sheet.extractedData?.csvData);
   };
 
-  // Filter pricing options based on question context
-  const filterPricingByQuestion = (question, category, pricingCategory) => {
-    const sheets = getPricingSheets();
-    if (sheets.length === 0) return [];
-
-    const options = [];
-    const questionLower = question.toLowerCase();
-    
-    // Keywords to match for different question types
-    const categoryKeywords = {
-      roofing_system: ['roofing', 'shingle', 'tile', 'shake', 'metal', 'system'],
-      underlayment: ['underlayment', 'felt', 'synthetic', 'psu', 'versashield', 'sharkskin'],
-      tear_off: ['tear', 'removal', 'dumpster', 'disposal'],
-      metal: ['metal', 'copper', 'aluminum', 'flashing', 'edge'],
-      penetrations: ['penetration', 'vent', 'pipe', 'boot', 'jack'],
-      ice_water: ['ice', 'water', 'shield', 'eave', 'protection']
-    };
-
-    for (const sheet of sheets) {
-      const csvData = sheet.extractedData?.csvData || '';
-      const lines = csvData.split('\n');
-      
-      // Skip header row
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        // Parse CSV line (simple split, handle quoted values)
-        const cells = [];
-        let currentCell = '';
-        let inQuotes = false;
-        for (let j = 0; j < line.length; j++) {
-          const char = line[j];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            cells.push(currentCell.trim());
-            currentCell = '';
-          } else {
-            currentCell += char;
-          }
-        }
-        cells.push(currentCell.trim());
-        
-        if (cells.length < 2) continue;
-        
-        // Get item name (usually column 1 or 2)
-        const itemName = cells[1] || cells[0];
-        if (!itemName) continue;
-        
-        // Get category (if available)
-        const itemCategory = cells[0] || '';
-        
-        // Filter logic
-        let shouldInclude = false;
-        
-        // If pricingCategory is specified, match by category
-        if (pricingCategory && itemCategory.toUpperCase().includes(pricingCategory.toUpperCase())) {
-          shouldInclude = true;
-        }
-        
-        // If category keywords exist, match by keywords
-        if (!shouldInclude && category && categoryKeywords[category]) {
-          const keywords = categoryKeywords[category];
-          const itemLower = itemName.toLowerCase();
-          if (keywords.some(keyword => itemLower.includes(keyword))) {
-            shouldInclude = true;
-          }
-        }
-        
-        // Match by question text keywords
-        if (!shouldInclude) {
-          const itemLower = itemName.toLowerCase();
-          // Extract key terms from question
-          const questionTerms = questionLower.split(/\s+/).filter(term => term.length > 3);
-          if (questionTerms.some(term => itemLower.includes(term))) {
-            shouldInclude = true;
-          }
-        }
-        
-        if (shouldInclude && !options.includes(itemName)) {
-          options.push(itemName);
-        }
-      }
-    }
-    
-    return options.slice(0, 10); // Limit to 10 options
-  };
-
-  // Get full pricing context for AI
-  const getPricingContext = () => {
-    const sheets = getPricingSheets();
-    if (sheets.length === 0) return '';
-    
-    let context = '\n\n=== AVAILABLE PRICING DATA ===\n';
-    sheets.forEach(sheet => {
-      context += `\n--- ${sheet.name} (${sheet.itemCount} items) ---\n`;
-      context += sheet.extractedData.csvData;
-      context += '\n';
-    });
-    context += '\n=== END PRICING DATA ===\n';
-    
-    return context;
-  };
 
   // Build proposal context for AI - reusable helper function
   const buildProposalContext = () => {
@@ -529,6 +425,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
             category: firstQuestion.category || null,
             pricingRelevant: firstQuestion.pricingRelevant !== false,
             pricingCategory: firstQuestion.pricingCategory || null,
+            pricingOptions: firstQuestion.pricingOptions || [], // Use Claude's provided options
             messageId: Date.now() + 1
           };
         } else if (typeof firstQuestion === 'string') {
@@ -538,6 +435,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
             category: null,
             pricingRelevant: true,
             pricingCategory: null,
+            pricingOptions: [], // No options for legacy format
             messageId: Date.now() + 1
           };
         }
@@ -572,10 +470,12 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       }
 
       // Process structured actions from Claude (if available) - SHOW PREVIEW, DON'T AUTO-APPLY
+      // Skip preview if AI is asking a question (questionData exists)
       console.log('🚀 Processing Claude structured actions...');
       try {
         const detailedData = structuredActions ? await processStructuredActions(structuredActions) : await parseAIResponseWithAI(aiResponseText);
-        if (Object.keys(detailedData).length > 0) {
+        // Don't show preview if AI is asking a question - only show when making actual changes
+        if (Object.keys(detailedData).length > 0 && !questionData) {
           console.log('✅ AI suggests these changes:', detailedData);
           
           // Calculate preview of what will change
@@ -1787,15 +1687,9 @@ Return ONLY the JSON object, no other text.`;
                 {message.questionData && message.questionData.messageId === message.id && (
                   <div className="question-flow">
                     <div className="question-text">{message.questionData.question}</div>
-                    {message.questionData.pricingRelevant && (() => {
-                      const pricingOptions = filterPricingByQuestion(
-                        message.questionData.question,
-                        message.questionData.category,
-                        message.questionData.pricingCategory
-                      );
-                      return pricingOptions.length > 0 ? (
+                    {message.questionData.pricingRelevant && message.questionData.pricingOptions && message.questionData.pricingOptions.length > 0 && (
                         <div className="pricing-options">
-                          {pricingOptions.map((option, idx) => (
+                          {message.questionData.pricingOptions.map((option, idx) => (
                             <button
                               key={idx}
                               className="pricing-option-btn"
@@ -1839,6 +1733,7 @@ Return ONLY the JSON object, no other text.`;
                                         category: firstQuestion.category || null,
                                         pricingRelevant: firstQuestion.pricingRelevant !== false,
                                         pricingCategory: firstQuestion.pricingCategory || null,
+                                        pricingOptions: firstQuestion.pricingOptions || [], // Use Claude's provided options
                                         messageId: Date.now() + 1
                                       };
                                     }
@@ -1892,8 +1787,7 @@ Return ONLY the JSON object, no other text.`;
                             Add Custom
                           </button>
                         </div>
-                      ) : null;
-                    })()}
+                    )}
                     {currentQuestion && currentQuestion.messageId === message.id && (
                       <div className="question-input-hint">
                         Type your answer below or select an option above
