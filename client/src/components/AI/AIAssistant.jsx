@@ -263,6 +263,61 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     
     return context;
   };
+
+  // Build proposal context for AI - reusable helper function
+  const buildProposalContext = () => {
+    const fullAddress = `${proposalData.propertyAddress || ''}, ${proposalData.propertyCity || ''}, ${proposalData.propertyState || ''} ${proposalData.propertyZip || ''}`.trim();
+    const locationContext = fullAddress ? getLocationContext(fullAddress) : null;
+    
+    return {
+      client: {
+        name: proposalData.clientName || null,
+        email: proposalData.clientEmail || null,
+        phone: proposalData.clientPhone || null,
+        address: proposalData.clientAddress || null
+      },
+      property: {
+        address: proposalData.propertyAddress || null,
+        city: proposalData.propertyCity || null,
+        state: proposalData.propertyState || null,
+        zip: proposalData.propertyZip || null,
+        fullAddress: fullAddress || null,
+        type: proposalData.propertyType || null
+      },
+      project: {
+        type: proposalData.projectType || null,
+        materialType: proposalData.materialType || null,
+        urgency: proposalData.urgency || null,
+        timeline: proposalData.timeline || null,
+        warranty: proposalData.warranty || null,
+        notes: proposalData.notes || null
+      },
+      measurements: proposalData.measurements || {},
+      materials: proposalData.materials || [],
+      addOns: proposalData.addOns || [],
+      pricing: {
+        overheadPercent: proposalData.overheadPercent || 15,
+        profitPercent: proposalData.profitPercent || 20,
+        overheadCostPercent: proposalData.overheadCostPercent || 10,
+        netMarginTarget: proposalData.netMarginTarget || 20,
+        discountAmount: proposalData.discountAmount || 0,
+        laborHours: proposalData.laborHours || 0,
+        laborRate: proposalData.laborRate || 75
+      },
+      location: locationContext || null
+    };
+  };
+
+  // Build conversation history for AI - reusable helper function
+  const buildConversationHistory = () => {
+    return messages
+      .filter(msg => msg.type === 'user' || msg.type === 'assistant')
+      .map(msg => ({ 
+        role: msg.type === 'user' ? 'user' : 'assistant', 
+        content: msg.content 
+      }))
+      .slice(-10); // Last 10 messages (5 exchanges) for context
+  };
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -392,56 +447,9 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     }
 
     try {
-      // Get conversation history for context - include both user and assistant messages
-      const conversationHistory = messages
-        .filter(msg => msg.type === 'user' || msg.type === 'assistant')
-        .map(msg => ({ 
-          role: msg.type === 'user' ? 'user' : 'assistant', 
-          content: msg.content 
-        }))
-        .slice(-10); // Last 10 messages (5 exchanges) for context
-
-      // Build structured proposal context
-      const fullAddress = `${proposalData.propertyAddress || ''}, ${proposalData.propertyCity || ''}, ${proposalData.propertyState || ''} ${proposalData.propertyZip || ''}`.trim();
-      const locationContext = fullAddress ? getLocationContext(fullAddress) : null;
-      
-      const proposalContext = {
-        client: {
-          name: proposalData.clientName || null,
-          email: proposalData.clientEmail || null,
-          phone: proposalData.clientPhone || null,
-          address: proposalData.clientAddress || null
-        },
-        property: {
-          address: proposalData.propertyAddress || null,
-          city: proposalData.propertyCity || null,
-          state: proposalData.propertyState || null,
-          zip: proposalData.propertyZip || null,
-          fullAddress: fullAddress || null,
-          type: proposalData.propertyType || null
-        },
-        project: {
-          type: proposalData.projectType || null,
-          materialType: proposalData.materialType || null,
-          urgency: proposalData.urgency || null,
-          timeline: proposalData.timeline || null,
-          warranty: proposalData.warranty || null,
-          notes: proposalData.notes || null
-        },
-        measurements: proposalData.measurements || {},
-        materials: proposalData.materials || [],
-        addOns: proposalData.addOns || [],
-        pricing: {
-          overheadPercent: proposalData.overheadPercent || 15,
-          profitPercent: proposalData.profitPercent || 20,
-          overheadCostPercent: proposalData.overheadCostPercent || 10,
-          netMarginTarget: proposalData.netMarginTarget || 20,
-          discountAmount: proposalData.discountAmount || 0,
-          laborHours: proposalData.laborHours || 0,
-          laborRate: proposalData.laborRate || 75
-        },
-        location: locationContext || null
-      };
+      // Get conversation history and proposal context
+      const conversationHistory = buildConversationHistory();
+      const proposalContext = buildProposalContext();
 
       let response;
       let userMessageText = message;
@@ -1814,13 +1822,8 @@ Return ONLY the JSON object, no other text.`;
                                 // Send to AI
                                 setIsTyping(true);
                                 try {
-                                  const conversationHistory = messages
-                                    .filter(msg => msg.type === 'user' || msg.type === 'assistant')
-                                    .map(msg => ({ 
-                                      role: msg.type === 'user' ? 'user' : 'assistant', 
-                                      content: msg.content 
-                                    }))
-                                    .slice(-10);
+                                  const conversationHistory = buildConversationHistory();
+                                  const proposalContext = buildProposalContext();
                                   
                                   const response = await api.chatWithAI(answerMessage, conversationHistory, proposalContext);
                                   const aiResponseText = response?.response || '';
