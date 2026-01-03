@@ -151,7 +151,8 @@ export const createTables = async () => {
       ADD COLUMN IF NOT EXISTS "netMarginTarget" DECIMAL(5,2) DEFAULT 20,
       ADD COLUMN IF NOT EXISTS "netMarginActual" DECIMAL(5,2) DEFAULT NULL,
       ADD COLUMN IF NOT EXISTS "overheadCosts" DECIMAL(10,2) DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS "totalCost" DECIMAL(10,2) DEFAULT 0;
+      ADD COLUMN IF NOT EXISTS "totalCost" DECIMAL(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "projectVariables" JSONB DEFAULT '{}'::jsonb;
     `);
     
     console.log('Proposals table created successfully');
