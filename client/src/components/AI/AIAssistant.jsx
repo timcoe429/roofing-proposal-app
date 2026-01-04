@@ -802,10 +802,52 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         // Extract material names
         const materialNames = actionData.addMaterials.map(m => m.name || m);
         
+        // Extract measurements from proposalData (CODE DOES THIS - AI NEVER CALCULATES)
+        const measurements = proposalData.measurements || {};
+        const measurementVars = {
+          squares: measurements.totalSquares || 0,
+          roof_sq: measurements.totalSquares || 0,
+          roof_sqft: (measurements.totalSquares || 0) * 100,
+          pitch: measurements.pitch || '',
+          ridge_length: measurements.ridgeLength || 0,
+          valley_length: measurements.valleyLength || 0,
+          edge_length: measurements.edgeLength || 0,
+          penetrations: measurements.penetrations || 0,
+          layers: measurements.layers || 1
+        };
+        
+        // AI can ONLY set non-measurement variables (roof_system, tear_off, etc.)
+        // Filter out measurement variables from AI's setProjectVariables
+        const aiVars = actionData.setProjectVariables || {};
+        const nonMeasurementVars = {
+          roof_system: aiVars.roof_system,
+          tear_off: aiVars.tear_off,
+          ice_water: aiVars.ice_water,
+          metal_type: aiVars.metal_type,
+          low_slope_sq: aiVars.low_slope_sq,
+          boot_type: aiVars.boot_type,
+          snow_zone: aiVars.snow_zone,
+          labor_crew: aiVars.labor_crew
+          // NO measurement variables allowed - code handles all measurements
+        };
+        
+        // Merge: existing projectVariables + CODE's measurements (override) + AI non-measurement vars
+        const finalProjectVars = {
+          ...projectVariables,
+          ...measurementVars,  // CODE's measurements override everything
+          ...nonMeasurementVars  // AI can only set flags, not measurements
+        };
+        
+        console.log('📊 Project variables for calculation:', {
+          fromMeasurements: measurementVars,
+          fromAI: nonMeasurementVars,
+          final: finalProjectVars
+        });
+        
         // Call calculation API to get calculated line items
         const calculatedResponse = await api.calculateMaterials(
           materialNames,
-          { ...projectVariables, ...(actionData.setProjectVariables || {}) },
+          finalProjectVars,
           {}
         );
         
@@ -821,13 +863,12 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
             );
             
             if (existingIndex >= 0) {
-              // Update existing
+              // Update existing - USE lineItem values (from API calculation) not old values
               updatedMaterials[existingIndex] = {
-                ...updatedMaterials[existingIndex],
-                ...lineItem,
-                id: updatedMaterials[existingIndex].id
+                ...lineItem,  // Spread NEW calculated values FIRST (has correct quantity and total)
+                id: updatedMaterials[existingIndex].id  // Keep original ID
               };
-              console.log(`🔄 Updated existing material: ${lineItem.name}`);
+              console.log(`🔄 Updated existing material: ${lineItem.name} (qty: ${lineItem.quantity}, total: $${lineItem.total})`);
             } else {
               // Add new
               updatedMaterials.push({
