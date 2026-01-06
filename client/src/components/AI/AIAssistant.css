@@ -450,24 +450,23 @@
 }
 
 .upload-btn {
-  width: 28px;
-  height: 28px;
-  background: #6b7280;
+  background: none;
   border: none;
-  border-radius: 50%;
-  color: white;
+  color: #6b7280;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
   transition: all 0.2s;
   flex-shrink: 0;
-  margin-right: 8px;
+  margin-right: 4px;
 }
 
 .upload-btn:hover {
-  background: #4b5563;
-  transform: scale(1.05);
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .upload-btn input[type="file"] {
