@@ -306,6 +306,111 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     setPastedImages(prev => prev.filter(img => img.id !== imageId));
   };
 
+  // Convert PDF pages to images
+  const convertPdfToImages = async (file) => {
+    try {
+      // Dynamically import pdfjs-dist
+      const pdfjsLib = await import('pdfjs-dist');
+      
+      // Set worker source (required for pdfjs-dist)
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const images = [];
+      
+      // Convert each page to an image
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
+        
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        // Render PDF page to canvas
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+        
+        // Convert canvas to data URL
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        images.push({
+          page: pageNum,
+          dataUrl: dataUrl,
+          file: null // No original file for PDF pages
+        });
+      }
+      
+      return images;
+    } catch (error) {
+      console.error('Error converting PDF to images:', error);
+      toast.error('Failed to convert PDF. Please try converting to images manually.');
+      throw error;
+    }
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    
+    // Check file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFiles = files.filter(f => f.size > maxSize);
+    if (oversizedFiles.length > 0) {
+      toast.error(`File size limit is 10MB. Please compress or split your files.`);
+      return;
+    }
+    
+    for (const file of files) {
+      try {
+        if (file.type === 'application/pdf') {
+          // Convert PDF pages to images
+          toast.loading(`Converting PDF: ${file.name}...`, { id: `pdf-${file.name}` });
+          const images = await convertPdfToImages(file);
+          
+          images.forEach((img, index) => {
+            const imageData = {
+              id: Date.now() + Math.random() + index,
+              file: null,
+              dataUrl: img.dataUrl,
+              name: `${file.name} - Page ${img.page}`
+            };
+            setPastedImages(prev => [...prev, imageData]);
+          });
+          
+          toast.success(`Converted ${images.length} page(s) from ${file.name}`, { id: `pdf-${file.name}` });
+        } else if (file.type.startsWith('image/')) {
+          // Handle images directly
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const imageData = {
+              id: Date.now() + Math.random(),
+              file: file,
+              dataUrl: e.target.result,
+              name: file.name || `image-${Date.now()}.png`
+            };
+            setPastedImages(prev => [...prev, imageData]);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          toast.error(`Unsupported file type: ${file.type}. Please upload PDF or image files.`);
+        }
+      } catch (error) {
+        console.error('Error processing file:', error);
+        toast.error(`Failed to process ${file.name}. Please try again.`);
+      }
+    }
+    
+    // Reset file input
+    event.target.value = '';
+  };
+
 
 
   const handleSendMessage = async (message = inputValue) => {
@@ -362,6 +467,26 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
           const visionResponse = await api.processImages(imageBase64Array, 'roofing_analysis');
           
           console.log('✅ Vision analysis received:', visionResponse?.analysis ? 'Yes' : 'No');
+          console.log('📊 Is RoofScope:', visionResponse?.isRoofScope);
+          
+          // Extract measurements from vision response if available
+          if (visionResponse?.analysis?.measurements) {
+            const visionMeasurements = visionResponse.analysis.measurements;
+            console.log('📐 Extracting measurements from vision response:', visionMeasurements);
+            
+            // Merge vision measurements into proposal data
+            const currentMeasurements = proposalData.measurements || {};
+            const mergedMeasurements = {
+              ...currentMeasurements,
+              ...visionMeasurements
+            };
+            
+            // Update proposal with merged measurements
+            onUpdateProposal(prev => ({
+              ...prev,
+              measurements: mergedMeasurements
+            }));
+          }
           
           // Add vision analysis to the message
           userMessageText = `${message}\n\n[Image analysis: ${visionResponse.analysis || visionResponse}]`;
@@ -805,6 +930,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         // Extract measurements from proposalData (CODE DOES THIS - AI NEVER CALCULATES)
         const measurements = proposalData.measurements || {};
         const measurementVars = {
+          // Existing mappings (preserved)
           squares: measurements.totalSquares || 0,
           roof_sq: measurements.totalSquares || 0,
           roof_sqft: (measurements.totalSquares || 0) * 100,
@@ -813,7 +939,23 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
           valley_length: measurements.valleyLength || 0,
           edge_length: measurements.edgeLength || 0,
           penetrations: measurements.penetrations || 0,
-          layers: measurements.layers || 1
+          layers: measurements.layers || 1,
+          
+          // New RoofScope mappings
+          flat_slope_sq: measurements.flatSlopeSq || 0,
+          low_slope_sq: measurements.lowSlopeSq || 0,
+          steep_slope_sq: measurements.steepSlopeSq || 0,
+          high_slope_sq: measurements.highSlopeSq || 0,
+          hip_length: measurements.hipLength || 0,
+          step_flashing_length: measurements.stepFlashingLength || 0,
+          headwall_flashing_length: measurements.headwallFlashingLength || 0,
+          slope_change_length: measurements.slopeChangeLength || 0,
+          flat_drip_edge_length: measurements.flatDripEdgeLength || 0,
+          total_perimeter: measurements.totalPerimeter || 0,
+          roof_planes: measurements.roofPlanes || 0,
+          structures: measurements.structures || 1,
+          eave_length: measurements.eaveLength || 0,
+          rake_length: measurements.rakeLength || 0
         };
         
         // AI can ONLY set non-measurement variables (roof_system, tear_off, etc.)
@@ -850,6 +992,84 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
           finalProjectVars,
           {}
         );
+        
+        // Handle needsPricing response (materials not in pricing sheet)
+        if (calculatedResponse.needsPricing) {
+          console.log('💰 Materials need pricing:', calculatedResponse.missingMaterials);
+          
+          // Build user-friendly message with suggestions
+          let pricingMessage = `**Materials Need Pricing**\n\n`;
+          pricingMessage += `${calculatedResponse.message}\n\n`;
+          
+          if (Object.keys(calculatedResponse.suggestions || {}).length > 0) {
+            pricingMessage += `**Similar materials in your pricing sheet:**\n`;
+            Object.entries(calculatedResponse.suggestions).forEach(([missing, suggestions]) => {
+              if (suggestions.length > 0) {
+                pricingMessage += `- "${missing}" → Try: ${suggestions.join(', ')}\n`;
+              }
+            });
+            pricingMessage += `\n`;
+          }
+          
+          pricingMessage += `Please provide pricing for these materials. You can:\n`;
+          pricingMessage += `1. Tell me the price per unit for each material\n`;
+          pricingMessage += `2. Or add them to your pricing sheet and try again`;
+          
+          // Add assistant message asking for pricing
+          const pricingRequestMessage = {
+            id: Date.now() + 1,
+            type: 'assistant',
+            content: pricingMessage,
+            timestamp: new Date(),
+            needsPricing: true,
+            missingMaterials: calculatedResponse.missingMaterials,
+            suggestions: calculatedResponse.suggestions
+          };
+          
+          setMessages(prev => {
+            const next = [...prev, pricingRequestMessage];
+            persistChatHistoryToProposal(next);
+            return next;
+          });
+          
+          // Add any validated materials that were found
+          if (calculatedResponse.validatedMaterials && calculatedResponse.validatedMaterials.length > 0) {
+            // Retry calculation with only validated materials
+            try {
+              const validatedResponse = await api.calculateMaterials(
+                calculatedResponse.validatedMaterials,
+                finalProjectVars,
+                {}
+              );
+              
+              if (validatedResponse.success && validatedResponse.lineItems) {
+                const updatedMaterials = [...(updates.materials || existingMaterials)];
+                validatedResponse.lineItems.forEach(lineItem => {
+                  const existingIndex = updatedMaterials.findIndex(m => 
+                    m.name && m.name.toLowerCase().trim() === lineItem.name.toLowerCase().trim()
+                  );
+                  
+                  if (existingIndex >= 0) {
+                    updatedMaterials[existingIndex] = {
+                      ...lineItem,
+                      id: updatedMaterials[existingIndex].id
+                    };
+                  } else {
+                    updatedMaterials.push({
+                      ...lineItem,
+                      id: Date.now() + Math.random()
+                    });
+                  }
+                });
+                updates.materials = updatedMaterials;
+              }
+            } catch (error) {
+              console.error('Error calculating validated materials:', error);
+            }
+          }
+          
+          return; // Stop processing, wait for user to provide pricing
+        }
         
         if (calculatedResponse.success && calculatedResponse.lineItems) {
           console.log(`✅ Calculated ${calculatedResponse.lineItems.length} line items`);
@@ -1506,6 +1726,92 @@ Return ONLY the JSON object, no other text.`;
       measurements.existingLayers = parseInt(layersMatch[1]);
     }
     
+    // Extract RoofScope-specific measurements
+    
+    // Extract slope breakdowns
+    const flatSlopeMatch = response.match(/(?:Flat\s+Slope|Flat\s*\([^)]+\))[:\s]+([0-9,]+(?:\.\d+)?)\s*SQ/i);
+    if (flatSlopeMatch) {
+      measurements.flatSlopeSq = parseFloat(flatSlopeMatch[1].replace(/,/g, ''));
+    }
+    
+    const lowSlopeMatch = response.match(/(?:Low\s+Slope|Low\s*\([^)]+\))[:\s]+([0-9,]+(?:\.\d+)?)\s*SQ/i);
+    if (lowSlopeMatch) {
+      measurements.lowSlopeSq = parseFloat(lowSlopeMatch[1].replace(/,/g, ''));
+    }
+    
+    const steepSlopeMatch = response.match(/(?:Steep\s+Slope|Steep\s*\([^)]+\))[:\s]+([0-9,]+(?:\.\d+)?)\s*SQ/i);
+    if (steepSlopeMatch) {
+      measurements.steepSlopeSq = parseFloat(steepSlopeMatch[1].replace(/,/g, ''));
+    }
+    
+    const highSlopeMatch = response.match(/(?:Standard\s+Slope|High\s+Slope|Standard\s*\([^)]+\)|High\s*\([^)]+\))[:\s]+([0-9,]+(?:\.\d+)?)\s*SQ/i);
+    if (highSlopeMatch) {
+      measurements.highSlopeSq = parseFloat(highSlopeMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract hip length
+    const hipLengthMatch = response.match(/Hip[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:LF|ft|feet)/i);
+    if (hipLengthMatch) {
+      measurements.hipLength = parseFloat(hipLengthMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract step flashing length
+    const stepFlashingMatch = response.match(/Step\s+Flashing[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:LF|ft|feet)/i);
+    if (stepFlashingMatch) {
+      measurements.stepFlashingLength = parseFloat(stepFlashingMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract headwall flashing length
+    const headwallFlashingMatch = response.match(/Headwall\s+Flashing[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:LF|ft|feet)/i);
+    if (headwallFlashingMatch) {
+      measurements.headwallFlashingLength = parseFloat(headwallFlashingMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract slope change length
+    const slopeChangeMatch = response.match(/Slope\s+Change[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:LF|ft|feet)/i);
+    if (slopeChangeMatch) {
+      measurements.slopeChangeLength = parseFloat(slopeChangeMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract flat drip edge length
+    const flatDripEdgeMatch = response.match(/Flat\s+Drip\s+Edge[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:LF|ft|feet)/i);
+    if (flatDripEdgeMatch) {
+      measurements.flatDripEdgeLength = parseFloat(flatDripEdgeMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract total perimeter
+    const totalPerimeterMatch = response.match(/Total\s+Perimeter[:\s]+([0-9,]+(?:\.\d+)?)\s*(?:LF|ft|feet)/i);
+    if (totalPerimeterMatch) {
+      measurements.totalPerimeter = parseFloat(totalPerimeterMatch[1].replace(/,/g, ''));
+    }
+    
+    // Extract roof planes count
+    const roofPlanesMatch = response.match(/Roof\s+Planes[:\s]+(\d+)/i);
+    if (roofPlanesMatch) {
+      measurements.roofPlanes = parseInt(roofPlanesMatch[1]);
+    }
+    
+    // Extract structures count
+    const structuresMatch = response.match(/Structures[:\s]+(\d+)/i);
+    if (structuresMatch) {
+      measurements.structures = parseInt(structuresMatch[1]);
+    }
+    
+    // Extract plane data (if available in response)
+    const planesMatch = response.match(/planes?[:\s]*\[([^\]]+)\]/i);
+    if (planesMatch) {
+      try {
+        // Try to parse plane data from JSON-like structure
+        const planesData = response.match(/"planes?":\s*\[([^\]]+)\]/i);
+        if (planesData) {
+          // This would be handled by JSON parsing if response contains JSON
+          // For regex extraction, we'll rely on Vision API to provide structured data
+        }
+      } catch (e) {
+        // Plane data extraction will be handled by Vision API JSON response
+      }
+    }
+    
     // Only update measurements if we found any new data
     if (Object.keys(measurements).length > Object.keys(proposalData.measurements || {}).length) {
       updates.measurements = measurements;
@@ -1953,9 +2259,22 @@ Return ONLY the JSON object, no other text.`;
               )}
             </div>
             
+            {/* File upload button */}
+            <label htmlFor="file-upload-input" className="upload-btn" title="Upload PDF or image files">
+              <Upload size={16} />
+              <input
+                id="file-upload-input"
+                type="file"
+                multiple
+                accept="image/*,.pdf"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+            </label>
+            
           <button 
             onClick={() => handleSendMessage()}
-            disabled={!inputValue.trim() || isTyping}
+            disabled={(!inputValue.trim() && pastedImages.length === 0) || isTyping}
             className="send-btn"
           >
             <Send size={16} />

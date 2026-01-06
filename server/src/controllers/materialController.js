@@ -572,8 +572,42 @@ export const calculateMaterials = async (req, res) => {
       return name.toLowerCase().trim();
     }).filter(name => name.length > 0);
     
+    // Helper function to find similar material names (fuzzy match for suggestions)
+    const findSimilarMaterials = (searchName, allNames, limit = 3) => {
+      const searchLower = searchName.toLowerCase();
+      const similarities = allNames.map(name => {
+        // Simple similarity: check if search term is contained in name or vice versa
+        const containsSearch = name.includes(searchLower);
+        const searchContainsName = searchLower.includes(name);
+        const wordsMatch = searchLower.split(/\s+/).some(word => 
+          word.length > 3 && name.includes(word)
+        );
+        
+        let score = 0;
+        if (containsSearch) score += 2;
+        if (searchContainsName) score += 1;
+        if (wordsMatch) score += 1;
+        
+        return { name, score };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map(item => {
+        // Find original case from pricing sheet
+        const original = allSheetItems.find(i => {
+          const itemName = i['Item Name'] || i.name || i['itemName'] || '';
+          return itemName.toLowerCase().trim() === item.name;
+        });
+        return original ? (original['Item Name'] || original.name || original['itemName']) : item.name;
+      });
+      
+      return similarities;
+    };
+    
     const missingMaterials = [];
     const validatedMaterialNames = [];
+    const suggestions = {};
     
     for (const requestedName of materialNames) {
       const searchName = (requestedName || '').toLowerCase().trim();
@@ -584,20 +618,32 @@ export const calculateMaterials = async (req, res) => {
       
       if (!found) {
         missingMaterials.push(requestedName);
+        // Find similar materials for suggestions
+        const similar = findSimilarMaterials(searchName, allItemNames);
+        if (similar.length > 0) {
+          suggestions[requestedName] = similar;
+        }
         logger.warn(`Material not found in pricing sheet: "${requestedName}"`);
       } else {
         validatedMaterialNames.push(requestedName);
       }
     }
     
-    // If any materials don't exist, return error
+    // If any materials don't exist, return needsPricing flag instead of error
     if (missingMaterials.length > 0) {
-      logger.error(`Validation failed: ${missingMaterials.length} materials not found in pricing sheet:`, missingMaterials);
-      return res.status(400).json({
+      logger.info(`Missing materials detected: ${missingMaterials.length} materials need pricing:`, missingMaterials);
+      
+      // Build user-friendly message
+      const materialsList = missingMaterials.map(m => `"${m}"`).join(', ');
+      const message = `The following materials are needed but not in your pricing sheet: ${materialsList}. What are your prices for these?`;
+      
+      return res.status(200).json({
         success: false,
-        error: 'Some materials not found in pricing sheet',
+        needsPricing: true,
         missingMaterials: missingMaterials,
-        message: `The following materials are not in your pricing sheet: ${missingMaterials.join(', ')}. Please use exact Item Names from your pricing sheet.`
+        suggestions: suggestions,
+        message: message,
+        validatedMaterials: validatedMaterialNames
       });
     }
     

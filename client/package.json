@@ -9,7 +9,8 @@
     "axios": "^1.6.5",
     "lucide-react": "^0.303.0",
     "react-hot-toast": "^2.4.1",
-    "@tanstack/react-query": "^5.17.9"
+    "@tanstack/react-query": "^5.17.9",
+    "pdfjs-dist": "^3.11.174"
   },
   "scripts": {
     "start": "react-scripts start",

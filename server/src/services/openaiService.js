@@ -367,6 +367,24 @@ Format:
 - **removals**: Remove materials (exact names from proposal)
 - **updates**: Update quantities (code recalculates prices)
 
+**ROOFSCOPE REPORT HANDLING:**
+
+When user provides RoofScope reports (detected automatically or mentioned):
+- Extract ALL measurements from the report:
+  - Total roof area AND slope breakdowns (Flat, Low, Steep, High slope squares)
+  - All linear measurements (Eave, Ridge, Hip, Valley, Step Flashing, Headwall Flashing, Slope Change, Flat Drip Edge, Total Perimeter)
+  - Plane-by-plane data if available (all planes with area, pitch, slope)
+  - Roof planes count and structures count
+- Use detailed measurements for accurate material calculations
+- The system automatically extracts these from RoofScope reports - you don't need to manually extract them
+
+When materials aren't in pricing sheet:
+- Clearly state which materials are missing
+- Ask user for pricing: "You need [Material Name] but it's not in your pricing sheet. What's your price per [unit]?"
+- Wait for pricing before proceeding with calculations
+- DO NOT make up prices or use placeholder values
+- If user provides pricing, use addCustomItems to add them with the provided prices
+
 ${infoGuidance}
 
 ${pricingStatus === 'LOADED' && pricingContext ? `\n**AVAILABLE PRICING DATA:**\n${pricingContext}\n\nUse this to identify materials. Code handles all price lookups and calculations.` : ''}`;

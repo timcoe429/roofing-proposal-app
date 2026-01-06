@@ -26,28 +26,107 @@ export const analyzeRoofImages = async (req, res) => {
 
     logger.info(`Processing ${images.length} images with GPT Vision`);
 
+    // Process each image individually first to detect RoofScope
+    const imageAnalyses = [];
+    let isRoofScope = false;
+    
+    // First pass: Quick detection for RoofScope
+    for (const imageBase64 of images) {
+      try {
+        const detectionPrompt = `Look at this image and determine if it's a RoofScope report. 
+        Look for indicators like:
+        - "RoofScope" logo or text
+        - "Roof Area Analysis" title
+        - "Plane A", "Plane B" etc. labels
+        - "Structure 1" or similar structure labels
+        - Slope breakdowns (Flat, Low, Steep, High)
+        - Detailed linear measurements table
+        
+        Respond with only "YES" if it's a RoofScope report, or "NO" if it's not.`;
+        
+        const detectionResult = await processImageWithVision(imageBase64, detectionPrompt, 'general');
+        if (detectionResult && (detectionResult.includes('YES') || detectionResult.toLowerCase().includes('roofscope'))) {
+          isRoofScope = true;
+          logger.info('RoofScope report detected');
+          break;
+        }
+      } catch (error) {
+        logger.warn(`Failed to detect RoofScope in image: ${error.message}`);
+      }
+    }
+
     // Construct the prompt based on document type
     let prompt = '';
     
-    if (documentType === 'measurement_report') {
-      prompt = `Analyze this roofing measurement report and extract the following information in JSON format:
-      {
-        "measurements": {
-          "totalSquares": number (in roofing squares, 100 sq ft each),
-          "ridgeLength": number (linear feet),
-          "valleyLength": number (linear feet),
-          "edgeLength": number (linear feet),
-          "pitch": string (e.g., "6/12"),
-          "facets": number,
-          "predominantPitch": string
-        },
-        "existingMaterial": string,
-        "layers": number,
-        "penetrations": number (vents, pipes, etc),
-        "skylights": number,
-        "chimneys": number,
-        "confidence": number (0-100)
-      }`;
+    if (documentType === 'measurement_report' || isRoofScope) {
+      if (isRoofScope) {
+        // RoofScope-specific prompt with detailed extraction
+        prompt = `Analyze this RoofScope roofing measurement report and extract ALL measurements in JSON format:
+        {
+          "measurements": {
+            "totalSquares": number (in roofing squares, 100 sq ft each - look for "Total Roof Area" in SQ),
+            "roofArea": number (square feet),
+            "ridgeLength": number (linear feet - look for "Ridge" in LF),
+            "valleyLength": number (linear feet - look for "Valley" in LF),
+            "hipLength": number (linear feet - look for "Hip" in LF),
+            "eaveLength": number (linear feet - look for "Eave" in LF),
+            "rakeLength": number (linear feet - look for "Rake" or "Rake Edge" in LF),
+            "stepFlashingLength": number (linear feet - look for "Step Flashing" in LF),
+            "headwallFlashingLength": number (linear feet - look for "Headwall Flashing" in LF),
+            "slopeChangeLength": number (linear feet - look for "Slope Change" in LF),
+            "flatDripEdgeLength": number (linear feet - look for "Flat Drip Edge" in LF),
+            "totalPerimeter": number (linear feet - look for "Total Perimeter" in LF),
+            "pitch": string (e.g., "6/12" or "8:12"),
+            "predominantPitch": string,
+            "facets": number,
+            "roofPlanes": number (look for "Roof Planes" count),
+            "structures": number (look for "Structures" count),
+            "flatSlopeSq": number (squares - look for "Flat Slope" in SQ),
+            "lowSlopeSq": number (squares - look for "Low Slope" in SQ),
+            "steepSlopeSq": number (squares - look for "Steep Slope" in SQ),
+            "highSlopeSq": number (squares - look for "Standard Slope" or "High Slope" in SQ),
+            "planes": [
+              {
+                "id": string (e.g., "A", "B", "AA"),
+                "area": number (square feet),
+                "pitch": string (e.g., "1:12", "3:12", "4:12", "8:12"),
+                "slope": string ("F" for Flat, "L" for Low, "S" for Steep, "H" for High)
+              }
+            ]
+          },
+          "existingMaterial": string,
+          "layers": number,
+          "penetrations": number (vents, pipes, etc),
+          "skylights": number,
+          "chimneys": number,
+          "confidence": number (0-100),
+          "isRoofScope": true
+        }
+        
+        IMPORTANT: Extract ALL plane data from the "Plane Data" table. Include every plane listed (A through AT or more).
+        Extract ALL linear measurements from the "Linear Measurements" section.
+        Extract slope breakdowns from the "Project Totals" section.`;
+      } else {
+        // Generic measurement report prompt
+        prompt = `Analyze this roofing measurement report and extract the following information in JSON format:
+        {
+          "measurements": {
+            "totalSquares": number (in roofing squares, 100 sq ft each),
+            "ridgeLength": number (linear feet),
+            "valleyLength": number (linear feet),
+            "edgeLength": number (linear feet),
+            "pitch": string (e.g., "6/12"),
+            "facets": number,
+            "predominantPitch": string
+          },
+          "existingMaterial": string,
+          "layers": number,
+          "penetrations": number (vents, pipes, etc),
+          "skylights": number,
+          "chimneys": number,
+          "confidence": number (0-100)
+        }`;
+      }
     } else if (documentType === 'damage_photos') {
       prompt = `Analyze these roof damage photos and identify:
       {
@@ -77,8 +156,7 @@ export const analyzeRoofImages = async (req, res) => {
       Provide the analysis in JSON format with sections for measurements, damage, and recommendations.`;
     }
 
-    // Process each image individually and then combine results
-    const imageAnalyses = [];
+    // Process each image individually with the appropriate prompt
     for (const imageBase64 of images) {
       try {
         const analysis = await processImageWithVision(imageBase64, prompt, documentType);
@@ -92,11 +170,12 @@ export const analyzeRoofImages = async (req, res) => {
     // If we have multiple images, use Claude to synthesize the results
     let finalAnalysis;
     if (imageAnalyses.length > 1) {
-      const synthesisPrompt = `I have analyzed ${imageAnalyses.length} images of a roof. Here are the individual analyses:
+      const synthesisType = isRoofScope ? 'RoofScope report' : 'roof';
+      const synthesisPrompt = `I have analyzed ${imageAnalyses.length} images of a ${synthesisType}. Here are the individual analyses:
 
 ${imageAnalyses.map((analysis, i) => `Image ${i + 1}: ${JSON.stringify(analysis)}`).join('\n\n')}
 
-Please synthesize these analyses into a comprehensive, coherent assessment. Combine measurements, identify patterns in damage, and provide unified recommendations. Return as structured JSON.`;
+Please synthesize these analyses into a comprehensive, coherent assessment. ${isRoofScope ? 'Combine ALL measurements from all pages. Ensure plane data from all pages is included. Merge linear measurements and slope breakdowns.' : 'Combine measurements, identify patterns in damage, and provide unified recommendations.'} Return as structured JSON.`;
 
       try {
         finalAnalysis = await processWithClaude(synthesisPrompt);
@@ -120,13 +199,14 @@ Please synthesize these analyses into a comprehensive, coherent assessment. Comb
       analysisData = { rawAnalysis: finalAnalysis };
     }
 
-    logger.info('Successfully processed images with GPT Vision');
+    logger.info(`Successfully processed ${images.length} image(s) with GPT Vision${isRoofScope ? ' (RoofScope detected)' : ''}`);
     
     res.json({
       success: true,
       analysis: analysisData,
       imageCount: images.length,
-      processingMethod: 'gpt-vision'
+      processingMethod: 'gpt-vision',
+      isRoofScope: isRoofScope || analysisData.isRoofScope || false
     });
 
   } catch (error) {

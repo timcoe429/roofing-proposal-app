@@ -316,6 +316,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .quick-actions-dropdown {
@@ -446,6 +447,31 @@
   background: #d1d5db;
   cursor: not-allowed;
   transform: none;
+}
+
+.upload-btn {
+  width: 28px;
+  height: 28px;
+  background: #6b7280;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.upload-btn:hover {
+  background: #4b5563;
+  transform: scale(1.05);
+}
+
+.upload-btn input[type="file"] {
+  display: none;
 }
 
 /* Scrollbar styling */
