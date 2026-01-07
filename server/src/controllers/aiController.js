@@ -83,29 +83,7 @@ export const analyzePricingWithAI = async (req, res) => {
         logger.info(`📈 Successfully fetched ${rowCount} total rows, ${dataRowCount} data rows`);
         logger.info(`📄 First 500 characters of data: ${csvData?.substring(0, 500) || 'undefined'}`);
         
-        // Use Claude to analyze the fetched data
-        contentToAnalyze = `Please analyze this pricing data from a Google Sheet:
-
-${csvData}
-
-Extract all pricing information and return in this JSON format:
-{
-  "itemCount": ${dataRowCount},
-  "materials": [
-    {
-      "name": "string",
-      "price": number,
-      "unit": "string", 
-      "supplier": "string"
-    }
-  ],
-  "summary": "Brief summary of the pricing data"
-}
-
-IMPORTANT: Set itemCount to exactly ${dataRowCount} (the number of data rows excluding headers).
-Process each row that contains pricing information. Skip empty rows and category headers.`;
-
-                // Skip Claude processing - just return the raw CSV data for AI conversations
+        // Skip Claude processing - just return the raw CSV data for AI conversations
         logger.info('✅ Skipping Claude processing - storing raw CSV for conversational AI');
         
         // Count actual data rows (excluding headers and empty rows)
@@ -207,45 +185,22 @@ export const getAIRecommendations = async (req, res) => {
 // Process text-based documents (Excel, Word, PDF text) with Claude
 export const processDocumentWithAI = async (req, res) => {
   try {
-    const { documentText, documentType, extractionType } = req.body;
+    const { documentText, documentType } = req.body;
     
     if (!documentText) {
       return res.status(400).json({ error: 'Document text is required' });
     }
 
-    logger.info(`Processing ${documentType} document with Claude AI for ${extractionType}`);
+    logger.info(`Processing ${documentType} document with Claude AI`);
 
-    let systemPrompt = '';
-    let prompt = '';
+    const prompt = `Extract all relevant information from this ${documentType} document and return as structured JSON:\n\n${documentText}`;
 
-    switch (extractionType) {
-      case 'pricing':
-        systemPrompt = `You are an expert at extracting pricing information from roofing documents.`;
-        prompt = `Extract all pricing information from this ${documentType} document:\n\n${documentText}`;
-        break;
-      
-      case 'measurements':
-        systemPrompt = `You are an expert at extracting roofing measurements from documents.`;
-        prompt = `Extract all measurement information from this ${documentType} document:\n\n${documentText}`;
-        break;
-      
-      case 'materials':
-        systemPrompt = `You are an expert at identifying roofing materials from documents.`;
-        prompt = `Identify all roofing materials mentioned in this ${documentType} document:\n\n${documentText}`;
-        break;
-      
-      default:
-        systemPrompt = `You are an expert at analyzing roofing documents.`;
-        prompt = `Analyze this ${documentType} document and extract relevant roofing information:\n\n${documentText}`;
-    }
-
-    const analysis = await processWithClaude(prompt, '', systemPrompt);
+    const analysis = await processWithClaude(prompt);
     
     res.json({
       success: true,
       analysis,
       documentType,
-      extractionType,
       processingMethod: 'claude-ai'
     });
 

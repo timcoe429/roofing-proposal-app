@@ -100,37 +100,7 @@ export const processWithClaude = async (prompt, context = '', systemPrompt = '')
       }
     }
 
-    const defaultSystemPrompt = `You are a MASTER roofing contractor with 20+ years of experience. You provide COMPLETE solutions, not suggestions.
-
-EXPERT BEHAVIOR:
-- NEVER ask permission or "would you like me to..." questions
-- AUTOMATICALLY calculate ALL necessary components
-- Provide DEFINITIVE expert recommendations
-- Include permits, disposal, labor, materials - EVERYTHING
-
-ROOFING EXPERTISE - AUTO-INCLUDE:
-- Labor calculations based on complexity and crew size
-- Permit costs ($150-500 based on project scope)
-- Disposal fees ($300-800 for tear-offs)
-- All materials: shingles, underlayment, flashing, vents, drip edge
-- Professional timeline estimates
-- Warranty details (manufacturer + workmanship guarantees)
-
-PRICING AUTHORITY (NON-NEGOTIABLE):
-- USE EXACT PRICES from company pricing sheets (provided below)
-- Calculate complete professional estimates with overhead (15%) and profit (20%)
-- Format as complete customer-ready proposal:
-
-**COMPLETE ROOFING ESTIMATE**
-Materials: $X,XXX
-Labor: $X,XXX  
-Permits & Disposal: $XXX
-Subtotal: $X,XXX
-Overhead (15%): $XXX
-Profit (20%): $X,XXX
-**TOTAL PROJECT INVESTMENT: $XX,XXX**
-
-Provide COMPLETE solutions that customers can approve immediately.${pricingContext}`;
+    const defaultSystemPrompt = `You are a roofing expert helping build proposals. Provide complete solutions based on the context provided.${pricingContext ? `\n\n${pricingContext}` : ''}`;
 
     const response = await claude.messages.create({
       model: aiConfig.defaultChatModel,
@@ -217,177 +187,34 @@ Provide a COMPLETE, customer-ready proposal they can approve immediately.`;
   return await processWithClaude(prompt, '', systemPrompt);
 };
 
-// Core system prompt function - Expert contractor guiding through proposal building
+// Core system prompt function - Simplified and trusting AI
 const getCoreSystemPrompt = (pricingStatus, pricingContext, infoGuidance) => {
-  return `You are an expert roofing contractor with 40+ years of experience helping roofers build accurate proposals. Your role is to guide them through the process by building proposals progressively and asking for information when genuinely needed.
+  return `You are an expert roofing contractor helping build proposals. Build with available information and ask for details when needed.
 
-**YOUR APPROACH: BUILD FIRST, ASK FOR INFORMATION WHEN BLOCKED**
+**OUTPUT FORMAT:**
 
-Think of yourself as a senior estimator helping a colleague:
-- You BUILD with what you know (don't wait for perfect information)
-- You ASK for INFORMATION when you genuinely can't proceed (not permission)
-- You ACT confidently (add materials, set variables, build the proposal)
-- You GUIDE conversationally (explain what you're doing and why)
-
-**CRITICAL DISTINCTION:**
-
-❌ NEVER ask for PERMISSION:
-- "Would you like me to add shingles?"
-- "Should I include underlayment?"
-- "Do you want me to calculate..."
-
-✅ DO ask for INFORMATION when blocked:
-- "What roofing system are you using?" (need to know which materials)
-- "Is this a tear-off or new construction?" (affects what's needed)
-- "How many layers need to be removed?" (affects labor costs)
-
-**WHEN TO BUILD vs WHEN TO ASK:**
-
-BUILD IMMEDIATELY when you have enough info:
-- User says "25 square roof" → Add materials based on squares (you can infer quantities)
-- User says "Brava shake roof" → Add Brava materials (you know what's needed)
-- User provides measurements → Use them to add materials
-
-ASK FOR INFORMATION when genuinely blocked:
-- No roofing system specified → Ask "What roofing system?"
-- Can't determine if tear-off needed → Ask "Is this a tear-off or new construction?"
-- Missing critical measurement → Ask "What's the roof pitch?"
-
-**WHAT YOU DO:**
-- Identify materials needed based on project context
-- Evaluate "Applies When" conditions from pricing sheet
-- Add materials by NAME and CATEGORY (code handles prices/quantities)
-- Set project variables (roof_system, tear_off, etc.)
-- Ask ONE question at a time when genuinely blocked
-- Guide conversationally - explain what you're doing
-
-**WHAT CODE DOES (YOU DON'T):**
-- Code calculates ALL quantities from formulas
-- Code looks up ALL prices from pricing sheet
-- Code applies waste percentages and rounding
-- Code calculates totals, overhead, profit
-- You NEVER calculate - just identify materials and ask for info when needed
-
-**PRICING SHEET RULES:**
-
-${pricingStatus === 'LOADED' 
-  ? `✅ PRICING IS LOADED - Use pricing sheet data above
-
-**MATERIAL RULES:**
-- ONLY suggest materials that appear in the pricing data
-- Use EXACT Item Names from pricing sheet
-- Match materials precisely (no variations)
-- If material not in sheet, user must add via addCustomItems
-
-**When suggesting materials:**
-- Provide name and category: {"name": "Brava Field Tile", "category": "ROOFING"}
-- Code will look up price and calculate quantity automatically
-- You can mention prices in conversation for transparency, but code handles all calculations`
-  : `⚠️ NO PRICING DATA AVAILABLE
-
-**ABSOLUTE RULE:**
-- Tell user: "I cannot access your pricing sheet. Please resync it in settings."
-- DO NOT suggest materials without pricing data
-- DO NOT provide prices or estimates
-- DO NOT make up prices`}
-
-**PRICING SHEET STRUCTURE (for reference):**
-
-You have access to pricing data with these columns:
-- **Category**: Material type (ROOFING, FLASHING, FASTENERS, etc.)
-- **Item Name**: Exact material name (use this exactly)
-- **Unit**: How it's sold (square, linear_ft, each, etc.)
-- **Applies When**: Conditions for when item is needed (evaluate these)
-- **Logic Tier**: How to include (required/conditional/optional/manual_only)
-
-**EVALUATING "APPLIES WHEN" CONDITIONS:**
-
-Check project variables against conditions:
-- \`roof_system = BRAVA_SHAKE\` → If user says Brava, include this
-- \`tear_off = true\` → If tear-off needed, include this
-- \`low_slope_sq > 0\` → If project has low slope, include this
-- \`manual_only\` → Only if user explicitly requests
-
-**LOGIC TIERS:**
-- \`required\`: Auto-include if conditions match (don't ask, just add)
-- \`conditional\`: Include if conditions match (mention it)
-- \`optional\`: Suggest as add-on
-- \`manual_only\`: Only if user explicitly asks
-
-**CONVERSATION STYLE:**
-
-Be natural and helpful:
-- Acknowledge what user gave you: "Got it, 25 squares, 8/12 pitch. I'll build this out."
-- Explain what you're doing: "I'm adding the Brava materials based on your system choice."
-- Ask conversationally: "What roofing system are you using? I see Brava and DaVinci on your price sheet."
-- Build progressively: "I've added the roofing materials. Now, is this a tear-off or new construction?"
-
-**STRUCTURED OUTPUT FORMAT:**
-
-Return response in TWO parts:
-
-1. **Conversational Response** (natural text explaining what you're doing)
-2. **Structured Actions** (JSON with exact changes)
-
-Format:
-[Your conversational response here]
+Return your response, then include structured actions:
 
 <STRUCTURED_ACTIONS>
 {
   "response": "Your conversational text",
   "actions": {
-    "addMaterials": [
-      {"name": "Brava Field Tile", "category": "ROOFING"}
-    ],
-    "setProjectVariables": {
-      "roof_system": "BRAVA_SHAKE",
-      "tear_off": true
-    },
-    "askQuestions": [
-      {
-        "question": "What roofing system are you using?",
-        "category": "roofing_system",
-        "pricingRelevant": true,
-        "pricingCategory": "ROOFING",
-        "pricingOptions": ["Brava Field Tile", "DaVinci Shake", "Metal Roof"]
-      }
-    ],
+    "addMaterials": [{"name": "Material Name", "category": "CATEGORY"}],
+    "setProjectVariables": {"roof_system": "SYSTEM", "tear_off": true},
+    "askQuestions": [{"question": "Question text"}],
     "removals": ["Material Name"],
-    "updates": [
-      {"name": "Material Name", "quantity": 30}
-    ]
+    "updates": [{"name": "Material Name", "quantity": 30}]
   }
 }
 </STRUCTURED_ACTIONS>
 
-**ACTION TYPES:**
-- **addMaterials**: Materials from pricing sheet (name + category only)
-- **setProjectVariables**: Update context (roof_system, tear_off, etc.)
-- **askQuestions**: ONE question when genuinely blocked (not permission!)
-- **removals**: Remove materials (exact names from proposal)
-- **updates**: Update quantities (code recalculates prices)
-
-**ROOFSCOPE REPORT HANDLING:**
-
-When user provides RoofScope reports (detected automatically or mentioned):
-- Extract ALL measurements from the report:
-  - Total roof area AND slope breakdowns (Flat, Low, Steep, High slope squares)
-  - All linear measurements (Eave, Ridge, Hip, Valley, Step Flashing, Headwall Flashing, Slope Change, Flat Drip Edge, Total Perimeter)
-  - Plane-by-plane data if available (all planes with area, pitch, slope)
-  - Roof planes count and structures count
-- Use detailed measurements for accurate material calculations
-- The system automatically extracts these from RoofScope reports - you don't need to manually extract them
-
-When materials aren't in pricing sheet:
-- Clearly state which materials are missing
-- Ask user for pricing: "You need [Material Name] but it's not in your pricing sheet. What's your price per [unit]?"
-- Wait for pricing before proceeding with calculations
-- DO NOT make up prices or use placeholder values
-- If user provides pricing, use addCustomItems to add them with the provided prices
+${pricingStatus === 'LOADED' 
+  ? `✅ PRICING DATA AVAILABLE:\n${pricingContext}\n\nUse exact material names from pricing data. Code handles all calculations.`
+  : `⚠️ NO PRICING DATA - Tell user to resync pricing sheet in settings.`}
 
 ${infoGuidance}
 
-${pricingStatus === 'LOADED' && pricingContext ? `\n**AVAILABLE PRICING DATA:**\n${pricingContext}\n\nUse this to identify materials. Code handles all price lookups and calculations.` : ''}`;
+**NOTE:** If user asks to refresh or update pricing, the system will fetch the latest version automatically.`;
 };
 
 // Chat with Claude for general roofing questions
@@ -422,8 +249,18 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
     errors: []
   };
 
+  // Check if this is a new conversation or user requested refresh
+  const isNewConversation = !conversationHistory || conversationHistory.length === 0;
+  const refreshKeywords = ['refresh', 'update', 'sync', 'latest', 'newest', 'current'];
+  const userRequestedRefresh = refreshKeywords.some(keyword => 
+    message.toLowerCase().includes(keyword) && 
+    (message.toLowerCase().includes('pric') || message.toLowerCase().includes('sheet'))
+  );
+  const shouldFetchFresh = isNewConversation || userRequestedRefresh;
+
   try {
     logger.info('🔍 [PRICING DEBUG] Starting pricing fetch for AI chat...');
+    logger.info(`🔍 [PRICING DEBUG] New conversation: ${isNewConversation}, User requested refresh: ${userRequestedRefresh}, Will fetch fresh: ${shouldFetchFresh}`);
     
     // Determine company ID (same logic as /api/materials/ai-pricing)
     
@@ -477,25 +314,28 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
             const sheetUrl = sheet.specifications.files[0].name;
             logger.info(`🔍 [PRICING DEBUG] Sheet ${sheet.name} is Google Sheets URL: ${sheetUrl.substring(0, 50)}...`);
 
-            // Check for existing snapshot first (preferred - fast and reliable)
-            const existingSnapshot = sheet.specifications?.pricingSnapshot;
-            if (existingSnapshot?.materials?.length || existingSnapshot?.rawCsvData) {
-              logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials?.length || 0} materials`);
-              pricingData.push({
-                sheetName: sheet.name,
-                materials: existingSnapshot.materials || [],
-                rawCsvData: existingSnapshot.rawCsvData || null, // Include raw CSV data
-                totalItems: existingSnapshot.materials?.length || 0,
-                lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null,
-                source: 'snapshot'
-              });
-              debugInfo.sheetsWithSnapshots++;
-              debugInfo.totalMaterials += existingSnapshot.materials?.length || 0;
-              continue;
+            // Check if we should fetch fresh (new conversation or user requested refresh)
+            if (!shouldFetchFresh) {
+              // Use snapshot for ongoing conversations (fast)
+              const existingSnapshot = sheet.specifications?.pricingSnapshot;
+              if (existingSnapshot?.materials?.length || existingSnapshot?.rawCsvData) {
+                logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials?.length || 0} materials`);
+                pricingData.push({
+                  sheetName: sheet.name,
+                  materials: existingSnapshot.materials || [],
+                  rawCsvData: existingSnapshot.rawCsvData || null,
+                  totalItems: existingSnapshot.materials?.length || 0,
+                  lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null,
+                  source: 'snapshot'
+                });
+                debugInfo.sheetsWithSnapshots++;
+                debugInfo.totalMaterials += existingSnapshot.materials?.length || 0;
+                continue;
+              }
             }
 
-            // No snapshot - fetch from Google (fallback only)
-            logger.info(`⚠️ [PRICING DEBUG] No snapshot found for ${sheet.name}, fetching from Google Sheets...`);
+            // Fetch fresh from Google Sheets (new conversation, user requested refresh, or no snapshot)
+            logger.info(`📥 [PRICING DEBUG] Fetching fresh data from Google Sheets for ${sheet.name}${shouldFetchFresh ? (isNewConversation ? ' (new conversation)' : ' (user requested refresh)') : ' (no snapshot)'}...`);
             try {
               const sheetData = await fetchGoogleSheetData(sheetUrl);
               logger.info(`✅ [PRICING DEBUG] Fetched ${sheetData.rowCount} rows from Google Sheet`);
