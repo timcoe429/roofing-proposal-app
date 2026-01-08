@@ -2,7 +2,6 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { aiConfig } from '../config/openai.js';
 import logger from '../utils/logger.js';
-import { checkProposalCompleteness } from '../utils/infoChecker.js';
 import Material from '../models/Material.js';
 import Company from '../models/Company.js';
 import { fetchGoogleSheetData, parsePricingSheet } from './googleSheetsService.js';
@@ -187,34 +186,23 @@ Provide a COMPLETE, customer-ready proposal they can approve immediately.`;
   return await processWithClaude(prompt, '', systemPrompt);
 };
 
-// Core system prompt function - Simplified and trusting AI
-const getCoreSystemPrompt = (pricingStatus, pricingContext, infoGuidance) => {
-  return `You are an expert roofing contractor helping build proposals. Build with available information and ask for details when needed.
-
-**OUTPUT FORMAT:**
-
-Return your response, then include structured actions:
-
-<STRUCTURED_ACTIONS>
-{
-  "response": "Your conversational text",
-  "actions": {
-    "addMaterials": [{"name": "Material Name", "category": "CATEGORY"}],
-    "setProjectVariables": {"roof_system": "SYSTEM", "tear_off": true},
-    "askQuestions": [{"question": "Question text"}],
-    "removals": ["Material Name"],
-    "updates": [{"name": "Material Name", "quantity": 30}]
-  }
-}
-</STRUCTURED_ACTIONS>
+// Core system prompt function - Simple and conversational
+const getCoreSystemPrompt = (pricingStatus, pricingContext) => {
+  return `You are a roofing assistant helping contractors build proposals.
 
 ${pricingStatus === 'LOADED' 
-  ? `✅ PRICING DATA AVAILABLE:\n${pricingContext}\n\nUse exact material names from pricing data. Code handles all calculations.`
-  : `⚠️ NO PRICING DATA - Tell user to resync pricing sheet in settings.`}
+  ? `**YOUR PRICING SHEET:**
+${pricingContext}
 
-${infoGuidance}
+When building proposals:
+- Use the exact material names from your pricing sheet above
+- Calculate quantities based on measurements (add ~10% waste for roofing materials)
+- If a material isn't in the sheet, ask the user what price to use
+- Show your work: "X squares ÷ Y coverage = Z units needed"`
+  : `**NO PRICING SHEET LOADED**
+Tell the user: "I don't have access to your pricing sheet. Please add one in Settings > Pricing Sheets."`}
 
-**NOTE:** If user asks to refresh or update pricing, the system will fetch the latest version automatically.`;
+Be conversational and helpful. When the user uploads images, read them and extract all measurements you can see.`;
 };
 
 // Chat with Claude for general roofing questions
@@ -226,17 +214,8 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
   logger.info('Has images:', images ? images.length : 0);
   logger.info('Has Claude client:', !!claude);
   logger.info('Has API key:', !!process.env.ANTHROPIC_API_KEY);
-  
-  // Check for missing info if proposal context is provided
-  let missingInfoCheck = null;
-  if (proposalContext) {
-    missingInfoCheck = checkProposalCompleteness(proposalContext);
-    
-    // Note: We no longer prepend all questions - let AI handle question flow conversationally
-    // The AI will start building with available data and ask questions naturally one at a time
-  }
 
-  // Fetch real pricing data DIRECTLY from database (no HTTP call - more reliable)
+  // Fetch pricing data from database
   let pricingContext = '';
   let pricingStatus = 'NOT_LOADED';
   let companyId = null; // Declare at function level so it's accessible outside try block
@@ -318,20 +297,20 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
             // Check if we should fetch fresh (new conversation or user requested refresh)
             if (!shouldFetchFresh) {
               // Use snapshot for ongoing conversations (fast)
-              const existingSnapshot = sheet.specifications?.pricingSnapshot;
-              if (existingSnapshot?.materials?.length || existingSnapshot?.rawCsvData) {
-                logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials?.length || 0} materials`);
-                pricingData.push({
-                  sheetName: sheet.name,
-                  materials: existingSnapshot.materials || [],
+            const existingSnapshot = sheet.specifications?.pricingSnapshot;
+            if (existingSnapshot?.materials?.length || existingSnapshot?.rawCsvData) {
+              logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials?.length || 0} materials`);
+              pricingData.push({
+                sheetName: sheet.name,
+                materials: existingSnapshot.materials || [],
                   rawCsvData: existingSnapshot.rawCsvData || null,
-                  totalItems: existingSnapshot.materials?.length || 0,
-                  lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null,
-                  source: 'snapshot'
-                });
-                debugInfo.sheetsWithSnapshots++;
-                debugInfo.totalMaterials += existingSnapshot.materials?.length || 0;
-                continue;
+                totalItems: existingSnapshot.materials?.length || 0,
+                lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null,
+                source: 'snapshot'
+              });
+              debugInfo.sheetsWithSnapshots++;
+              debugInfo.totalMaterials += existingSnapshot.materials?.length || 0;
+              continue;
               }
             }
 
@@ -396,104 +375,46 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
       if (pricingData.length === 0) {
         logger.error(`❌ [PRICING DEBUG] NO VALID PRICING DATA AVAILABLE - all sheets failed to load or no sheets found`);
         pricingStatus = 'NOT_LOADED';
-        pricingContext = ''; // Clear pricing context so AI knows it can't see pricing
+        pricingContext = '';
       } else {
-        // Build pricing context string for Claude (AI-readable format, excludes calculation columns)
+        // Build simple pricing context for Claude - just a readable table
         pricingStatus = 'LOADED';
         logger.info(`✅ [PRICING DEBUG] Building pricing context from ${pricingData.length} sheets, ${debugInfo.totalMaterials} total materials`);
         
-        pricingContext = `\n\n=== PRICING SHEET DATA (FOR MATERIAL IDENTIFICATION ONLY) ===\n`;
-        pricingContext += `**IMPORTANT:** Code handles ALL calculations. You only need to identify materials by name and category.\n\n`;
-        
         pricingData.forEach(sheet => {
-          pricingContext += `\n**${sheet.sheetName}** (${sheet.source === 'snapshot' ? 'from snapshot' : 'fresh from Google'}, synced: ${sheet.lastSyncedAt || 'unknown'}):\n`;
+          pricingContext += `\n**${sheet.sheetName}:**\n`;
+          pricingContext += `| Category | Item Name | Unit | Coverage | Price |\n`;
+          pricingContext += `|----------|-----------|------|----------|-------|\n`;
           
           // Parse the sheet data if we have raw CSV
           let parsedItems = [];
           if (sheet.rawCsvData) {
             try {
-              // Convert CSV back to rows for parsing
               const csvRows = sheet.rawCsvData.split('\n').map(row => row.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
               const sheetDataForParsing = { rows: csvRows };
               parsedItems = parsePricingSheet(sheetDataForParsing);
             } catch (parseError) {
-              logger.warn(`Failed to parse pricing sheet for AI context: ${parseError.message}`);
-              // Fallback to raw CSV
+              logger.warn(`Failed to parse pricing sheet: ${parseError.message}`);
               parsedItems = [];
             }
           }
           
-          // If we have parsed items, format them for AI (exclude calculation columns)
           if (parsedItems.length > 0) {
-            // Group by category
-            const materialsByCategory = {};
             parsedItems.forEach(item => {
-              const category = item.category || item['Category'] || 'MISC';
-              if (!materialsByCategory[category]) {
-                materialsByCategory[category] = [];
-              }
-              materialsByCategory[category].push(item);
-            });
-            
-            // Display grouped by category (only columns AI should read)
-            Object.keys(materialsByCategory).sort().forEach(category => {
-              pricingContext += `\n**${category}:**\n`;
-              materialsByCategory[category].forEach(item => {
-                const name = item.name || item['Item Name'] || 'Unknown';
+              const category = item.category || item['Category'] || '';
+              const name = item.name || item['Item Name'] || '';
                 const unit = item.unit || item['Unit'] || '';
                 const coverage = item.coverage || item['Coverage'] || '';
-                const baseUOM = item.baseUOM || item['Base UOM'] || '';
-                const appliesWhen = item.appliesWhen || item['Applies When'] || '';
-                const color = item.color || item['Color'] || '';
-                const description = item.description || item['Description'] || '';
-                const logicTier = item.logicTier || item['Logic Tier'] || 'optional';
-                
-                let materialLine = `  - **${name}**`;
-                if (unit) materialLine += ` (Unit: ${unit})`;
-                if (coverage) materialLine += ` | Coverage: ${coverage}`;
-                if (baseUOM) materialLine += ` | Base UOM: ${baseUOM}`;
-                if (appliesWhen) materialLine += ` | Applies When: ${appliesWhen}`;
-                if (logicTier) materialLine += ` | Logic Tier: ${logicTier}`;
-                if (color) materialLine += ` | Color: ${color}`;
-                if (description) materialLine += ` | Description: ${description}`;
-                
-                pricingContext += materialLine + `\n`;
-              });
-            });
-          } else if (sheet.rawCsvData) {
-            // Fallback: show raw CSV but note which columns to ignore
-            pricingContext += `\n\`\`\`csv\n${sheet.rawCsvData}\n\`\`\`\n`;
-            pricingContext += `\n**Note:** This pricing sheet contains all columns. For your reference:\n`;
-            pricingContext += `- **READ these columns:** Category, Item Name, Unit, Coverage, Base UOM, Applies When, Color, Description, Logic Tier\n`;
-            pricingContext += `- **IGNORE these columns:** Qty Formula, Rounding, Waste %, Price (code handles these)\n`;
-          } else {
-            // Last resort: use parsed materials from snapshot if available
-            if (sheet.materials && sheet.materials.length > 0) {
-              const materialsByCategory = {};
-              sheet.materials.forEach(material => {
-                const category = material.category || 'General';
-                if (!materialsByCategory[category]) {
-                  materialsByCategory[category] = [];
-                }
-                materialsByCategory[category].push(material);
-              });
+              const price = item.price || item['Price'] || '';
               
-              Object.keys(materialsByCategory).sort().forEach(category => {
-                pricingContext += `\n**${category}:**\n`;
-                materialsByCategory[category].forEach(material => {
-                  pricingContext += `  - ${material.name || 'Unknown'}\n`;
-                });
-              });
-            }
+              pricingContext += `| ${category} | ${name} | ${unit} | ${coverage} | $${price} |\n`;
+            });
+          } else if (sheet.materials && sheet.materials.length > 0) {
+              sheet.materials.forEach(material => {
+              pricingContext += `| ${material.category || ''} | ${material.name || ''} | ${material.unit || ''} | ${material.coverage || ''} | $${material.price || 0} |\n`;
+            });
           }
         });
-        
-        pricingContext += `\n**YOUR ROLE WITH PRICING DATA:**\n`;
-        pricingContext += `- Use this data to identify materials by name and category\n`;
-        pricingContext += `- Evaluate "Applies When" conditions to determine what's needed\n`;
-        pricingContext += `- Use Logic Tier to determine inclusion strategy\n`;
-        pricingContext += `- NEVER calculate prices or quantities - code handles all math\n`;
-        pricingContext += `- When suggesting materials, use the exact Item Name from above\n`;
         
         logger.info(`✅ [PRICING DEBUG] Pricing context built: ${pricingContext.length} characters`);
       }
@@ -524,66 +445,8 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
     debugInfo.errors.push({ error: error.message, stack: error.stack?.split('\n')[0] });
   }
 
-  // Build system prompt with info about missing fields if applicable
-  let infoGuidance = '';
-  if (missingInfoCheck && !missingInfoCheck.canGenerate) {
-    infoGuidance = `\n\n**IMPORTANT - Missing Information:**\nThe user is trying to generate a quote, but some required information is missing. Ask for the missing details before generating the quote. The missing info questions have been added to the user's message.`;
-  }
-
-  // Load company AI instructions (use companyId from debugInfo which was set earlier)
-  let companyAIInstructions = null;
-  let locationKnowledge = '';
-  if (companyId) {
-    try {
-      const company = await Company.findByPk(companyId);
-      if (company && company.aiInstructions) {
-        companyAIInstructions = company.aiInstructions;
-        logger.info('✅ Loaded company AI instructions');
-        
-        // Build location-specific knowledge if proposal has a city
-        if (proposalContext?.property?.city && companyAIInstructions.locationKnowledge) {
-          const city = proposalContext.property.city;
-          const state = proposalContext.property.state || '';
-          const locationKey = state ? `${city}, ${state}` : city;
-          
-          // Try exact match first
-          if (companyAIInstructions.locationKnowledge[locationKey]) {
-            locationKnowledge = companyAIInstructions.locationKnowledge[locationKey];
-            logger.info(`✅ Loaded location knowledge for: ${locationKey}`);
-          } else {
-            // Try case-insensitive match
-            const locationKeys = Object.keys(companyAIInstructions.locationKnowledge);
-            const matchedKey = locationKeys.find(key => 
-              key.toLowerCase() === locationKey.toLowerCase()
-            );
-            if (matchedKey) {
-              locationKnowledge = companyAIInstructions.locationKnowledge[matchedKey];
-              logger.info(`✅ Loaded location knowledge for: ${matchedKey} (matched ${locationKey})`);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      logger.warn('Failed to load company AI instructions:', error.message);
-    }
-  }
-
-  // Get core system prompt
-  const coreSystemPrompt = getCoreSystemPrompt(pricingStatus, pricingContext, infoGuidance);
-  
-  // Build final system prompt with company instructions and location knowledge
-  let systemPrompt = coreSystemPrompt;
-  
-  if (companyAIInstructions?.additionalInstructions) {
-    systemPrompt += `\n\n**ADDITIONAL COMPANY INSTRUCTIONS:**\n${companyAIInstructions.additionalInstructions}\n`;
-  }
-  
-  if (locationKnowledge) {
-    const locationLabel = proposalContext?.property?.city 
-      ? (proposalContext.property.state ? `${proposalContext.property.city}, ${proposalContext.property.state}` : proposalContext.property.city)
-      : 'this location';
-    systemPrompt += `\n\n**LOCATION-SPECIFIC KNOWLEDGE (${locationLabel}):**\n${locationKnowledge}\n`;
-  }
+  // Get simple system prompt
+  const systemPrompt = getCoreSystemPrompt(pricingStatus, pricingContext);
 
   // Build messages array for Claude API
   const messages = [];
@@ -634,9 +497,9 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
       type: 'text',
       text: textContent
     });
-    
-    messages.push({
-      role: 'user',
+  
+  messages.push({
+    role: 'user',
       content: contentBlocks
     });
     
@@ -679,27 +542,10 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
     const responseText = response.content[0].text;
     logger.info('✅ Claude response received, length:', responseText?.length);
     
-    // Parse structured actions from response
-    let structuredActions = null;
-    let conversationalResponse = responseText;
-    
-    // Look for <STRUCTURED_ACTIONS> tag
-    const structuredMatch = responseText.match(/<STRUCTURED_ACTIONS>([\s\S]*?)<\/STRUCTURED_ACTIONS>/);
-    if (structuredMatch) {
-      try {
-        structuredActions = JSON.parse(structuredMatch[1].trim());
-        // Remove structured actions from conversational response
-        conversationalResponse = responseText.replace(/<STRUCTURED_ACTIONS>[\s\S]*?<\/STRUCTURED_ACTIONS>/, '').trim();
-        logger.info('✅ Parsed structured actions from Claude response');
-      } catch (parseError) {
-        logger.warn('Failed to parse structured actions:', parseError.message);
-        // Fall back to full response text
-      }
-    }
-    
+    // Return Claude's natural response - no parsing, no structured actions
     return {
-      response: conversationalResponse,
-      actions: structuredActions
+      response: responseText,
+      actions: null
     };
   } catch (error) {
     logger.error('💥 Error in Claude chat service:');

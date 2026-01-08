@@ -1,10 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, ChevronDown, Zap, Upload, Calculator, DollarSign, MapPin, Shield, Plus, Package } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, Zap, Upload, Plus, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import { getLocationContext, getQuickActionsForLocation } from '../../services/locationService';
-import { calculations } from '../../utils/calculations';
-import { getValidationReport, compareAICalculation } from '../../utils/mathValidator';
 import './AIAssistant.css';
 
 const BASE_QUICK_ACTIONS = [
@@ -226,8 +223,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [pastedImages, setPastedImages] = useState([]);
-  const [pendingChanges, setPendingChanges] = useState(null); // { changes: {...}, messageId: number }
-  const [currentQuestion, setCurrentQuestion] = useState(null); // { question: string, category: string, pricingRelevant: boolean, pricingCategory: string, messageId: number }
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -432,10 +427,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     setInputValue('');
     setPastedImages([]);
     setIsTyping(true);
-    // Clear current question when user sends a message (they're answering)
-    if (currentQuestion) {
-      setCurrentQuestion(null);
-    }
 
     // Extract data from user message too
     const userDataUpdates = extractProposalData(message);
@@ -478,130 +469,33 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         responseText: response?.response ? response.response.substring(0, 100) + '...' : 'No response text'
       });
       
-      // Handle response format - API returns { success: true, response: <string>, actions: <object> }
+      // Get Claude's natural response
       const aiResponseText = response?.response || (typeof response === 'string' ? response : 'I apologize, but I had trouble processing that. Could you try rephrasing?');
-      const structuredActions = response?.actions || null;
       
-      console.log('✅ AI Response text extracted:', aiResponseText ? aiResponseText.substring(0, 100) + '...' : 'No text');
-      console.log('✅ Structured actions:', structuredActions ? 'Present' : 'Not present');
+      console.log('✅ AI Response received:', aiResponseText ? aiResponseText.substring(0, 100) + '...' : 'No text');
       
-      // Check if AI is asking a question
-      let questionData = null;
-      if (structuredActions?.actions?.askQuestions && structuredActions.actions.askQuestions.length > 0) {
-        const firstQuestion = structuredActions.actions.askQuestions[0];
-        // Handle both old format (string) and new format (object)
-        if (typeof firstQuestion === 'object' && firstQuestion.question) {
-          questionData = {
-            question: firstQuestion.question,
-            category: firstQuestion.category || null,
-            pricingRelevant: firstQuestion.pricingRelevant !== false,
-            pricingCategory: firstQuestion.pricingCategory || null,
-            pricingOptions: firstQuestion.pricingOptions || [], // Use Claude's provided options
-            messageId: Date.now() + 1
-          };
-        } else if (typeof firstQuestion === 'string') {
-          // Legacy format - just a string question
-          questionData = {
-            question: firstQuestion,
-            category: null,
-            pricingRelevant: true,
-            pricingCategory: null,
-            pricingOptions: [], // No options for legacy format
-            messageId: Date.now() + 1
-          };
-        }
-      }
-      
+      // Create assistant message with Claude's natural response
       const assistantMessage = {
         id: Date.now() + 1,
         type: 'assistant',
         content: aiResponseText,
-        timestamp: new Date(),
-        actions: extractActions(aiResponseText, proposalData),
-        questionData: questionData
+        timestamp: new Date()
       };
-      
-      // Set current question if one exists
-      if (questionData) {
-        setCurrentQuestion(questionData);
-      } else {
-        // Clear question if AI is not asking one
-        setCurrentQuestion(null);
-      }
 
       setMessages(prev => {
         const next = [...prev, assistantMessage];
         persistChatHistoryToProposal(next);
         return next;
       });
-
-      // Execute any actions
-      if (assistantMessage.actions) {
-        assistantMessage.actions.forEach(action => executeAction(action));
-      }
-
-      // Process structured actions from Claude (if available) - SHOW PREVIEW, DON'T AUTO-APPLY
-      // Skip preview if AI is asking a question (questionData exists)
-      console.log('🚀 Processing Claude structured actions...');
-      try {
-        const detailedData = structuredActions ? await processStructuredActions(structuredActions) : await parseAIResponseWithAI(aiResponseText);
-        // Don't show preview if AI is asking a question - only show when making actual changes
-        if (Object.keys(detailedData).length > 0 && !questionData) {
-          console.log('✅ AI suggests these changes:', detailedData);
-          
-          // Calculate preview of what will change
-          let previewProposal = {
-            ...proposalData,
-            ...detailedData
-          };
-          
-          // Migrate laborHours/laborRate to labor array if needed
-          let labor = previewProposal.labor || [];
-          if (!Array.isArray(labor) || labor.length === 0) {
-            const laborHours = previewProposal.laborHours || 0;
-            const laborRate = previewProposal.laborRate || 75;
-            if (laborHours > 0 || laborRate > 0) {
-              labor = [{
-                id: Date.now(),
-                name: 'Roofing Labor',
-                hours: laborHours,
-                rate: laborRate,
-                total: laborHours * laborRate
-              }];
-            }
-          }
-          
-          // Calculate preview total
-          const breakdown = calculations.getCostBreakdown(
-            previewProposal.materials || [],
-            labor,
-            previewProposal.addOns || [],
-            previewProposal.overheadPercent || 15,
-            previewProposal.profitPercent || 20,
-            previewProposal.overheadCostPercent || 10,
-            previewProposal.netMarginTarget || 20,
-            previewProposal.discountAmount || 0
-          );
-          
-          // Store pending changes for user to review
-          setPendingChanges({
-            changes: detailedData,
-            messageId: assistantMessage.id,
-            previewTotal: breakdown.finalTotal,
-            previewBreakdown: breakdown
-          });
-          
-          // Update assistant message to show preview
-          const previewContent = buildPreviewMessage(detailedData, breakdown);
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, content: aiResponseText + '\n\n' + previewContent, hasPendingChanges: true }
-              : msg
-          ));
-        }
-      } catch (error) {
-        console.error('❌ Detailed AI parsing failed:', error);
-        // No problem - basic extraction already worked
+      
+      // Extract any measurements from the response and update proposal
+      const proposalUpdates = extractProposalData(aiResponseText);
+      if (Object.keys(proposalUpdates).length > 0) {
+        console.log('📐 Extracted proposal data from AI response:', proposalUpdates);
+        onUpdateProposal(prev => ({
+          ...prev,
+          ...proposalUpdates
+        }));
       }
 
     } catch (error) {

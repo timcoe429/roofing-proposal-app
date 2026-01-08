@@ -125,7 +125,8 @@ export async function fetchGoogleSheetData(sheetUrl) {
 }
 
 /**
- * Parse pricing sheet into structured format with new column structure
+ * Parse pricing sheet into structured format
+ * Expected columns: Category, Item Name, Unit, Coverage, Price, Notes
  * @param {object} sheetData - Sheet data from fetchGoogleSheetData
  * @returns {array} - Array of parsed items
  */
@@ -133,29 +134,22 @@ export function parsePricingSheet(sheetData) {
   const rows = sheetData.rows;
   if (!rows || rows.length < 2) {
     logger.warn('parsePricingSheet: Need at least header + 1 data row');
-    return []; // Need at least header + 1 data row
+    return [];
   }
 
-  const headers = rows[0].map(h => (h || '').trim());
+  const headers = rows[0].map(h => (h || '').trim().toLowerCase());
   
   logger.info(`Parsing pricing sheet with ${headers.length} columns and ${rows.length - 1} data rows`);
   
-  // Map headers to standardized keys (support both original column names and normalized)
-  const headerMap = {
-    'Category': 'category',
-    'Item Name': 'name',
-    'Unit': 'unit',
-    'Coverage': 'coverage',
-    'Base UOM': 'baseUOM',
-    'Qty Formula': 'qtyFormula',
-    'Rounding': 'rounding',
-    'Waste %': 'wastePercent',
-    'Applies When': 'appliesWhen',
-    'Color': 'color',
-    'Description': 'description',
-    'Price': 'price',
-    'Logic Tier': 'logicTier'
-  };
+  // Find column indices (flexible - works with any column order)
+  const findCol = (names) => headers.findIndex(h => names.some(n => h.includes(n)));
+  
+  const categoryCol = findCol(['category']);
+  const nameCol = findCol(['item name', 'name', 'item']);
+  const unitCol = findCol(['unit']);
+  const coverageCol = findCol(['coverage']);
+  const priceCol = findCol(['price', 'cost']);
+  const notesCol = findCol(['notes', 'note', 'description']);
 
   const items = [];
 
@@ -163,54 +157,29 @@ export function parsePricingSheet(sheetData) {
     const row = rows[i];
     if (!row || row.length === 0) continue;
 
-    const item = {};
+    const getValue = (col) => (col >= 0 && row[col]) ? String(row[col]).trim() : '';
     
-    // Process each column
-    headers.forEach((header, index) => {
-      const value = row[index] || '';
-      const trimmedValue = typeof value === 'string' ? value.trim() : String(value);
-      
-      // Store both original header name and normalized key for compatibility
-      item[header] = trimmedValue;
-      
-      const normalizedKey = headerMap[header];
-      if (normalizedKey) {
-        item[normalizedKey] = trimmedValue;
-      } else {
-        // For unmapped headers, create a normalized key
-        const key = header.toLowerCase().replace(/\s+/g, '');
-        item[key] = trimmedValue;
-      }
+    const category = getValue(categoryCol);
+    const name = getValue(nameCol);
+    const unit = getValue(unitCol);
+    const coverage = getValue(coverageCol);
+    const priceStr = getValue(priceCol);
+    const notes = getValue(notesCol);
+
+    // Skip empty rows
+    if (!name) continue;
+
+    // Parse price to number
+    const price = parseFloat(priceStr.replace(/[$,]/g, '')) || 0;
+
+    items.push({
+      category,
+      name,
+      unit,
+      coverage,
+      price,
+      notes
     });
-
-    // Skip empty rows (no category and no name)
-    const category = item.category || item['Category'] || '';
-    const name = item.name || item['Item Name'] || '';
-    if (!category && !name) continue;
-
-    // Validate required fields
-    if (!name) {
-      logger.warn(`Skipping row ${i + 1}: Missing Item Name`);
-      continue;
-    }
-
-    // Parse price to number (keep original string too)
-    if (item.price || item['Price']) {
-      const priceStr = item.price || item['Price'];
-      const priceNum = parseFloat(priceStr.toString().replace(/[$,]/g, ''));
-      item.price = isNaN(priceNum) ? 0 : priceNum;
-      item['Price'] = item.price; // Keep original format too
-    }
-
-    // Parse waste percentage to number (keep original string too)
-    if (item.wastePercent || item['Waste %']) {
-      const wasteStr = item.wastePercent || item['Waste %'];
-      const wasteNum = parseFloat(wasteStr.toString().replace(/%/g, ''));
-      item.wastePercent = isNaN(wasteNum) ? 0 : wasteNum;
-      item['Waste %'] = wasteStr; // Keep original format
-    }
-
-    items.push(item);
   }
 
   logger.info(`Parsed ${items.length} items from pricing sheet`);
