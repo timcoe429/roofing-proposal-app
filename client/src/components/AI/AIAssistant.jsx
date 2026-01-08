@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, ChevronDown, Zap, Upload, Plus, Package } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, Zap, Upload, Plus, Package, DollarSign, Calculator, Shield, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import './AIAssistant.css';
@@ -160,7 +160,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   // Build proposal context for AI - reusable helper function
   const buildProposalContext = () => {
     const fullAddress = `${proposalData.propertyAddress || ''}, ${proposalData.propertyCity || ''}, ${proposalData.propertyState || ''} ${proposalData.propertyZip || ''}`.trim();
-    const locationContext = fullAddress ? getLocationContext(fullAddress) : null;
     
     return {
       client: {
@@ -196,8 +195,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         discountAmount: proposalData.discountAmount || 0,
         laborHours: proposalData.laborHours || 0,
         laborRate: proposalData.laborRate || 75
-      },
-      location: locationContext || null
+      }
     };
   };
 
@@ -651,82 +649,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     return parts.join('\n');
   };
   
-  // Apply pending changes when user confirms
-  const applyPendingChanges = () => {
-    if (!pendingChanges) return;
-    
-    const { changes } = pendingChanges;
-    
-    // Migrate labor if needed
-    let updatedProposal = {
-      ...proposalData,
-      ...changes
-    };
-    
-    let labor = updatedProposal.labor || [];
-    if (!Array.isArray(labor) || labor.length === 0) {
-      const laborHours = updatedProposal.laborHours || 0;
-      const laborRate = updatedProposal.laborRate || 75;
-      if (laborHours > 0 || laborRate > 0) {
-        labor = [{
-          id: Date.now(),
-          name: 'Roofing Labor',
-          hours: laborHours,
-          rate: laborRate,
-          total: laborHours * laborRate
-        }];
-      }
-    }
-    
-    // Validate before applying
-    const validation = getValidationReport(updatedProposal);
-    const realErrors = validation.errors.filter(e => e.type !== 'total_mismatch');
-    
-    if (realErrors.length > 0) {
-      const validationMessage = {
-        id: Date.now() + 2,
-        type: 'assistant',
-        content: `⚠️ **Math Validation Alert:**\n\nI found ${realErrors.length} calculation error(s):\n${realErrors.map(e => `- ${e.message || e.type}`).join('\n')}\n\nPlease review the calculations.`,
-        timestamp: new Date(),
-        isValidationWarning: true
-      };
-      setMessages(prev => {
-        const next = [...prev, validationMessage];
-        persistChatHistoryToProposal(next);
-        return next;
-      });
-    }
-    
-    // Apply changes
-    onUpdateProposal(prev => ({
-      ...prev,
-      ...updatedProposal
-    }));
-    
-    // Update message to remove preview
-    setMessages(prev => prev.map(msg => 
-      msg.id === pendingChanges.messageId 
-        ? { ...msg, hasPendingChanges: false, changesApplied: true }
-        : msg
-    ));
-    
-    // Clear pending changes
-    setPendingChanges(null);
-  };
-  
-  // Cancel pending changes
-  const cancelPendingChanges = () => {
-    if (!pendingChanges) return;
-    
-    // Update message to remove preview
-    setMessages(prev => prev.map(msg => 
-      msg.id === pendingChanges.messageId 
-        ? { ...msg, hasPendingChanges: false, changesCancelled: true }
-        : msg
-    ));
-    
-    setPendingChanges(null);
-  };
   
   // Process structured actions from Claude's intelligent analysis
   const processStructuredActions = async (actions) => {
