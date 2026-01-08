@@ -218,11 +218,12 @@ ${infoGuidance}
 };
 
 // Chat with Claude for general roofing questions
-export const chatWithClaude = async (message, conversationHistory = [], proposalContext = null) => {
+export const chatWithClaude = async (message, conversationHistory = [], proposalContext = null, images = null) => {
   logger.info('🤖 chatWithClaude called');
   logger.info('Message length:', message?.length);
   logger.info('Conversation history length:', conversationHistory?.length);
   logger.info('Has proposal context:', !!proposalContext);
+  logger.info('Has images:', images ? images.length : 0);
   logger.info('Has Claude client:', !!claude);
   logger.info('Has API key:', !!process.env.ANTHROPIC_API_KEY);
   
@@ -592,18 +593,61 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
     messages.push(...conversationHistory);
   }
   
-  // Add current message with context if provided
-  let currentMessage = message;
+  // Build current message content
+  let textContent = message;
   if (proposalContext) {
     // Add structured context to the message
     const contextText = `\n\n**Current Proposal Context:**\n${JSON.stringify(proposalContext, null, 2)}`;
-    currentMessage = message + contextText;
+    textContent = message + contextText;
   }
   
-  messages.push({
-    role: 'user',
-    content: currentMessage
-  });
+  // Build message content - with images or text only
+  if (images && images.length > 0) {
+    // Claude vision format: content is an array of content blocks
+    const contentBlocks = [];
+    
+    // Add images first (Claude processes them in order)
+    for (const imageDataUrl of images) {
+      // Extract base64 data and media type from data URL
+      // Format: data:image/jpeg;base64,/9j/4AAQ...
+      const matches = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (matches) {
+        const mediaType = matches[1]; // e.g., "image/jpeg", "image/png"
+        const base64Data = matches[2]; // The actual base64 string
+        
+        contentBlocks.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data
+          }
+        });
+        logger.info(`Added image to Claude request: ${mediaType}, ${base64Data.length} chars`);
+      } else {
+        logger.warn('Invalid image data URL format, skipping');
+      }
+    }
+    
+    // Add text content after images
+    contentBlocks.push({
+      type: 'text',
+      text: textContent
+    });
+    
+    messages.push({
+      role: 'user',
+      content: contentBlocks
+    });
+    
+    logger.info(`Built message with ${images.length} image(s) and text`);
+  } else {
+    // Text-only message (simple string content)
+    messages.push({
+      role: 'user',
+      content: textContent
+    });
+  }
 
   // Use processWithClaude but with messages array
   if (!claude) {

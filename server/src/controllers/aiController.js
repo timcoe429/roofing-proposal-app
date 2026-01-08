@@ -9,15 +9,18 @@ import {
 // Chat with Claude AI
 export const chatWithAI = async (req, res) => {
   try {
-    const { message, conversationHistory = [], proposalContext = null } = req.body;
+    const { message, conversationHistory = [], proposalContext = null, images = null } = req.body;
     
     if (!message || !message.trim()) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
     logger.info('Processing chat message with Claude AI');
+    if (images && images.length > 0) {
+      logger.info(`Including ${images.length} image(s) in Claude request`);
+    }
 
-    const result = await chatWithClaude(message, conversationHistory, proposalContext);
+    const result = await chatWithClaude(message, conversationHistory, proposalContext, images);
     
     // Handle both old format (string) and new format (object with response and actions)
     const response = typeof result === 'string' ? result : result.response;

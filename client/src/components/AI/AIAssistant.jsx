@@ -453,84 +453,30 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       const proposalContext = buildProposalContext();
 
       let response;
-      let userMessageText = message;
       
-      // If images are included, use GPT Vision first, then Claude for analysis
-      if (pastedImages.length > 0) {
-        try {
-          console.log('📷 Processing images with GPT Vision:', pastedImages.length);
-          
-          // Convert images to base64 for GPT Vision
-          const imageBase64Array = pastedImages.map(img => img.dataUrl);
-          
-          // Use GPT Vision to analyze the images
-          const visionResponse = await api.processImages(imageBase64Array, 'roofing_analysis');
-          
-          console.log('✅ Vision analysis received:', visionResponse?.analysis ? 'Yes' : 'No');
-          console.log('📊 Is RoofScope:', visionResponse?.isRoofScope);
-          
-          // Extract measurements from vision response if available
-          if (visionResponse?.analysis?.measurements) {
-            const visionMeasurements = visionResponse.analysis.measurements;
-            console.log('📐 Extracting measurements from vision response:', visionMeasurements);
-            
-            // Merge vision measurements into proposal data
-            const currentMeasurements = proposalData.measurements || {};
-            const mergedMeasurements = {
-              ...currentMeasurements,
-              ...visionMeasurements
-            };
-            
-            // Update proposal with merged measurements
-            onUpdateProposal(prev => ({
-              ...prev,
-              measurements: mergedMeasurements
-            }));
-          }
-          
-          // Add vision analysis to the message
-          userMessageText = `${message}\n\n[Image analysis: ${visionResponse.analysis || visionResponse}]`;
-
-          console.log('📤 Sending to AI API (with images):', {
-            message: userMessageText.substring(0, 100) + '...',
-            messageLength: userMessageText.length,
-            hasProposalContext: !!proposalContext,
-            conversationHistoryLength: conversationHistory.length
-          });
-
-          // Send to Claude with structured context
-          response = await api.chatWithAI(userMessageText, conversationHistory, proposalContext);
-          
-          console.log('📥 AI API Response received (with images):', {
-            hasResponse: !!response,
-            responseType: typeof response,
-            responseKeys: response ? Object.keys(response) : null
-          });
-        } catch (visionError) {
-          console.error('Vision analysis failed:', visionError);
-          // Fallback to text-only if vision fails
-          response = await api.chatWithAI(userMessageText + '\n\n(Note: Image analysis failed, proceeding with text only)', conversationHistory, proposalContext);
-        }
-      } else {
-        // Text-only message with structured context
-        console.log('📤 Sending to AI API:', {
-          message: userMessageText.substring(0, 100) + (userMessageText.length > 100 ? '...' : ''),
-          messageLength: userMessageText.length,
-          hasProposalContext: !!proposalContext,
-          conversationHistoryLength: conversationHistory.length,
-          proposalContextKeys: proposalContext ? Object.keys(proposalContext) : null
-        });
-        
-        response = await api.chatWithAI(userMessageText, conversationHistory, proposalContext);
-        
-        console.log('📥 AI API Response received:', {
-          hasResponse: !!response,
-          responseType: typeof response,
-          responseKeys: response ? Object.keys(response) : null,
-          responseText: response?.response ? response.response.substring(0, 100) + '...' : 'No response text',
-          fullResponse: response
-        });
-      }
+      // Convert images to base64 array if present (send directly to Claude)
+      const imageBase64Array = pastedImages.length > 0 
+        ? pastedImages.map(img => img.dataUrl)
+        : null;
+      
+      console.log('📤 Sending to AI API:', {
+        message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+        messageLength: message.length,
+        hasImages: !!imageBase64Array,
+        imageCount: imageBase64Array?.length || 0,
+        hasProposalContext: !!proposalContext,
+        conversationHistoryLength: conversationHistory.length
+      });
+      
+      // Send message + images directly to Claude (Claude reads images natively)
+      response = await api.chatWithAI(message, conversationHistory, proposalContext, imageBase64Array);
+      
+      console.log('📥 AI API Response received:', {
+        hasResponse: !!response,
+        responseType: typeof response,
+        responseKeys: response ? Object.keys(response) : null,
+        responseText: response?.response ? response.response.substring(0, 100) + '...' : 'No response text'
+      });
       
       // Handle response format - API returns { success: true, response: <string>, actions: <object> }
       const aiResponseText = response?.response || (typeof response === 'string' ? response : 'I apologize, but I had trouble processing that. Could you try rephrasing?');

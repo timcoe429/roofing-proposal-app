@@ -218,8 +218,8 @@ const api = {
     apiClient.post('/vision/identify-materials', { images }),
 
   // Claude AI Services
-  chatWithAI: (message, conversationHistory = [], proposalContext = null) => 
-    apiClient.post('/ai/chat', { message, conversationHistory, proposalContext }),
+  chatWithAI: (message, conversationHistory = [], proposalContext = null, images = null) => 
+    apiClient.post('/ai/chat', { message, conversationHistory, proposalContext, images }),
   analyzePricingDocument: (data) => 
     apiClient.post('/ai/analyze-pricing', data),
   getAIRecommendations: (projectData) => 
