@@ -192,7 +192,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   // Build conversation history for AI - reusable helper function
   const buildConversationHistory = () => {
     return messages
-      .filter(msg => msg.type === 'user' || msg.type === 'assistant')
+      .filter(msg => (msg.type === 'user' || msg.type === 'assistant') && msg.content && msg.content.trim())
       .map(msg => ({ 
         role: msg.type === 'user' ? 'user' : 'assistant', 
         content: msg.content 
@@ -399,10 +399,13 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const handleSendMessage = async (message = inputValue) => {
     if (!message.trim() && pastedImages.length === 0) return;
 
+    // Default content when sending images without text
+    const messageContent = message.trim() || (pastedImages.length > 0 ? '[Image uploaded]' : '');
+
     const userMessage = {
       id: Date.now(),
       type: 'user',
-      content: message,
+      content: messageContent,
       images: pastedImages.length > 0 ? pastedImages : null,
       timestamp: new Date()
     };
