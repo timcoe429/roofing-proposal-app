@@ -26,6 +26,153 @@ if (process.env.ANTHROPIC_API_KEY) {
   console.log('❌ ANTHROPIC_API_KEY not found in environment variables');
 }
 
+// ============================================
+// CLAUDE TOOL DEFINITIONS
+// These tools let Claude modify the proposal
+// ============================================
+const proposalTools = [
+  {
+    name: "set_client_info",
+    description: "Update client contact information. Use when user provides client name, email, phone, or address.",
+    input_schema: {
+      type: "object",
+      properties: {
+        clientName: { type: "string", description: "Client's full name" },
+        clientEmail: { type: "string", description: "Client's email address" },
+        clientPhone: { type: "string", description: "Client's phone number" },
+        clientAddress: { type: "string", description: "Client's mailing address" }
+      }
+    }
+  },
+  {
+    name: "set_property_info",
+    description: "Update property/job site information. Use when user provides property address or location details.",
+    input_schema: {
+      type: "object",
+      properties: {
+        propertyAddress: { type: "string", description: "Street address of the property" },
+        propertyCity: { type: "string", description: "City" },
+        propertyState: { type: "string", description: "State (2-letter code)" },
+        propertyZip: { type: "string", description: "ZIP code" },
+        projectType: { type: "string", description: "Type of project (e.g., 'Tear-off and Re-roof', 'Overlay', 'Repair')" }
+      }
+    }
+  },
+  {
+    name: "set_measurements",
+    description: "Update roof measurements. Use when extracting data from RoofScope, EagleView, or user-provided measurements.",
+    input_schema: {
+      type: "object",
+      properties: {
+        totalSquares: { type: "number", description: "Total roof area in squares (1 square = 100 sq ft)" },
+        ridgeLength: { type: "number", description: "Total ridge length in linear feet" },
+        hipLength: { type: "number", description: "Total hip length in linear feet" },
+        valleyLength: { type: "number", description: "Total valley length in linear feet" },
+        eaveLength: { type: "number", description: "Total eave/drip edge length in linear feet" },
+        rakeLength: { type: "number", description: "Total rake length in linear feet" },
+        stepFlashingLength: { type: "number", description: "Step flashing length in linear feet" },
+        headwallLength: { type: "number", description: "Headwall flashing length in linear feet" },
+        pitch: { type: "string", description: "Roof pitch (e.g., '6/12', '8/12')" },
+        layers: { type: "number", description: "Number of existing layers to remove" },
+        penetrations: { type: "number", description: "Number of penetrations (vents, pipes)" },
+        skylights: { type: "number", description: "Number of skylights" },
+        roofPlanes: { type: "number", description: "Number of roof planes/facets" }
+      }
+    }
+  },
+  {
+    name: "add_material",
+    description: "Add a line item to the proposal. Use for materials, labor items, or add-ons.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Item name (e.g., 'Brava Field Tile', 'Roofing Labor')" },
+        category: { type: "string", description: "Category: 'material', 'labor', or 'addon'" },
+        quantity: { type: "number", description: "Quantity needed" },
+        unit: { type: "string", description: "Unit of measure (e.g., 'sq', 'bundle', 'lf', 'each', 'hour')" },
+        unitPrice: { type: "number", description: "Price per unit in dollars" },
+        description: { type: "string", description: "Optional description or notes" },
+        isOptional: { type: "boolean", description: "Whether this is an optional add-on" }
+      },
+      required: ["name", "quantity", "unit", "unitPrice"]
+    }
+  },
+  {
+    name: "update_material",
+    description: "Update an existing line item. Use when user wants to change quantity, price, or details of an item already in the proposal.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Name of the item to update (must match existing item)" },
+        quantity: { type: "number", description: "New quantity" },
+        unitPrice: { type: "number", description: "New unit price" },
+        description: { type: "string", description: "New description" }
+      },
+      required: ["name"]
+    }
+  },
+  {
+    name: "remove_material",
+    description: "Remove a line item from the proposal.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Name of the item to remove (must match existing item)" }
+      },
+      required: ["name"]
+    }
+  },
+  {
+    name: "set_margins",
+    description: "Update profit and overhead percentages.",
+    input_schema: {
+      type: "object",
+      properties: {
+        overheadPercent: { type: "number", description: "Overhead percentage (e.g., 15 for 15%)" },
+        profitPercent: { type: "number", description: "Profit percentage (e.g., 20 for 20%)" }
+      }
+    }
+  },
+  {
+    name: "apply_discount",
+    description: "Apply a discount to the proposal.",
+    input_schema: {
+      type: "object",
+      properties: {
+        amount: { type: "number", description: "Discount amount in dollars" },
+        reason: { type: "string", description: "Reason for discount (e.g., 'Veteran discount', 'Repeat customer')" }
+      },
+      required: ["amount"]
+    }
+  },
+  {
+    name: "set_project_details",
+    description: "Update project timeline, warranty, and notes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        timeline: { type: "string", description: "Project timeline (e.g., '3-5 days, weather permitting')" },
+        warranty: { type: "string", description: "Warranty details (e.g., '50-Year Manufacturer, 10-Year Workmanship')" },
+        notes: { type: "string", description: "Additional notes for the proposal" }
+      }
+    }
+  },
+  {
+    name: "add_labor",
+    description: "Add a labor line item. Use for crew labor costs.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Labor description (e.g., 'Steep Slope Labor', 'Flat Roof Labor')" },
+        hours: { type: "number", description: "Number of hours" },
+        rate: { type: "number", description: "Hourly rate in dollars" },
+        description: { type: "string", description: "Optional description" }
+      },
+      required: ["name", "hours", "rate"]
+    }
+  }
+];
+
 // GPT Vision for image analysis
 export const processImageWithVision = async (imageBase64, prompt, documentType = 'general') => {
   if (!openai) {
@@ -186,23 +333,45 @@ Provide a COMPLETE, customer-ready proposal they can approve immediately.`;
   return await processWithClaude(prompt, '', systemPrompt);
 };
 
-// Core system prompt function - Simple and conversational
+// Core system prompt function - Instructs Claude on tool use
 const getCoreSystemPrompt = (pricingStatus, pricingContext) => {
-  return `You are a roofing assistant helping contractors build proposals.
+  return `You are a roofing proposal assistant. You help contractors build accurate proposals by extracting data from documents and adding materials.
+
+## YOUR TOOLS
+You have tools to modify the proposal directly. USE THEM whenever the user provides information:
+- set_client_info: When user gives client name, email, phone
+- set_property_info: When user gives property address, city, state, zip
+- set_measurements: When you extract measurements from RoofScope, EagleView, or user input
+- add_material: Add materials, labor items, or add-ons to the proposal
+- update_material: Change quantity or price of existing items
+- remove_material: Remove items from the proposal
+- set_margins: Update overhead and profit percentages
+- apply_discount: Apply discounts
+- add_labor: Add labor line items
+- set_project_details: Update timeline, warranty, notes
+
+## WHEN TO USE TOOLS
+- When user uploads an image: Extract ALL measurements and use set_measurements
+- When user gives client info: Use set_client_info immediately
+- When user says "add X": Use add_material with proper quantity/price
+- When user says "change X to Y": Use update_material
+- When user says "remove X": Use remove_material
+
+## IMPORTANT RULES
+1. ALWAYS use tools when you have data to add - don't just describe what you would add
+2. Calculate quantities properly: add 10% waste for roofing materials
+3. Use multiple tools in one response when needed
+4. After using tools, briefly confirm what you did
 
 ${pricingStatus === 'LOADED' 
-  ? `**YOUR PRICING SHEET:**
+  ? `## YOUR PRICING SHEET
 ${pricingContext}
 
-When building proposals:
-- Use the exact material names from your pricing sheet above
-- Calculate quantities based on measurements (add ~10% waste for roofing materials)
-- If a material isn't in the sheet, ask the user what price to use
-- Show your work: "X squares ÷ Y coverage = Z units needed"`
-  : `**NO PRICING SHEET LOADED**
-Tell the user: "I don't have access to your pricing sheet. Please add one in Settings > Pricing Sheets."`}
+Use these exact prices when adding materials. If an item isn't in the sheet, ask the user for the price.`
+  : `## NO PRICING SHEET
+You don't have access to pricing data. Ask the user for prices, or tell them to add a pricing sheet in Settings.`}
 
-Be conversational and helpful. When the user uploads images, read them and extract all measurements you can see.`;
+Be conversational but action-oriented. When you have data, USE THE TOOLS to add it to the proposal.`;
 };
 
 // Chat with Claude for general roofing questions
@@ -536,16 +705,35 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
       max_tokens: aiConfig.claude.maxTokens,
       temperature: aiConfig.claude.temperature,
       system: systemPrompt,
-      messages: messages
+      messages: messages,
+      tools: proposalTools  // Enable tool use
     });
 
-    const responseText = response.content[0].text;
-    logger.info('✅ Claude response received, length:', responseText?.length);
+    // Parse response - may contain text and/or tool_use blocks
+    let responseText = '';
+    const actions = [];
     
-    // Return Claude's natural response - no parsing, no structured actions
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        responseText += block.text;
+      } else if (block.type === 'tool_use') {
+        // Claude wants to use a tool
+        actions.push({
+          tool: block.name,
+          input: block.input,
+          id: block.id
+        });
+        logger.info(`🔧 Tool use: ${block.name}`, JSON.stringify(block.input));
+      }
+    }
+    
+    logger.info('✅ Claude response received, text length:', responseText?.length);
+    logger.info(`🔧 Tool actions: ${actions.length}`);
+    
+    // Return text for display + actions for proposal updates
     return {
       response: responseText,
-      actions: null
+      actions: actions.length > 0 ? actions : null
     };
   } catch (error) {
     logger.error('💥 Error in Claude chat service:');

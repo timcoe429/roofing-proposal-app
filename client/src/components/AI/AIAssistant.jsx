@@ -200,6 +200,172 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       }))
       .slice(-10); // Last 10 messages (5 exchanges) for context
   };
+
+  // Apply tool actions from Claude's response to update the proposal
+  const applyToolActions = (actions) => {
+    if (!actions || !Array.isArray(actions) || !onUpdateProposal) return;
+
+    actions.forEach(action => {
+      const { tool, input } = action;
+      console.log(`🔧 Applying tool: ${tool}`, input);
+
+      switch (tool) {
+        case 'set_client_info':
+          onUpdateProposal(prev => ({
+            ...prev,
+            ...(input.clientName && { clientName: input.clientName }),
+            ...(input.clientEmail && { clientEmail: input.clientEmail }),
+            ...(input.clientPhone && { clientPhone: input.clientPhone }),
+            ...(input.clientAddress && { clientAddress: input.clientAddress })
+          }));
+          toast.success('Updated client info');
+          break;
+
+        case 'set_property_info':
+          onUpdateProposal(prev => ({
+            ...prev,
+            ...(input.propertyAddress && { propertyAddress: input.propertyAddress }),
+            ...(input.propertyCity && { propertyCity: input.propertyCity }),
+            ...(input.propertyState && { propertyState: input.propertyState }),
+            ...(input.propertyZip && { propertyZip: input.propertyZip }),
+            ...(input.projectType && { projectType: input.projectType })
+          }));
+          toast.success('Updated property info');
+          break;
+
+        case 'set_measurements':
+          onUpdateProposal(prev => ({
+            ...prev,
+            measurements: {
+              ...prev.measurements,
+              ...(input.totalSquares !== undefined && { totalSquares: input.totalSquares }),
+              ...(input.ridgeLength !== undefined && { ridgeLength: input.ridgeLength }),
+              ...(input.hipLength !== undefined && { hipLength: input.hipLength }),
+              ...(input.valleyLength !== undefined && { valleyLength: input.valleyLength }),
+              ...(input.eaveLength !== undefined && { eaveLength: input.eaveLength }),
+              ...(input.rakeLength !== undefined && { rakeLength: input.rakeLength }),
+              ...(input.stepFlashingLength !== undefined && { stepFlashingLength: input.stepFlashingLength }),
+              ...(input.headwallLength !== undefined && { headwallLength: input.headwallLength }),
+              ...(input.pitch && { pitch: input.pitch }),
+              ...(input.layers !== undefined && { existingLayers: input.layers }),
+              ...(input.penetrations !== undefined && { penetrations: input.penetrations }),
+              ...(input.skylights !== undefined && { skylights: input.skylights }),
+              ...(input.roofPlanes !== undefined && { roofPlanes: input.roofPlanes })
+            }
+          }));
+          toast.success('Updated measurements');
+          break;
+
+        case 'add_material':
+          onUpdateProposal(prev => ({
+            ...prev,
+            materials: [
+              ...(prev.materials || []),
+              {
+                id: Date.now() + Math.random(),
+                name: input.name,
+                category: input.category || 'material',
+                quantity: input.quantity,
+                unit: input.unit,
+                unitPrice: input.unitPrice,
+                total: input.quantity * input.unitPrice,
+                description: input.description || '',
+                isOptional: input.isOptional || false
+              }
+            ]
+          }));
+          toast.success(`Added: ${input.name}`);
+          break;
+
+        case 'update_material':
+          onUpdateProposal(prev => {
+            const materials = [...(prev.materials || [])];
+            const idx = materials.findIndex(m => 
+              m.name.toLowerCase().includes(input.name.toLowerCase()) ||
+              input.name.toLowerCase().includes(m.name.toLowerCase())
+            );
+            if (idx !== -1) {
+              const updated = { ...materials[idx] };
+              if (input.quantity !== undefined) updated.quantity = input.quantity;
+              if (input.unitPrice !== undefined) updated.unitPrice = input.unitPrice;
+              if (input.description !== undefined) updated.description = input.description;
+              updated.total = updated.quantity * updated.unitPrice;
+              materials[idx] = updated;
+              toast.success(`Updated: ${updated.name}`);
+            } else {
+              toast.error(`Could not find item: ${input.name}`);
+            }
+            return { ...prev, materials };
+          });
+          break;
+
+        case 'remove_material':
+          onUpdateProposal(prev => {
+            const materials = (prev.materials || []).filter(m => 
+              !m.name.toLowerCase().includes(input.name.toLowerCase()) &&
+              !input.name.toLowerCase().includes(m.name.toLowerCase())
+            );
+            const removed = (prev.materials || []).length - materials.length;
+            if (removed > 0) {
+              toast.success(`Removed: ${input.name}`);
+            } else {
+              toast.error(`Could not find item: ${input.name}`);
+            }
+            return { ...prev, materials };
+          });
+          break;
+
+        case 'set_margins':
+          onUpdateProposal(prev => ({
+            ...prev,
+            ...(input.overheadPercent !== undefined && { overheadPercent: input.overheadPercent }),
+            ...(input.profitPercent !== undefined && { profitPercent: input.profitPercent })
+          }));
+          toast.success('Updated margins');
+          break;
+
+        case 'apply_discount':
+          onUpdateProposal(prev => ({
+            ...prev,
+            discountAmount: input.amount,
+            ...(input.reason && { discountReason: input.reason })
+          }));
+          toast.success(`Applied discount: $${input.amount}`);
+          break;
+
+        case 'set_project_details':
+          onUpdateProposal(prev => ({
+            ...prev,
+            ...(input.timeline && { timeline: input.timeline }),
+            ...(input.warranty && { warranty: input.warranty }),
+            ...(input.notes && { notes: input.notes })
+          }));
+          toast.success('Updated project details');
+          break;
+
+        case 'add_labor':
+          onUpdateProposal(prev => ({
+            ...prev,
+            labor: [
+              ...(prev.labor || []),
+              {
+                id: Date.now() + Math.random(),
+                name: input.name,
+                hours: input.hours,
+                rate: input.rate,
+                total: input.hours * input.rate,
+                description: input.description || ''
+              }
+            ]
+          }));
+          toast.success(`Added labor: ${input.name}`);
+          break;
+
+        default:
+          console.warn(`Unknown tool action: ${tool}`);
+      }
+    });
+  };
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -465,13 +631,21 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         hasResponse: !!response,
         responseType: typeof response,
         responseKeys: response ? Object.keys(response) : null,
-        responseText: response?.response ? response.response.substring(0, 100) + '...' : 'No response text'
+        responseText: response?.response ? response.response.substring(0, 100) + '...' : 'No response text',
+        hasActions: !!response?.actions,
+        actionCount: response?.actions?.length || 0
       });
       
       // Get Claude's natural response
       const aiResponseText = response?.response || (typeof response === 'string' ? response : 'I apologize, but I had trouble processing that. Could you try rephrasing?');
       
       console.log('✅ AI Response received:', aiResponseText ? aiResponseText.substring(0, 100) + '...' : 'No text');
+      
+      // Apply tool actions if present (this is the new clean way!)
+      if (response?.actions && Array.isArray(response.actions)) {
+        console.log('🔧 Applying tool actions:', response.actions);
+        applyToolActions(response.actions);
+      }
       
       // Create assistant message with Claude's natural response
       const assistantMessage = {
@@ -486,16 +660,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         persistChatHistoryToProposal(next);
         return next;
       });
-      
-      // Extract any measurements from the response and update proposal
-      const proposalUpdates = extractProposalData(aiResponseText);
-      if (Object.keys(proposalUpdates).length > 0) {
-        console.log('📐 Extracted proposal data from AI response:', proposalUpdates);
-        onUpdateProposal(prev => ({
-          ...prev,
-          ...proposalUpdates
-        }));
-      }
 
     } catch (error) {
       console.error('❌ Error getting AI response:', error);
