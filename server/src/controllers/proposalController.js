@@ -83,23 +83,8 @@ export const createProposal = async (req, res) => {
       console.log('Found company:', company?.id, company?.name);
     }
 
-    // Calculate cost breakdown with NET margin and overhead costs
-    // Use labor array if provided, otherwise migrate from old fields for compatibility
-    let labor = req.body.labor || [];
-    if (!Array.isArray(labor) || labor.length === 0) {
-      // Migration: convert old laborHours/laborRate to labor array
-      const laborHours = req.body.laborHours || 0;
-      const laborRate = req.body.laborRate || 75;
-      if (laborHours > 0 || laborRate > 0) {
-        labor = [{
-          id: Date.now(),
-          name: 'Roofing Labor',
-          hours: laborHours,
-          rate: laborRate,
-          total: laborHours * laborRate
-        }];
-      }
-    }
+    // Labor is always an array - no migration needed
+    const labor = req.body.labor || [];
     
     const costBreakdown = calculations.getCostBreakdown(
       req.body.materials || [],
@@ -113,21 +98,13 @@ export const createProposal = async (req, res) => {
       false
     );
 
-    // Extract and store project variables if provided
-    const projectVariables = req.body.projectVariables || {};
-    
-    // Merge project variables into measurements if needed
-    const measurements = {
-      ...(req.body.measurements || {}),
-      ...projectVariables
-    };
-    
+    // Keep measurements and projectVariables SEPARATE - don't merge them
     const proposalData = {
       ...req.body,
       ...(userId ? { userId } : {}),
       ...(companyId ? { companyId } : {}),
-      measurements: measurements,
-      projectVariables: projectVariables, // Store separately for easy access
+      measurements: req.body.measurements || {},
+      projectVariables: req.body.projectVariables || {}
       // Calculated fields removed - always calculate from current data
       // overheadCosts, totalCost, netMarginActual removed - calculate on demand
       overheadCostPercent: req.body.overheadCostPercent || 10,
@@ -177,23 +154,8 @@ export const updateProposal = async (req, res) => {
     
     console.log('Found proposal, updating...');
     
-    // Calculate cost breakdown with NET margin and overhead costs
-    // Use labor array if provided, otherwise migrate from old fields for compatibility
-    let labor = req.body.labor !== undefined ? req.body.labor : (proposal.labor || []);
-    if (!Array.isArray(labor) || labor.length === 0) {
-      // Migration: convert old laborHours/laborRate to labor array
-      const laborHours = req.body.laborHours !== undefined ? req.body.laborHours : (proposal.laborHours || 0);
-      const laborRate = req.body.laborRate !== undefined ? req.body.laborRate : (proposal.laborRate || 75);
-      if (laborHours > 0 || laborRate > 0) {
-        labor = [{
-          id: Date.now(),
-          name: 'Roofing Labor',
-          hours: laborHours,
-          rate: laborRate,
-          total: laborHours * laborRate
-        }];
-      }
-    }
+    // Labor is always an array - no migration needed
+    const labor = req.body.labor !== undefined ? req.body.labor : (proposal.labor || []);
     
     const costBreakdown = calculations.getCostBreakdown(
       req.body.materials || proposal.materials || [],
@@ -207,22 +169,17 @@ export const updateProposal = async (req, res) => {
       false
     );
 
-    // Extract and merge project variables if provided
-    const projectVariables = req.body.projectVariables !== undefined 
-      ? { ...(proposal.projectVariables || {}), ...req.body.projectVariables }
-      : proposal.projectVariables;
-    
-    // Merge project variables into measurements if needed
-    const measurements = {
-      ...(proposal.measurements || {}),
-      ...(req.body.measurements || {}),
-      ...(projectVariables || {})
-    };
-    
+    // Keep measurements and projectVariables SEPARATE - don't merge them
     const updateData = {
       ...req.body,
-      measurements: measurements,
-      projectVariables: projectVariables, // Store separately for easy access
+      // Only update measurements if provided, otherwise keep existing
+      measurements: req.body.measurements !== undefined 
+        ? req.body.measurements 
+        : proposal.measurements,
+      // Only update projectVariables if provided, otherwise keep existing
+      projectVariables: req.body.projectVariables !== undefined 
+        ? req.body.projectVariables 
+        : proposal.projectVariables
       // Calculated fields removed - always calculate from current data
       // overheadCosts, totalCost, netMarginActual removed - calculate on demand
       overheadCostPercent: req.body.overheadCostPercent !== undefined ? req.body.overheadCostPercent : (proposal.overheadCostPercent || 10),

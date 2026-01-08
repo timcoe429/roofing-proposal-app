@@ -114,23 +114,24 @@ const Proposal = sequelize.define('Proposal', {
     defaultValue: []
   },
   
-  // Labor (NEW - single source of truth)
+  // Labor - SINGLE SOURCE OF TRUTH
+  // Array of labor items: [{ id, name, hours, rate, total }]
   labor: {
     type: DataTypes.JSONB,
-    defaultValue: [],
-    allowNull: true // Allow null until migration runs
+    defaultValue: []
   },
   
-  // Labor (DEPRECATED - kept for migration compatibility, will be removed)
+  // DEPRECATED: These fields are no longer used. Use labor[] array instead.
+  // Kept only for database backward compatibility - DO NOT USE IN CODE
   laborHours: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
+    defaultValue: null,
     allowNull: true,
     field: 'laborHours'
   },
   laborRate: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 75,
+    defaultValue: null,
     allowNull: true,
     field: 'laborRate'
   },

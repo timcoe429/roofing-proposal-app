@@ -1,4 +1,4 @@
-// Server-side calculation utilities for proposals
+// Calculation utilities for proposals
 export const calculations = {
   // Helper function to round to 2 decimals (cents) for financial accuracy
   roundToCents: (amount) => {
@@ -7,16 +7,17 @@ export const calculations = {
 
   // Calculate materials total from materials array (excluding labor items)
   calculateMaterialsTotal: (materials = []) => {
-    return materials
+    const total = materials
       .filter(material => material.category !== 'labor')
       .reduce((sum, material) => sum + (material.total || 0), 0);
+    return calculations.roundToCents(total);
   },
 
   // Calculate labor total from labor array (single source of truth)
   calculateLaborTotal: (labor = []) => {
     if (!Array.isArray(labor)) return 0;
     
-    return labor.reduce((sum, item) => {
+    const total = labor.reduce((sum, item) => {
       // If total is already calculated, use it; otherwise calculate hours * rate
       if (item.total !== undefined) {
         return sum + (parseFloat(item.total) || 0);
@@ -25,12 +26,15 @@ export const calculations = {
       const rate = parseFloat(item.rate) || 0;
       return sum + (hours * rate);
     }, 0);
+    
+    return calculations.roundToCents(total);
   },
 
   // Calculate add-ons total
   calculateAddOnsTotal: (addOns = []) => {
     if (!Array.isArray(addOns)) return 0;
-    return addOns.reduce((sum, addon) => sum + (addon.price || 0), 0);
+    const total = addOns.reduce((sum, addon) => sum + (addon.price || 0), 0);
+    return calculations.roundToCents(total);
   },
 
   // Calculate subtotal (materials + labor + addons)
@@ -38,22 +42,22 @@ export const calculations = {
     const materialsTotal = calculations.calculateMaterialsTotal(materials);
     const laborTotal = calculations.calculateLaborTotal(labor);
     const addOnsTotal = calculations.calculateAddOnsTotal(addOns);
-    return materialsTotal + laborTotal + addOnsTotal;
+    return calculations.roundToCents(materialsTotal + laborTotal + addOnsTotal);
   },
 
   // Calculate overhead amount
   calculateOverheadAmount: (subtotal, overheadPercent = 15) => {
-    return subtotal * (overheadPercent / 100);
+    return calculations.roundToCents(subtotal * (overheadPercent / 100));
   },
 
   // Calculate profit amount  
   calculateProfitAmount: (subtotalWithOverhead, profitPercent = 20) => {
-    return subtotalWithOverhead * (profitPercent / 100);
+    return calculations.roundToCents(subtotalWithOverhead * (profitPercent / 100));
   },
 
   // Calculate overhead costs (workers comp, insurance, office costs)
   calculateOverheadCosts: (subtotal, overheadCostPercent = 10) => {
-    return subtotal * (overheadCostPercent / 100);
+    return calculations.roundToCents(subtotal * (overheadCostPercent / 100));
   },
 
   // Calculate NET margin percentage
@@ -74,43 +78,44 @@ export const calculations = {
 
   // Get breakdown of all costs (SINGLE SOURCE OF TRUTH - always calculate from current data)
   getCostBreakdown: (materials = [], labor = [], addOns = [], overheadPercent = 15, profitPercent = 20, overheadCostPercent = 10, netMarginTarget = 20, discountAmount = 0, hideMargins = false) => {
+    // Round all calculations to 2 decimals for financial accuracy
     const materialsTotal = calculations.calculateMaterialsTotal(materials);
     const laborTotal = calculations.calculateLaborTotal(labor);
     const addOnsTotal = calculations.calculateAddOnsTotal(addOns);
-    const subtotal = materialsTotal + laborTotal + addOnsTotal;
+    const subtotal = calculations.roundToCents(materialsTotal + laborTotal + addOnsTotal);
     
     // Calculate overhead costs (workers comp, insurance, office costs)
     const overheadCosts = calculations.calculateOverheadCosts(subtotal, overheadCostPercent);
     
     // Calculate overhead amount (existing overhead percentage)
     const overheadAmount = calculations.calculateOverheadAmount(subtotal, overheadPercent);
-    const subtotalWithOverhead = subtotal + overheadAmount;
+    const subtotalWithOverhead = calculations.roundToCents(subtotal + overheadAmount);
     const profitAmount = calculations.calculateProfitAmount(subtotalWithOverhead, profitPercent);
     
     // Total cost = subtotal + overhead costs (workers comp, insurance, office)
-    const totalCost = subtotal + overheadCosts;
+    const totalCost = calculations.roundToCents(subtotal + overheadCosts);
     
     // Calculate final total ensuring NET margin
-    const calculatedTotal = subtotalWithOverhead + profitAmount;
+    const calculatedTotal = calculations.roundToCents(subtotalWithOverhead + profitAmount);
     // NET margin = (Final Total - Total Cost) / Final Total = target%
     // Solving: Final Total = Total Cost / (1 - target%/100)
-    const targetTotal = totalCost / (1 - netMarginTarget / 100);
+    const targetTotal = calculations.roundToCents(totalCost / (1 - netMarginTarget / 100));
     const finalTotalBeforeDiscount = Math.max(calculatedTotal, targetTotal);
-    const finalTotal = Math.max(0, finalTotalBeforeDiscount - (discountAmount || 0));
+    const finalTotal = Math.max(0, calculations.roundToCents(finalTotalBeforeDiscount - (discountAmount || 0)));
     
     // Calculate actual NET margin
     const actualNetMargin = calculations.calculateNetMargin(finalTotal, totalCost);
 
     if (hideMargins) {
       // Distribute overhead and profit into materials and labor proportionally
-      const marginTotal = overheadAmount + profitAmount;
+      const marginTotal = calculations.roundToCents(overheadAmount + profitAmount);
       const materialsRatio = subtotal > 0 ? materialsTotal / subtotal : 0;
       const laborRatio = subtotal > 0 ? laborTotal / subtotal : 0;
       const addOnsRatio = subtotal > 0 ? addOnsTotal / subtotal : 0;
       
-      const materialsWithMargins = materialsTotal + (marginTotal * materialsRatio);
-      const laborWithMargins = laborTotal + (marginTotal * laborRatio);
-      const addOnsWithMargins = addOnsTotal + (marginTotal * addOnsRatio);
+      const materialsWithMargins = calculations.roundToCents(materialsTotal + (marginTotal * materialsRatio));
+      const laborWithMargins = calculations.roundToCents(laborTotal + (marginTotal * laborRatio));
+      const addOnsWithMargins = calculations.roundToCents(addOnsTotal + (marginTotal * addOnsRatio));
 
       return {
         materialsTotal: materialsWithMargins,
@@ -146,10 +151,26 @@ export const calculations = {
       profitAmount,
       netMarginTarget,
       netMarginActual: actualNetMargin,
+      netMarginAmount: calculations.roundToCents(finalTotal - totalCost), // Dollar amount of net margin
       totalCost,
       discountAmount,
       finalTotal,
       isMarginHidden: false
     };
+  },
+
+  // Calculate markup multiplier from overhead + profit
+  calculateMarkupMultiplier: (subtotal, overheadAmount, profitAmount) => {
+    if (subtotal === 0) return 1;
+    return (subtotal + overheadAmount + profitAmount) / subtotal;
+  },
+
+  // Apply markup to individual line items
+  applyMarkupToLineItems: (items, multiplier) => {
+    return items.map(item => ({
+      ...item,
+      unitPrice: (item.unitPrice || 0) * multiplier,
+      total: (item.total || 0) * multiplier
+    }));
   }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, ChevronDown, Zap, Upload, Plus, Package, DollarSign, Calculator, Shield, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -57,9 +57,11 @@ const BASE_QUICK_ACTIONS = [
 ];
 
 export default function AIAssistant({ proposalData, onUpdateProposal, onTabChange, projectVariables = {}, onUpdateProjectVariables }) {
-  const initializedForProposalIdRef = useRef(null);
-
-  const persistChatHistoryToProposal = (nextMessages) => {
+  // Track which proposal ID we've loaded chat history for
+  const loadedProposalIdRef = useRef(null);
+  
+  // Persist chat history to proposal (called only when messages change)
+  const persistChatHistoryToProposal = useCallback((nextMessages) => {
     if (!onUpdateProposal) return;
 
     const sanitized = (nextMessages || [])
@@ -67,7 +69,6 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       .map(m => ({
         type: m.type,
         content: m.content,
-        // Store timestamp as ISO string for DB persistence
         timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : (m.timestamp || new Date().toISOString())
       }))
       .slice(-150);
@@ -76,7 +77,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       ...prev,
       aiChatHistory: sanitized
     }));
-  };
+  }, [onUpdateProposal]);
 
   // Format AI responses with proper HTML
   const formatAIResponse = (text) => {
@@ -227,11 +228,16 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     scrollToBottom();
   }, [messages]);
 
-  // Load saved chat history for this proposal (text-only). Do NOT persist images in chat.
+  // Load chat history when proposal ID changes
   useEffect(() => {
-    const proposalIdKey = proposalData?.id ?? 'new';
-    if (initializedForProposalIdRef.current === proposalIdKey) return;
-
+    const proposalId = proposalData?.id;
+    
+    // Skip if we've already loaded for this proposal
+    if (loadedProposalIdRef.current === proposalId) return;
+    
+    // Skip if no proposal ID yet (new proposal being created)
+    if (!proposalId && loadedProposalIdRef.current === 'new') return;
+    
     const saved = proposalData?.aiChatHistory;
     if (Array.isArray(saved) && saved.length > 0) {
       const restored = saved
@@ -244,9 +250,10 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         }));
       setMessages(restored);
     }
-
-    initializedForProposalIdRef.current = proposalIdKey;
-  }, [proposalData?.id, proposalData?.aiChatHistory]);
+    
+    // Mark as loaded for this proposal
+    loadedProposalIdRef.current = proposalId ?? 'new';
+  }, [proposalData?.id]); // Only re-run when proposal ID changes, not on every aiChatHistory change
 
   // Auto-resize textarea
   useEffect(() => {
