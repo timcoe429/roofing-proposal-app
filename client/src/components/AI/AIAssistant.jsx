@@ -399,14 +399,20 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
   const handleSendMessage = async (message = inputValue) => {
     if (!message.trim() && pastedImages.length === 0) return;
 
+    // Capture images BEFORE clearing state (important!)
+    const imagesToSend = [...pastedImages];
+    const imageBase64Array = imagesToSend.length > 0 
+      ? imagesToSend.map(img => img.dataUrl)
+      : null;
+
     // Default content when sending images without text
-    const messageContent = message.trim() || (pastedImages.length > 0 ? '[Image uploaded]' : '');
+    const messageContent = message.trim() || (imagesToSend.length > 0 ? '[Image uploaded]' : '');
 
     const userMessage = {
       id: Date.now(),
       type: 'user',
       content: messageContent,
-      images: pastedImages.length > 0 ? pastedImages : null,
+      images: imagesToSend.length > 0 ? imagesToSend : null,
       timestamp: new Date()
     };
 
@@ -436,14 +442,9 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
 
       let response;
       
-      // Convert images to base64 array if present (send directly to Claude)
-      const imageBase64Array = pastedImages.length > 0 
-        ? pastedImages.map(img => img.dataUrl)
-        : null;
-      
       console.log('📤 Sending to AI API:', {
-        message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
-        messageLength: message.length,
+        message: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
+        messageLength: messageContent.length,
         hasImages: !!imageBase64Array,
         imageCount: imageBase64Array?.length || 0,
         hasProposalContext: !!proposalContext,
@@ -451,7 +452,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       });
       
       // Send message + images directly to Claude (Claude reads images natively)
-      response = await api.chatWithAI(message, conversationHistory, proposalContext, imageBase64Array);
+      response = await api.chatWithAI(messageContent, conversationHistory, proposalContext, imageBase64Array);
       
       console.log('📥 AI API Response received:', {
         hasResponse: !!response,
