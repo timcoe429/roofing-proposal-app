@@ -61,6 +61,7 @@ const ProposalEditor = () => {
 
   const [lastSavedData, setLastSavedData] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const initializedRef = React.useRef(false); // Prevent re-initialization loops
   
   // Project variables for pricing engine calculations
   const [projectVariables, setProjectVariables] = useState({
@@ -227,16 +228,24 @@ const ProposalEditor = () => {
   useEffect(() => {
     const currentData = JSON.stringify(proposalData);
     
-    // Check if data has changed
+    // Check if data has changed (only after initialization)
     if (lastSavedData && currentData !== lastSavedData) {
       setHasUnsavedChanges(true);
     }
     
-    // Initialize lastSavedData on first load
-    if (!lastSavedData && proposalFromApi) {
-      setLastSavedData(JSON.stringify(proposalFromApi));
+    // Initialize lastSavedData ONCE (prevents infinite loops)
+    if (!initializedRef.current && !lastSavedData) {
+      if (proposalFromApi) {
+        // Existing proposal: use API data as baseline
+        setLastSavedData(JSON.stringify(proposalFromApi));
+        initializedRef.current = true;
+      } else if (isNewProposal) {
+        // New proposal: use initial state as baseline so changes are detected
+        setLastSavedData(currentData);
+        initializedRef.current = true;
+      }
     }
-  }, [proposalData, lastSavedData, proposalFromApi]);
+  }, [proposalData, lastSavedData, proposalFromApi, isNewProposal]);
 
   // Silent auto-save with debouncing
   useEffect(() => {
