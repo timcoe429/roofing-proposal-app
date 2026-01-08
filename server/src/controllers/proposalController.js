@@ -104,9 +104,7 @@ export const createProposal = async (req, res) => {
       ...(userId ? { userId } : {}),
       ...(companyId ? { companyId } : {}),
       measurements: req.body.measurements || {},
-      projectVariables: req.body.projectVariables || {}
-      // Calculated fields removed - always calculate from current data
-      // overheadCosts, totalCost, netMarginActual removed - calculate on demand
+      projectVariables: req.body.projectVariables || {},
       overheadCostPercent: req.body.overheadCostPercent || 10,
       netMarginTarget: req.body.netMarginTarget || 20
     };
@@ -179,9 +177,7 @@ export const updateProposal = async (req, res) => {
       // Only update projectVariables if provided, otherwise keep existing
       projectVariables: req.body.projectVariables !== undefined 
         ? req.body.projectVariables 
-        : proposal.projectVariables
-      // Calculated fields removed - always calculate from current data
-      // overheadCosts, totalCost, netMarginActual removed - calculate on demand
+        : proposal.projectVariables,
       overheadCostPercent: req.body.overheadCostPercent !== undefined ? req.body.overheadCostPercent : (proposal.overheadCostPercent || 10),
       netMarginTarget: req.body.netMarginTarget !== undefined ? req.body.netMarginTarget : (proposal.netMarginTarget || 20)
     };
