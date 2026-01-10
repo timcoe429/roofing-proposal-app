@@ -112,7 +112,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     // Split into paragraphs
     const paragraphs = cleanedText.split('\n\n');
     
-    return paragraphs.map(paragraph => {
+    const formattedResult = paragraphs.map(paragraph => {
       const lines = paragraph.split('\n');
       let result = '';
       let inList = false;
@@ -158,11 +158,11 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
     }).join('');
     
     // Ensure we always return valid HTML
-    if (!result || result.trim() === '') {
+    if (!formattedResult || formattedResult.trim() === '') {
       return '<p>I processed your request. The changes have been applied.</p>';
     }
     
-    return result;
+    return formattedResult;
   };
 
   // Build proposal context for AI - reusable helper function
