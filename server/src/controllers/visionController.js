@@ -1,32 +1,17 @@
-import OpenAI from 'openai';
 import logger from '../utils/logger.js';
-import { processImageWithVision, processWithClaude } from '../services/openaiService.js';
-
-// Initialize OpenAI only if API key is provided
-let openai = null;
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-  });
-}
+import { processImageWithClaude, processWithClaude } from '../services/openaiService.js';
 
 export const analyzeRoofImages = async (req, res) => {
   try {
-    if (!openai) {
-      return res.status(503).json({ 
-        error: 'OpenAI service not configured. Please set OPENAI_API_KEY environment variable.' 
-      });
-    }
-
     const { images, documentType } = req.body;
     
     if (!images || images.length === 0) {
       return res.status(400).json({ error: 'No images provided' });
     }
 
-    logger.info(`Processing ${images.length} images with GPT Vision`);
+    logger.info(`Processing ${images.length} image(s) with Claude Vision`);
 
-    // Simple prompt - let GPT-4 Vision understand the document naturally
+    // Prompt for extracting measurements from roofing reports
     const prompt = `Extract all measurements and data from this roofing report. Return everything as JSON including:
 - Total roof area and all slope breakdowns
 - All linear measurements (ridge, hip, valley, eave, rake, flashing, etc.)
@@ -36,17 +21,17 @@ export const analyzeRoofImages = async (req, res) => {
 
 Return as structured JSON.`;
 
-    // Process all images
-    const analyses = [];
-    for (const imageBase64 of images) {
-      try {
-        const analysis = await processImageWithVision(imageBase64, prompt);
-        analyses.push(analysis);
-      } catch (error) {
-        logger.warn(`Failed to process image: ${error.message}`);
-        analyses.push({ error: error.message });
-      }
-    }
+    // Process all images in parallel for speed
+    const analyses = await Promise.all(
+      images.map(async (imageBase64) => {
+        try {
+          return await processImageWithClaude(imageBase64, prompt);
+        } catch (error) {
+          logger.warn(`Failed to process image: ${error.message}`);
+          return { error: error.message };
+        }
+      })
+    );
 
     // If multiple images, combine them
     let finalAnalysis;
@@ -74,13 +59,13 @@ Return as structured JSON.`;
       analysisData = { rawAnalysis: finalAnalysis };
     }
 
-    logger.info(`Successfully processed ${images.length} image(s) with GPT Vision`);
+    logger.info(`Successfully processed ${images.length} image(s) with Claude Vision`);
     
     res.json({
       success: true,
       analysis: analysisData,
       imageCount: images.length,
-      processingMethod: 'gpt-vision'
+      processingMethod: 'claude-vision'
     });
 
   } catch (error) {
@@ -100,12 +85,9 @@ export const extractMeasurements = async (req, res) => {
       return res.status(400).json({ error: 'No PDF provided' });
     }
 
-    // For PDFs, we might need to convert to images first
-    // or use a different approach
-    
     const prompt = `Extract all measurements and data from this roofing document. Return as structured JSON.`;
 
-    const response = await processImageWithVision(pdfBase64, prompt);
+    const response = await processImageWithClaude(pdfBase64, prompt);
     
     res.json({
       success: true,
@@ -123,34 +105,25 @@ export const extractMeasurements = async (req, res) => {
 
 export const identifyMaterials = async (req, res) => {
   try {
-    if (!openai) {
-      return res.status(503).json({ 
-        error: 'OpenAI service not configured. Please set OPENAI_API_KEY environment variable.' 
-      });
-    }
-
     const { images } = req.body;
     
+    if (!images || images.length === 0) {
+      return res.status(400).json({ error: 'No images provided' });
+    }
+
     const prompt = `Identify the roofing materials in these images and return as JSON.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...images.map(img => ({
-              type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${img}` }
-            }))
-          ]
-        }
-      ],
-      max_tokens: 1000
-    });
-
-    const materials = JSON.parse(response.choices[0].message.content);
+    // Process first image (can extend to multiple if needed)
+    const response = await processImageWithClaude(images[0], prompt);
+    
+    let materials;
+    try {
+      const jsonMatch = response.match(/```json\n?([\s\S]*?)\n?```/);
+      const jsonString = jsonMatch ? jsonMatch[1] : response;
+      materials = JSON.parse(jsonString);
+    } catch (parseError) {
+      materials = { rawAnalysis: response };
+    }
     
     res.json({
       success: true,

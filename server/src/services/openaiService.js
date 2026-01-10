@@ -1,25 +1,17 @@
-import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { aiConfig } from '../config/openai.js';
 import logger from '../utils/logger.js';
 import Material from '../models/Material.js';
 import Company from '../models/Company.js';
-import { fetchGoogleSheetData, parsePricingSheet } from './googleSheetsService.js';
-import { buildPricingSnapshotFromSheet } from '../controllers/materialController.js';
+import { parsePricingSheet } from './googleSheetsService.js';
 
-// Initialize AI clients
-let openai = null;
+// Initialize Claude client
 let claude = null;
-
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-  });
-}
 
 if (process.env.ANTHROPIC_API_KEY) {
   claude = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    timeout: aiConfig.claude.timeout
   });
   console.log('✅ Claude AI initialized with API key');
 } else {
@@ -173,37 +165,56 @@ const proposalTools = [
   }
 ];
 
-// GPT Vision for image analysis
-export const processImageWithVision = async (imageBase64, prompt, documentType = 'general') => {
-  if (!openai) {
-    throw new Error('OpenAI service not configured');
+// Process image with Claude Vision (replaces OpenAI GPT-4 Vision)
+export const processImageWithClaude = async (imageBase64, prompt, documentType = 'general') => {
+  if (!claude) {
+    throw new Error('Claude service not configured');
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: aiConfig.defaultVisionModel,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`,
-                detail: "high"
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: aiConfig.openai.maxTokens,
-      temperature: aiConfig.openai.temperature
-    });
+    // Extract base64 data from data URL if needed
+    let base64Data = imageBase64;
+    let mediaType = 'image/jpeg';
+    
+    const matches = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
+    if (matches) {
+      mediaType = matches[1];
+      base64Data = matches[2];
+    }
 
-    return response.choices[0].message.content;
+    const response = await Promise.race([
+      claude.messages.create({
+        model: aiConfig.defaultChatModel,
+        max_tokens: aiConfig.claude.maxTokens,
+        temperature: aiConfig.claude.temperature,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: base64Data
+                }
+              },
+              {
+                type: 'text',
+                text: prompt
+              }
+            ]
+          }
+        ]
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Claude API timeout')), aiConfig.claude.timeout)
+      )
+    ]);
+
+    return response.content[0].text;
   } catch (error) {
-    logger.error('Error in GPT Vision processing:', error);
+    logger.error('Error in Claude Vision processing:', error);
     throw error;
   }
 };
@@ -218,48 +229,25 @@ export const processWithClaude = async (prompt, context = '', systemPrompt = '')
   console.log(`🤖 Processing with Claude model: ${aiConfig.defaultChatModel}`);
 
   try {
-    // Fetch real pricing data for default prompts too
-    let pricingContext = '';
-    if (!systemPrompt) {
-      try {
-        const axios = (await import('axios')).default;
-        const baseURL = process.env.NODE_ENV === 'production' 
-          ? process.env.API_URL || 'http://localhost:3001'
-          : 'http://localhost:3001';
-        
-        const pricingResponse = await axios.get(`${baseURL}/api/materials/ai-pricing`);
-        
-        if (pricingResponse.data.success && pricingResponse.data.pricingSheets.length > 0) {
-          pricingContext = `\n\n**COMPANY PRICING DATA (USE THESE EXACT PRICES):**\n`;
-          
-          pricingResponse.data.pricingSheets.forEach(sheet => {
-            pricingContext += `\n${sheet.sheetName}:\n`;
-            sheet.materials.forEach(material => {
-              pricingContext += `- ${material.name}: $${material.materialCost} material + $${material.laborCost} labor = $${material.totalPrice} ${material.unit}\n`;
-            });
-          });
-          
-          pricingContext += `\n**CRITICAL:** Use these EXACT prices from the company's pricing sheets.\n`;
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch pricing data for default prompt:', error.message);
-      }
-    }
+    const defaultSystemPrompt = systemPrompt || 'You are a roofing expert helping build proposals. Provide complete solutions based on the context provided.';
 
-    const defaultSystemPrompt = `You are a roofing expert helping build proposals. Provide complete solutions based on the context provided.${pricingContext ? `\n\n${pricingContext}` : ''}`;
-
-    const response = await claude.messages.create({
-      model: aiConfig.defaultChatModel,
-      max_tokens: aiConfig.claude.maxTokens,
-      temperature: aiConfig.claude.temperature,
-      system: systemPrompt || defaultSystemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: context ? `${context}\n\n${prompt}` : prompt
-        }
-      ]
-    });
+    const response = await Promise.race([
+      claude.messages.create({
+        model: aiConfig.defaultChatModel,
+        max_tokens: aiConfig.claude.maxTokens,
+        temperature: aiConfig.claude.temperature,
+        system: defaultSystemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: context ? `${context}\n\n${prompt}` : prompt
+          }
+        ]
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Claude API timeout')), aiConfig.claude.timeout)
+      )
+    ]);
 
     return response.content[0].text;
   } catch (error) {
@@ -384,234 +372,69 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
   logger.info('Has Claude client:', !!claude);
   logger.info('Has API key:', !!process.env.ANTHROPIC_API_KEY);
 
-  // Fetch pricing data from database
+  // Only load pricing when needed (when discussing materials/pricing)
+  const needsPricing = message.toLowerCase().includes('material') || 
+                       message.toLowerCase().includes('price') ||
+                       message.toLowerCase().includes('add') ||
+                       message.toLowerCase().includes('cost') ||
+                       message.toLowerCase().includes('quote') ||
+                       conversationHistory.some(msg => msg.content?.toLowerCase().includes('material') || msg.content?.toLowerCase().includes('price'));
+
   let pricingContext = '';
   let pricingStatus = 'NOT_LOADED';
-  let companyId = null; // Declare at function level so it's accessible outside try block
-  let debugInfo = {
-    step: 'starting',
-    companyId: null,
-    sheetsFound: 0,
-    sheetsWithSnapshots: 0,
-    sheetsFetchedFromGoogle: 0,
-    totalMaterials: 0,
-    errors: []
-  };
 
-  // Check if this is a new conversation or user requested refresh
-  const isNewConversation = !conversationHistory || conversationHistory.length === 0;
-  const refreshKeywords = ['refresh', 'update', 'sync', 'latest', 'newest', 'current'];
-  const userRequestedRefresh = refreshKeywords.some(keyword => 
-    message.toLowerCase().includes(keyword) && 
-    (message.toLowerCase().includes('pric') || message.toLowerCase().includes('sheet'))
-  );
-  const shouldFetchFresh = isNewConversation || userRequestedRefresh;
+  if (needsPricing) {
+    try {
+      // Get company ID
+      let companyId = null;
+      if (proposalContext?.companyId) {
+        companyId = proposalContext.companyId;
+      } else if (proposalContext?.userId) {
+        const User = (await import('../models/User.js')).default;
+        const user = await User.findByPk(proposalContext.userId);
+        companyId = user?.companyId || null;
+      } else {
+        const company = await Company.findOne({ order: [['createdAt', 'ASC']] });
+        companyId = company?.id || null;
+      }
 
-  try {
-    logger.info('🔍 [PRICING DEBUG] Starting pricing fetch for AI chat...');
-    logger.info(`🔍 [PRICING DEBUG] New conversation: ${isNewConversation}, User requested refresh: ${userRequestedRefresh}, Will fetch fresh: ${shouldFetchFresh}`);
-    
-    // Determine company ID (same logic as /api/materials/ai-pricing)
-    
-    // Try to get companyId from proposalContext first
-    if (proposalContext?.companyId) {
-      companyId = proposalContext.companyId;
-      logger.info(`🔍 [PRICING DEBUG] Using companyId from proposalContext: ${companyId}`);
-    } 
-    // If proposalContext has userId, get companyId from user's companyId field
-    else if (proposalContext?.userId) {
-      const User = (await import('../models/User.js')).default;
-      const user = await User.findByPk(proposalContext.userId);
-      companyId = user?.companyId || null;
-      logger.info(`🔍 [PRICING DEBUG] Using companyId from user record: ${companyId}`);
-    }
-    // Fallback: get first company
-    else {
-      logger.info('🔍 [PRICING DEBUG] No companyId in proposalContext, looking up first company...');
-      const company = await Company.findOne({ order: [['createdAt', 'ASC']] });
-      companyId = company?.id || null;
-      logger.info(`🔍 [PRICING DEBUG] Found company: ${companyId} (${company?.name || 'unknown'})`);
-    }
-    debugInfo.companyId = companyId;
+      if (companyId) {
+        // Load pricing sheets from database (snapshots only - no Google Sheets API calls)
+        const pricingSheets = await Material.findAll({
+          where: { 
+            companyId: companyId,
+            category: 'pricing_sheet',
+            isActive: true
+          },
+          order: [['updatedAt', 'DESC']]
+        });
 
-    if (!companyId) {
-      logger.warn('⚠️ [PRICING DEBUG] No company found - cannot load pricing');
-      debugInfo.step = 'no_company';
-    } else {
-      // Query pricing sheets directly from database
-      logger.info(`🔍 [PRICING DEBUG] Querying materials table for companyId=${companyId}, category='pricing_sheet', isActive=true`);
-      const pricingSheets = await Material.findAll({
-        where: { 
-          companyId: companyId,
-          category: 'pricing_sheet',
-          isActive: true
-        },
-        order: [['updatedAt', 'DESC']]
-      });
-      
-      debugInfo.sheetsFound = pricingSheets.length;
-      logger.info(`🔍 [PRICING DEBUG] Found ${pricingSheets.length} active pricing sheets in database`);
-
-      const pricingData = [];
-      
-      for (const sheet of pricingSheets) {
-        try {
-          logger.info(`🔍 [PRICING DEBUG] Processing sheet: ${sheet.name} (ID: ${sheet.id})`);
+        if (pricingSheets.length > 0) {
+          pricingStatus = 'LOADED';
           
-          // Check if it's a Google Sheets URL type
-          if (sheet.specifications?.type === 'url' && sheet.specifications?.files?.[0]?.name) {
-            const sheetUrl = sheet.specifications.files[0].name;
-            logger.info(`🔍 [PRICING DEBUG] Sheet ${sheet.name} is Google Sheets URL: ${sheetUrl.substring(0, 50)}...`);
-
-            // Check if we should fetch fresh (new conversation or user requested refresh)
-            if (!shouldFetchFresh) {
-              // Use snapshot for ongoing conversations (fast)
-            const existingSnapshot = sheet.specifications?.pricingSnapshot;
-            if (existingSnapshot?.materials?.length || existingSnapshot?.rawCsvData) {
-              logger.info(`✅ [PRICING DEBUG] Using stored snapshot for ${sheet.name}: ${existingSnapshot.materials?.length || 0} materials`);
-              pricingData.push({
-                sheetName: sheet.name,
-                materials: existingSnapshot.materials || [],
-                  rawCsvData: existingSnapshot.rawCsvData || null,
-                totalItems: existingSnapshot.materials?.length || 0,
-                lastSyncedAt: existingSnapshot.lastSyncedAt || sheet.specifications?.lastSyncedAt || null,
-                source: 'snapshot'
+          for (const sheet of pricingSheets) {
+            const snapshot = sheet.specifications?.pricingSnapshot;
+            if (snapshot?.materials?.length) {
+              pricingContext += `\n**${sheet.name}:**\n`;
+              pricingContext += `| Item Name | Unit | Price |\n`;
+              pricingContext += `|-----------|------|-------|\n`;
+              
+              snapshot.materials.forEach(material => {
+                const name = material.name || '';
+                const unit = material.unit || '';
+                const price = material.price || material.totalPrice || 0;
+                pricingContext += `| ${name} | ${unit} | $${price} |\n`;
               });
-              debugInfo.sheetsWithSnapshots++;
-              debugInfo.totalMaterials += existingSnapshot.materials?.length || 0;
-              continue;
-              }
             }
-
-            // Fetch fresh from Google Sheets (new conversation, user requested refresh, or no snapshot)
-            logger.info(`📥 [PRICING DEBUG] Fetching fresh data from Google Sheets for ${sheet.name}${shouldFetchFresh ? (isNewConversation ? ' (new conversation)' : ' (user requested refresh)') : ' (no snapshot)'}...`);
-            try {
-              const sheetData = await fetchGoogleSheetData(sheetUrl);
-              logger.info(`✅ [PRICING DEBUG] Fetched ${sheetData.rowCount} rows from Google Sheet`);
-              
-              // Parse the fresh data
-              const snapshot = buildPricingSnapshotFromSheet(sheetData, sheetUrl);
-              logger.info(`✅ [PRICING DEBUG] Parsed ${snapshot.materials.length} materials using flexible parser`);
-              
-              // Store snapshot for future use (wrap in try-catch so DB errors don't break pricing)
-              try {
-                const nextSpecs = {
-                  ...(sheet.specifications || {}),
-                  itemCount: snapshot.totalItems,
-                  totalRows: snapshot.totalRows,
-                  processedAt: snapshot.lastSyncedAt,
-                  pricingSnapshot: snapshot,  // Store snapshot for next time
-                  syncStatus: 'ok',
-                  syncError: null,
-                  lastSyncedAt: snapshot.lastSyncedAt
-                };
-                await sheet.update({ specifications: nextSpecs });
-                logger.info(`✅ [PRICING DEBUG] Stored snapshot in database for ${sheet.name}`);
-              } catch (dbError) {
-                // Log but don't fail - pricing data is still valid even if snapshot save fails
-                logger.warn(`⚠️ [PRICING DEBUG] Failed to save snapshot in database for ${sheet.name}:`, dbError.message);
-              }
-              
-              pricingData.push({
-                sheetName: sheet.name,
-                materials: snapshot.materials,
-                rawCsvData: snapshot.rawCsvData || sheetData.csvData || null, // Include raw CSV data
-                totalItems: snapshot.materials.length,
-                lastSyncedAt: snapshot.lastSyncedAt,
-                source: 'google_fetch'
-              });
-              debugInfo.sheetsFetchedFromGoogle++;
-              debugInfo.totalMaterials += snapshot.materials.length;
-              
-            } catch (fetchError) {
-              logger.error(`❌ [PRICING DEBUG] Failed to fetch Google Sheet for ${sheet.name}:`, fetchError.message);
-              debugInfo.errors.push({ sheet: sheet.name, error: fetchError.message });
-              
-              // No snapshot AND fetch failed - skip this sheet (don't use stale data)
-              logger.warn(`⚠️ [PRICING DEBUG] Skipping ${sheet.name} - no snapshot and Google Sheets fetch failed`);
-              // Don't add anything to pricingData - this sheet is unavailable
-            }
-          } else {
-            logger.info(`⚠️ [PRICING DEBUG] Sheet ${sheet.name} is not a Google Sheets URL type, skipping`);
           }
-        } catch (sheetError) {
-          logger.error(`❌ [PRICING DEBUG] Error processing sheet ${sheet.name}:`, sheetError.message);
-          debugInfo.errors.push({ sheet: sheet.name, error: sheetError.message });
+          
+          logger.info(`✅ Loaded pricing from ${pricingSheets.length} sheet(s), ${pricingContext.length} chars`);
         }
       }
-
-      // After processing all sheets, check if we have any valid pricing data
-      if (pricingData.length === 0) {
-        logger.error(`❌ [PRICING DEBUG] NO VALID PRICING DATA AVAILABLE - all sheets failed to load or no sheets found`);
-        pricingStatus = 'NOT_LOADED';
-        pricingContext = '';
-      } else {
-        // Build simple pricing context for Claude - just a readable table
-        pricingStatus = 'LOADED';
-        logger.info(`✅ [PRICING DEBUG] Building pricing context from ${pricingData.length} sheets, ${debugInfo.totalMaterials} total materials`);
-        
-        pricingData.forEach(sheet => {
-          pricingContext += `\n**${sheet.sheetName}:**\n`;
-          pricingContext += `| Category | Item Name | Unit | Coverage | Price |\n`;
-          pricingContext += `|----------|-----------|------|----------|-------|\n`;
-          
-          // Parse the sheet data if we have raw CSV
-          let parsedItems = [];
-          if (sheet.rawCsvData) {
-            try {
-              const csvRows = sheet.rawCsvData.split('\n').map(row => row.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
-              const sheetDataForParsing = { rows: csvRows };
-              parsedItems = parsePricingSheet(sheetDataForParsing);
-            } catch (parseError) {
-              logger.warn(`Failed to parse pricing sheet: ${parseError.message}`);
-              parsedItems = [];
-            }
-          }
-          
-          if (parsedItems.length > 0) {
-            parsedItems.forEach(item => {
-              const category = item.category || item['Category'] || '';
-              const name = item.name || item['Item Name'] || '';
-                const unit = item.unit || item['Unit'] || '';
-                const coverage = item.coverage || item['Coverage'] || '';
-              const price = item.price || item['Price'] || '';
-              
-              pricingContext += `| ${category} | ${name} | ${unit} | ${coverage} | $${price} |\n`;
-            });
-          } else if (sheet.materials && sheet.materials.length > 0) {
-              sheet.materials.forEach(material => {
-              pricingContext += `| ${material.category || ''} | ${material.name || ''} | ${material.unit || ''} | ${material.coverage || ''} | $${material.price || 0} |\n`;
-            });
-          }
-        });
-        
-        logger.info(`✅ [PRICING DEBUG] Pricing context built: ${pricingContext.length} characters`);
-      }
+    } catch (error) {
+      logger.error('Error loading pricing:', error.message);
+      // Continue without pricing - not critical
     }
-
-    logger.info(`🔍 [PRICING DEBUG] Final status: ${pricingStatus}, sheets=${debugInfo.sheetsFound}, materials=${debugInfo.totalMaterials}, errors=${debugInfo.errors.length}`);
-    logger.info(`🔍 [PRICING DEBUG] Full debug info:`, JSON.stringify(debugInfo, null, 2));
-    
-    // Also log to console for Railway visibility
-    console.log(`\n📊 [PRICING SUMMARY FOR AI CHAT]`);
-    console.log(`   Status: ${pricingStatus}`);
-    console.log(`   Company ID: ${debugInfo.companyId}`);
-    console.log(`   Sheets found: ${debugInfo.sheetsFound}`);
-    console.log(`   Sheets with snapshots: ${debugInfo.sheetsWithSnapshots}`);
-    console.log(`   Sheets fetched from Google: ${debugInfo.sheetsFetchedFromGoogle}`);
-    console.log(`   Total materials: ${debugInfo.totalMaterials}`);
-    console.log(`   Pricing context length: ${pricingContext.length} chars`);
-    if (debugInfo.errors.length > 0) {
-      console.log(`   ⚠️ Errors: ${JSON.stringify(debugInfo.errors)}`);
-    }
-    console.log(`\n`);
-
-  } catch (error) {
-    logger.error('❌ [PRICING DEBUG] CRITICAL ERROR fetching pricing data for AI:', error);
-    logger.error('❌ [PRICING DEBUG] Error stack:', error.stack);
-    console.error(`\n❌ [PRICING DEBUG] CRITICAL ERROR: ${error.message}\n`);
-    debugInfo.step = 'error';
-    debugInfo.errors.push({ error: error.message, stack: error.stack?.split('\n')[0] });
   }
 
   // Get simple system prompt
@@ -700,14 +523,19 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
   console.log(`\n`);
 
   try {
-    const response = await claude.messages.create({
-      model: aiConfig.defaultChatModel,
-      max_tokens: aiConfig.claude.maxTokens,
-      temperature: aiConfig.claude.temperature,
-      system: systemPrompt,
-      messages: messages,
-      tools: proposalTools  // Enable tool use
-    });
+    const response = await Promise.race([
+      claude.messages.create({
+        model: aiConfig.defaultChatModel,
+        max_tokens: aiConfig.claude.maxTokens,
+        temperature: aiConfig.claude.temperature,
+        system: systemPrompt,
+        messages: messages,
+        tools: proposalTools  // Enable tool use
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Claude API timeout')), aiConfig.claude.timeout)
+      )
+    ]);
 
     // Parse response - may contain text and/or tool_use blocks
     let responseText = '';
@@ -754,7 +582,7 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
 };
 
 export default {
-  processImageWithVision,
+  processImageWithClaude,
   processWithClaude,
   analyzePricingDocument,
   generateRoofingRecommendations,

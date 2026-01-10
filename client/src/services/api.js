@@ -3,7 +3,7 @@ import axios from 'axios';
 // Create axios instance with base configuration
 const apiClient = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api',
-  timeout: 30000,
+  timeout: 60000, // Increased to 60s for AI endpoints
   headers: {
     'Content-Type': 'application/json',
   },
@@ -209,7 +209,7 @@ const api = {
   deleteProposal: (id) => apiClient.delete(`/proposals/${id}`),
   acceptProposal: (id, acceptanceData) => apiClient.post(`/proposals/${id}/accept`, acceptanceData),
 
-  // Vision AI (GPT-4 Vision)
+  // Vision AI (Claude Vision)
   processImages: (images, documentType) => 
     apiClient.post('/vision/analyze', { images, documentType }),
   extractMeasurements: (pdfBase64) => 

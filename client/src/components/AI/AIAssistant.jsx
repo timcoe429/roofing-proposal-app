@@ -569,14 +569,55 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
 
 
 
+  // Compress image before sending
+  const compressImage = (dataUrl, maxWidth = 1024, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Resize if too large
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to compressed data URL
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = () => resolve(dataUrl); // Fallback to original if compression fails
+      img.src = dataUrl;
+    });
+  };
+
   const handleSendMessage = async (message = inputValue) => {
     if (!message.trim() && pastedImages.length === 0) return;
 
     // Capture images BEFORE clearing state (important!)
     const imagesToSend = [...pastedImages];
-    const imageBase64Array = imagesToSend.length > 0 
-      ? imagesToSend.map(img => img.dataUrl)
-      : null;
+    
+    // Compress images before sending
+    let imageBase64Array = null;
+    if (imagesToSend.length > 0) {
+      try {
+        const compressedImages = await Promise.all(
+          imagesToSend.map(img => compressImage(img.dataUrl))
+        );
+        imageBase64Array = compressedImages;
+      } catch (error) {
+        console.error('Error compressing images:', error);
+        // Fallback to original images if compression fails
+        imageBase64Array = imagesToSend.map(img => img.dataUrl);
+      }
+    }
 
     // Default content when sending images without text
     const messageContent = message.trim() || (imagesToSend.length > 0 ? '[Image uploaded]' : '');

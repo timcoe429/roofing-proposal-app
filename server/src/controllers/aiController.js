@@ -228,7 +228,6 @@ export const checkAIServices = async (req, res) => {
   try {
     const services = {
       claude: !!process.env.ANTHROPIC_API_KEY,
-      openai: !!process.env.OPENAI_API_KEY,
       timestamp: new Date().toISOString()
     };
 
