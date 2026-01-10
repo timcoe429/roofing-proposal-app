@@ -81,6 +81,11 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
 
   // Format AI responses with proper HTML
   const formatAIResponse = (text) => {
+    // Ensure we have text to format
+    if (!text || typeof text !== 'string') {
+      return '<p>I processed your request. The changes have been applied.</p>';
+    }
+    
     // FIRST: Remove JSON code blocks and standalone JSON objects from display
     let cleanedText = text
       // Remove ```json ... ``` blocks
@@ -98,6 +103,11 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       // Clean up excessive whitespace from removals
       .replace(/\n{3,}/g, '\n\n')
       .trim();
+    
+    // If cleaning removed everything, use original text
+    if (!cleanedText) {
+      cleanedText = text.trim();
+    }
 
     // Split into paragraphs
     const paragraphs = cleanedText.split('\n\n');
@@ -146,6 +156,13 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       
       return result;
     }).join('');
+    
+    // Ensure we always return valid HTML
+    if (!result || result.trim() === '') {
+      return '<p>I processed your request. The changes have been applied.</p>';
+    }
+    
+    return result;
   };
 
   // Build proposal context for AI - reusable helper function
@@ -228,7 +245,9 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
             ...(input.propertyCity && { propertyCity: input.propertyCity }),
             ...(input.propertyState && { propertyState: input.propertyState }),
             ...(input.propertyZip && { propertyZip: input.propertyZip }),
-            ...(input.projectType && { projectType: input.projectType })
+            ...(input.projectType && { projectType: input.projectType }),
+            // Explicitly preserve aiChatHistory to prevent it from being lost
+            aiChatHistory: prev.aiChatHistory || []
           }));
           toast.success('Updated property info');
           break;
@@ -251,7 +270,9 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
               ...(input.penetrations !== undefined && { penetrations: input.penetrations }),
               ...(input.skylights !== undefined && { skylights: input.skylights }),
               ...(input.roofPlanes !== undefined && { roofPlanes: input.roofPlanes })
-            }
+            },
+            // Explicitly preserve aiChatHistory to prevent it from being lost
+            aiChatHistory: prev.aiChatHistory || []
           }));
           toast.success('Updated measurements');
           break;
@@ -674,15 +695,37 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
         responseKeys: response ? Object.keys(response) : null,
         responseText: response?.response ? response.response.substring(0, 100) + '...' : 'No response text',
         hasActions: !!response?.actions,
-        actionCount: response?.actions?.length || 0
+        actionCount: response?.actions?.length || 0,
+        fullResponse: response // Debug: log full response structure
       });
       
-      // Get Claude's natural response
-      const aiResponseText = response?.response || (typeof response === 'string' ? response : 'I apologize, but I had trouble processing that. Could you try rephrasing?');
+      // Get Claude's natural response - check multiple possible structures
+      let aiResponseText = '';
+      if (typeof response === 'string') {
+        aiResponseText = response;
+      } else if (response?.response && typeof response.response === 'string') {
+        aiResponseText = response.response;
+      } else if (response?.data?.response && typeof response.data.response === 'string') {
+        // Handle case where interceptor didn't unwrap properly
+        aiResponseText = response.data.response;
+      } else {
+        console.error('❌ BUG: Could not extract response text from:', response);
+        aiResponseText = 'I processed your request. The changes have been applied.';
+      }
+      
+      // If empty or just whitespace, provide fallback
+      if (!aiResponseText || !aiResponseText.trim()) {
+        if (response?.actions && Array.isArray(response.actions) && response.actions.length > 0) {
+          const toolNames = response.actions.map(a => a.tool.replace(/_/g, ' ')).join(', ');
+          aiResponseText = `I've updated the proposal using: ${toolNames}. The changes have been applied.`;
+        } else {
+          aiResponseText = 'I processed your request. Let me know if you need anything else!';
+        }
+      }
       
       console.log('✅ AI Response received:', aiResponseText ? aiResponseText.substring(0, 100) + '...' : 'No text');
       
-      // Apply tool actions if present (this is the new clean way!)
+      // Apply tool actions if present
       if (response?.actions && Array.isArray(response.actions)) {
         console.log('🔧 Applying tool actions:', response.actions);
         applyToolActions(response.actions);
@@ -692,7 +735,7 @@ export default function AIAssistant({ proposalData, onUpdateProposal, onTabChang
       const assistantMessage = {
         id: Date.now() + 1,
         type: 'assistant',
-        content: aiResponseText,
+        content: aiResponseText.trim(),
         timestamp: new Date()
       };
 

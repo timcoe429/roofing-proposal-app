@@ -373,12 +373,16 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
   logger.info('Has API key:', !!process.env.ANTHROPIC_API_KEY);
 
   // Only load pricing when needed (when discussing materials/pricing)
-  const needsPricing = message.toLowerCase().includes('material') || 
-                       message.toLowerCase().includes('price') ||
-                       message.toLowerCase().includes('add') ||
-                       message.toLowerCase().includes('cost') ||
-                       message.toLowerCase().includes('quote') ||
-                       conversationHistory.some(msg => msg.content?.toLowerCase().includes('material') || msg.content?.toLowerCase().includes('price'));
+  // Don't load pricing for image analysis - that's just extracting measurements
+  const isImageAnalysis = images && images.length > 0;
+  const needsPricing = !isImageAnalysis && (
+    message.toLowerCase().includes('material') || 
+    message.toLowerCase().includes('price') ||
+    message.toLowerCase().includes('add') ||
+    message.toLowerCase().includes('cost') ||
+    message.toLowerCase().includes('quote') ||
+    conversationHistory.some(msg => msg.content?.toLowerCase().includes('material') || msg.content?.toLowerCase().includes('price'))
+  );
 
   let pricingContext = '';
   let pricingStatus = 'NOT_LOADED';
@@ -553,6 +557,17 @@ export const chatWithClaude = async (message, conversationHistory = [], proposal
         });
         logger.info(`🔧 Tool use: ${block.name}`, JSON.stringify(block.input));
       }
+    }
+    
+    // If Claude only used tools without text, provide a default message
+    if (!responseText && actions.length > 0) {
+      const toolNames = actions.map(a => a.tool).join(', ');
+      responseText = `I've updated the proposal using: ${toolNames}. The changes have been applied.`;
+    }
+    
+    // If still no text, provide a fallback
+    if (!responseText) {
+      responseText = 'I processed your request. Let me know if you need anything else!';
     }
     
     logger.info('✅ Claude response received, text length:', responseText?.length);
